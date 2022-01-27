@@ -34,7 +34,58 @@ Below are descriptions and pseudocode for the functions that we think we will ne
 
 ```c
 int SetKernelBrk(void *_brk) {
-	// 1. Check arguments. Return error if invalid. The new brk should be a valid pointer
+	// 1. Check arguments. Return error if invalid. The new brk should be (1) a valid
+	//    pointer that is (2) not below our heap and (3) not in our stack space.
+	if (!_brk) {
+		return ERROR_CODE;
+	}
+
+	if (_brk < heapBottom || _brk > stackBottom) {
+		return ERROR_CODE;
+	}
+
+	// 2. Check to see if we are growing or shrinking the brk and calculate the difference
+	int growing    = 0;
+	int difference = 0;
+	if (_brk > brk) {
+		growing    = 1;
+		difference = _brk - brk;
+	} else {
+		difference = brk - _brk;
+	}
+
+	// 3. Calculate the number of frames we need to add or remove.
+	//
+	// TODO: We need to consider what happens when difference is < FRAME_SIZE.
+	//       It may be the case that brk is only increased or decreased by a
+	//       small amount. If so, it may be the case that we do not need to
+	//       add or remove any pages.
+	int numFrames = difference / FRAME_SIZE;
+	if (difference % FRAME_SIZE) {
+		numFrames++;
+	}
+
+	// 4. Add or remove frames/pages based on whether we are growing or shrinking.
+	//    I imagine we will have some list to track the available frames and a 
+	//    list for the kernels pages, along with some getter/setter helper
+	//    functions for modifying each.
+	for (int i = 0; i < numFrames; i++) {
+
+		// TODO: I think we need to consider what the virtual address for
+		//       the new page will be. Specifically, it should be the
+		//       current last kernel page addr + FRAME_SIZE.
+		if (growing) {
+			frame = getFreeFrame();
+			kernelAddPage(frame, pageAddress);
+		} else {
+			frame = kernelRemovePage(pageAddress);
+			addFreeFrame(frame);
+		}
+	}
+
+	// 5. Set the kernel brk to the new brk value and return a success code
+	brk = _brk 
+	return SUCCESS_CODE;
 }
 ```
 
@@ -42,7 +93,9 @@ int SetKernelBrk(void *_brk) {
 *function description here*
 
 ```c
-void KernelStart (char**, unsigned int, UserContext *);
+void KernelStart (char**, unsigned int, UserContext *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### MyKCS
@@ -56,245 +109,315 @@ KernelContext *MyKCS(KernelContext *, void *, void *)
 *function description here*
 
 ```c
-KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used);
+KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Nop
 *function description here*
 
 ```c
-int Nop (int,int,int,int);
+int Nop (int,int,int,int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Fork
 *function description here*
 
 ```c
-int Fork (void);
+int Fork (void) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Exec
 *function description here*
 
 ```c
-int Exec (char *, char **);
+int Exec (char *, char **) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Exit
 *function description here*
 
 ```c
-void Exit (int);
+void Exit (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Wait
 *function description here*
 
 ```c
-int Wait (int *);
+int Wait (int *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### GetPid
 *function description here*
 
 ```c
-int GetPid (void);
+int GetPid (void) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Brk
 *function description here*
 
 ```c
-int Brk (void *);
+int Brk (void *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Delay
 *function description here*
 
 ```c
-int Delay (int);
+int Delay (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### TtyRead
 *function description here*
 
 ```c
-int TtyRead (int, void *, int);
+int TtyRead (int, void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### TtyWrite
 *function description here*
 
 ```c
-int TtyWrite (int, void *, int);
+int TtyWrite (int, void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Register
 *function description here*
 
 ```c
-int Register (unsigned int);
+int Register (unsigned int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Send
 *function description here*
 
 ```c
-int Send (void *, int);
+int Send (void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Receive
 *function description here*
 
 ```c
-int Receive (void *);
+int Receive (void *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### ReceiveSpecific
 *function description here*
 
 ```c
-int ReceiveSpecific (void *, int);
+int ReceiveSpecific (void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Reply
 *function description here*
 
 ```c
-int Reply (void *, int);
+int Reply (void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Forward
 *function description here*
 
 ```c
-int Forward (void *, int, int);
+int Forward (void *, int, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### CopyFrom
 *function description here*
 
 ```c
-int CopyFrom (int, void *, void *, int);
+int CopyFrom (int, void *, void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### CopyTo
 *function description here*
 
 ```c
-int CopyTo (int, void *, void *, int);
+int CopyTo (int, void *, void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### ReadSector
 *function description here*
 
 ```c
-int ReadSector (int, void *);
+int ReadSector (int, void *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### WriteSector
 *function description here*
 
 ```c
-int WriteSector (int, void *);
+int WriteSector (int, void *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### PipeInit
 *function description here*
 
 ```c
-int PipeInit (int *);
+int PipeInit (int *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### PipeRead
 *function description here*
 
 ```c
-int PipeRead (int, void *, int);
+int PipeRead (int, void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### PipeWrite
 *function description here*
 
 ```c
-int PipeWrite (int, void *, int);
+int PipeWrite (int, void *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### SemInit
 *function description here*
 
 ```c
-int SemInit (int *, int);
+int SemInit (int *, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### SemUp
 *function description here*
 
 ```c
-int SemUp (int);
+int SemUp (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### SemDown
 *function description here*
 
 ```c
-int SemDown (int);
+int SemDown (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### LockInit
 *function description here*
 
 ```c
-int LockInit (int *);
+int LockInit (int *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Acquire
 *function description here*
 
 ```c
-int Acquire (int);
+int Acquire (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Release
 *function description here*
 
 ```c
-int Release (int);
+int Release (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### CvarInit
 *function description here*
 
 ```c
-int CvarInit (int *);
+int CvarInit (int *) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### CvarWait
 *function description here*
 
 ```c
-int CvarWait (int, int);
+int CvarWait (int, int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### CvarSignal
 *function description here*
 
 ```c
-int CvarSignal (int);
+int CvarSignal (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### CvarBroadcast
 *function description here*
 
 ```c
-int CvarBroadcast (int);
+int CvarBroadcast (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Reclaim
 *function description here*
 
 ```c
-int Reclaim (int);
+int Reclaim (int) {
+	// 1. Check arguments. Return error if invalid.
+}
 ```
 
 #### Function Name Here
