@@ -34,58 +34,58 @@ Below are descriptions and pseudocode for the functions that we think we will ne
 
 ```c
 int SetKernelBrk(void *_brk) {
-	// 1. Check arguments. Return error if invalid. The new brk should be (1) a valid
-	//    pointer that is (2) not below our heap and (3) not in our stack space.
-	if (!_brk) {
-		return ERROR_CODE;
-	}
+    // 1. Check arguments. Return error if invalid. The new brk should be (1) a valid
+    //    pointer that is (2) not below our heap and (3) not in our stack space.
+    if (!_brk) {
+        return ERROR_CODE;
+    }
 
-	if (_brk < heapBottom || _brk > stackBottom) {
-		return ERROR_CODE;
-	}
+    if (_brk < heapBottom || _brk > stackBottom) {
+        return ERROR_CODE;
+    }
 
-	// 2. Check to see if we are growing or shrinking the brk and calculate the difference
-	int growing    = 0;
-	int difference = 0;
-	if (_brk > brk) {
-		growing    = 1;
-		difference = _brk - brk;
-	} else {
-		difference = brk - _brk;
-	}
+    // 2. Check to see if we are growing or shrinking the brk and calculate the difference
+    int growing    = 0;
+    int difference = 0;
+    if (_brk > brk) {
+        growing    = 1;
+        difference = _brk - brk;
+    } else {
+        difference = brk - _brk;
+    }
 
-	// 3. Calculate the number of frames we need to add or remove.
-	//
-	// TODO: We need to consider what happens when difference is < FRAME_SIZE.
-	//       It may be the case that brk is only increased or decreased by a
-	//       small amount. If so, it may be the case that we do not need to
-	//       add or remove any pages.
-	int numFrames = difference / FRAME_SIZE;
-	if (difference % FRAME_SIZE) {
-		numFrames++;
-	}
+    // 3. Calculate the number of frames we need to add or remove.
+    //
+    // TODO: We need to consider what happens when difference is < FRAME_SIZE.
+    //       It may be the case that brk is only increased or decreased by a
+    //       small amount. If so, it may be the case that we do not need to
+    //       add or remove any pages.
+    int numFrames = difference / FRAME_SIZE;
+    if (difference % FRAME_SIZE) {
+        numFrames++;
+    }
 
-	// 4. Add or remove frames/pages based on whether we are growing or shrinking.
-	//    I imagine we will have some list to track the available frames and a 
-	//    list for the kernels pages, along with some getter/setter helper
-	//    functions for modifying each.
-	for (int i = 0; i < numFrames; i++) {
+    // 4. Add or remove frames/pages based on whether we are growing or shrinking.
+    //    I imagine we will have some list to track the available frames and a 
+    //    list for the kernels pages, along with some getter/setter helper
+    //    functions for modifying each.
+    for (int i = 0; i < numFrames; i++) {
 
-		// TODO: I think we need to consider what the virtual address for
-		//       the new page will be. Specifically, it should be the
-		//       current last kernel page addr + FRAME_SIZE.
-		if (growing) {
-			frame = getFreeFrame();
-			kernelAddPage(frame, pageAddress);
-		} else {
-			frame = kernelRemovePage(pageAddress);
-			addFreeFrame(frame);
-		}
-	}
+        // TODO: I think we need to consider what the virtual address for
+        //       the new page will be. Specifically, it should be the
+        //       current last kernel page addr + FRAME_SIZE.
+        if (growing) {
+            frame = getFreeFrame();
+            kernelAddPage(frame, pageAddress);
+        } else {
+            frame = kernelRemovePage(pageAddress);
+            addFreeFrame(frame);
+        }
+    }
 
-	// 5. Set the kernel brk to the new brk value and return a success code
-	brk = _brk 
-	return SUCCESS_CODE;
+    // 5. Set the kernel brk to the new brk value and return a success code
+    brk = _brk 
+    return SUCCESS_CODE;
 }
 ```
 
@@ -94,7 +94,7 @@ int SetKernelBrk(void *_brk) {
 
 ```c
 void KernelStart (char**, unsigned int, UserContext *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -110,7 +110,7 @@ KernelContext *MyKCS(KernelContext *, void *, void *)
 
 ```c
 KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -119,7 +119,7 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
 
 ```c
 int Nop (int,int,int,int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -128,7 +128,7 @@ int Nop (int,int,int,int) {
 
 ```c
 int Fork (void) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -137,7 +137,7 @@ int Fork (void) {
 
 ```c
 int Exec (char *, char **) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -146,7 +146,7 @@ int Exec (char *, char **) {
 
 ```c
 void Exit (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -155,7 +155,7 @@ void Exit (int) {
 
 ```c
 int Wait (int *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -164,7 +164,7 @@ int Wait (int *) {
 
 ```c
 int GetPid (void) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -173,7 +173,7 @@ int GetPid (void) {
 
 ```c
 int Brk (void *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -182,7 +182,7 @@ int Brk (void *) {
 
 ```c
 int Delay (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -191,7 +191,7 @@ int Delay (int) {
 
 ```c
 int TtyRead (int, void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -200,7 +200,7 @@ int TtyRead (int, void *, int) {
 
 ```c
 int TtyWrite (int, void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -209,7 +209,7 @@ int TtyWrite (int, void *, int) {
 
 ```c
 int Register (unsigned int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -218,7 +218,7 @@ int Register (unsigned int) {
 
 ```c
 int Send (void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -227,7 +227,7 @@ int Send (void *, int) {
 
 ```c
 int Receive (void *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -236,7 +236,7 @@ int Receive (void *) {
 
 ```c
 int ReceiveSpecific (void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -245,7 +245,7 @@ int ReceiveSpecific (void *, int) {
 
 ```c
 int Reply (void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -254,7 +254,7 @@ int Reply (void *, int) {
 
 ```c
 int Forward (void *, int, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -263,7 +263,7 @@ int Forward (void *, int, int) {
 
 ```c
 int CopyFrom (int, void *, void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -272,7 +272,7 @@ int CopyFrom (int, void *, void *, int) {
 
 ```c
 int CopyTo (int, void *, void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -281,7 +281,7 @@ int CopyTo (int, void *, void *, int) {
 
 ```c
 int ReadSector (int, void *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -290,7 +290,7 @@ int ReadSector (int, void *) {
 
 ```c
 int WriteSector (int, void *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -299,7 +299,7 @@ int WriteSector (int, void *) {
 
 ```c
 int PipeInit (int *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -308,7 +308,7 @@ int PipeInit (int *) {
 
 ```c
 int PipeRead (int, void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -317,7 +317,7 @@ int PipeRead (int, void *, int) {
 
 ```c
 int PipeWrite (int, void *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -326,7 +326,7 @@ int PipeWrite (int, void *, int) {
 
 ```c
 int SemInit (int *, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -335,7 +335,7 @@ int SemInit (int *, int) {
 
 ```c
 int SemUp (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -344,7 +344,7 @@ int SemUp (int) {
 
 ```c
 int SemDown (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -353,7 +353,7 @@ int SemDown (int) {
 
 ```c
 int LockInit (int *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -362,7 +362,7 @@ int LockInit (int *) {
 
 ```c
 int Acquire (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -371,7 +371,7 @@ int Acquire (int) {
 
 ```c
 int Release (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -380,7 +380,7 @@ int Release (int) {
 
 ```c
 int CvarInit (int *) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -389,7 +389,7 @@ int CvarInit (int *) {
 
 ```c
 int CvarWait (int, int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -398,7 +398,7 @@ int CvarWait (int, int) {
 
 ```c
 int CvarSignal (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -407,7 +407,7 @@ int CvarSignal (int) {
 
 ```c
 int CvarBroadcast (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
@@ -416,7 +416,7 @@ int CvarBroadcast (int) {
 
 ```c
 int Reclaim (int) {
-	// 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return error if invalid.
 }
 ```
 
