@@ -15,7 +15,21 @@ Below are descriptions and pseudocode for the structures that we think we will n
 *struct description here*
 
 ```c
-// Struct code here
+typedef struct pcb {
+    int pid;
+
+    void *pc;       // points to current instruction
+    void *sp;       // points to current stack frame
+
+    void *data;     // points to bottom of global data memory segment
+    void *heap;     // points to bottom of heap memory segment
+    void *stack;    // points to top of stack memory segment
+    void *text;     // points to bottom of text memory segment
+
+    pcb_t *children;
+
+    pt_t *pageTable;
+} pcb_t
 ```
 
 #### Struct Name Here
