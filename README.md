@@ -32,6 +32,25 @@ typedef struct pcb {
 } pcb_t
 ```
 
+> Based on Page 71
+```c
+typedef struct pcb {
+    int pid;
+    UserContext *uctxt; // Defined in `hardware.h`    
+    pte_t *ks_frames;
+    KernelContext *kctxt; // Needed for KernelCopy? See Page 45 
+    pte_t *pt;          // Defined in `hardware.h`
+} pcb_t;
+```
+
+#### Process scheduling
+
+```c
+pcb_t *ready_queue;
+pcb_t *blocked;
+
+```
+
 #### Struct Name Here
 *struct description here*
 
@@ -104,23 +123,40 @@ int SetKernelBrk(void *_brk) {
 ```
 
 #### KernelStart
-*function description here*
+
+The hardware invokes KernelStart() to boot the system. When this function returns, the machine begins running in user mode at a specified UserContext.
 
 ```c
-void KernelStart (char**, unsigned int, UserContext *) {
+void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // 1. Check arguments. Return error if invalid.
+    // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”. 
+    // Otherwise, load `cmd_args[0]` as its initial process.
+
+    // For Checkpoint 2, create an idlePCB that keeps track of the idld process.
+    // Write a simple idle function in the kernel text, and
+    // In the UserContext in idlePCB, set the pc to point to this code and the sp to point towards the top of the user stack you set up.
+    // Make sure that when you return to user mode at the end of KernelStart, you return to this modified UserContext.
+
+    // For Checkpoint 3, KernelStart needs to create an initPCB and Set up the identity for the new initPCB
+    // Then write KCCopy() to: copy the current KernelContext into initPCB and
+    // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
+
+    // Should traceprint “leaving KernelStart” at the end of KernelStart.
 }
 ```
 
 #### MyKCS
-*function description here*
+
+MyKCS will be called by `KernelContextSwitch` and fed with a pointer to a temporary copy of the current kernel context, and these two PCB pointers.
 
 ```c
 KernelContext *MyKCS(KernelContext *, void *, void *)
+    // Copy the kernel context into the current process’s PCB and return a pointer to a kernel context it had earlier saved in the next process’s PCB.
 ```
 
 #### KCCopy
-*function description here*
+
+KCCopy will simply copy the kernel context from `*kc_in` into the new pcb, and copy the contents of the current kernel stack into the frames that have been allocated for the new process’s kernel stack. However, it will then return `kc_in`.
 
 ```c
 KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
@@ -138,11 +174,15 @@ int Nop (int,int,int,int) {
 ```
 
 #### Fork
-*function description here*
 
 ```c
 int Fork (void) {
-    // 1. Check arguments. Return error if invalid.
+    // Create a new pcb for child process
+    // Get a new pid for the child process
+    // Copy user_context into the new pcb
+    // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
+    // 
+
 }
 ```
 
