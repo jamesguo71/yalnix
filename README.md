@@ -89,3 +89,7 @@ Delay
 CvarBroadcast
 CvarWait
 Reclaim
+trap_clock(UserContext *context);
+trap_illegal(UserContext *context);
+int trap_memory(UserContext *context);
+int trap_math(UserContext *context);
