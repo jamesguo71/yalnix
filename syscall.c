@@ -75,6 +75,9 @@ int internal_Delay (int clock_ticks) {
     // If clock ticks is 0, return is immediate.
     // If clock ticks is less than 0, return ERROR
     // Block current process until clock_ticks clock interrupts have occurred after the call
+        // Set up a new variable (e.g, start_clock_ticks) to mark the start time by storing the cur_clock_ticks into it
+        // Suspend the caller process
+        // Whenever the process gets switched back, check the delta of cur_clock_ticks and check if it's reached `clock_ticks`
     // Upon completion of the delay, the value 0 is returned
 }
 

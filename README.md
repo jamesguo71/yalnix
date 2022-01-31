@@ -38,10 +38,11 @@ typedef struct pcb {
 #### Process scheduling
 
 ```c
-// We probably need to implement a queue for the following? Array or Linked List?
+// We probably need to implement a queue for each of the following? Array or Linked List?
 pcb_t *current;
 pcb_t *ready_queue;
 pcb_t *blocked;
+pcb_t *terminated; // Some use cases: program has illegal instructions (like accessing invalid pages);
 
 // Questions:
 // Do we consider `cvar` / `lock` to be part of the scheduling?
@@ -76,7 +77,7 @@ typedef struct cvar {
 #### Counter of clock_ticks
 We need a counter to keep track of the clock ticks after the system boot.
 ```
-long clock_ticks;
+long cur_clock_ticks;
 ```
 
 
