@@ -24,21 +24,53 @@ typedef struct pcb {
 
     UserContext   *uctxt; // Defined in `hardware.h`    
     pte_t *ks_frames;   // Kernel Stack frames
-    KernelContext *kctxt; // Needed for KernelCopy? See Page 45 
+    KernelContext *kctxt;    // Needed for KernelCopy? See Page 45 
 
     pte_t *ks_frames;
-    pte_t *pt;            // Defined in `hardware.h`
-    int exit_status;         // for saving the process's exit status, See Page 32
-    int exited;         // if the process has exited?
+    pte_t *pt;              // Defined in `hardware.h`
+    int exit_status;        // for saving the process's exit status, See Page 32
+    int exited;             // if the process has exited?  
+
+    int *held_locks;        // locks held by the current process, used by sync syscalls
 } pcb_t;
 ```
 
 #### Process scheduling
 
 ```c
+// We probably need to implement a queue for the following? Array or Linked List?
 pcb_t *current;
 pcb_t *ready_queue;
 pcb_t *blocked;
+
+// Questions:
+// Do we consider `cvar` / `lock` to be part of the scheduling?
+// Do we need to make the following separate? Probably.
+// Also, do we need to group the waiting processes in a queue array? 
+// So that we can index into the specific queue of the signaling cvar's waiting processes?
+// internal_Reclaim(int id) accepts an id withouth specifying its resource type, do we need to keep a mapping from id to resource type?
+// pcb_t *cvar_waiting; // For keeping track of the processes `cond_wait`ing;
+// pcb_t *lock_waiting; // For keeping track of the processes waiting to `acquire`;
+```
+
+#### Lock
+
+```c
+typedef struct lock {
+    int id;     
+    int value;  // FREE or LOCKED?
+    int owner; // which process currently owns the lock?
+    int *waiting; // which processes are waiting for the lock?
+} lock_t;
+```
+
+#### CVar
+
+```c
+typedef struct cvar {
+    int id;
+    int *waiting; // which processes are waiting for the cvar?
+} cvar_t;
 ```
 
 #### Counter of clock_ticks
@@ -46,6 +78,7 @@ We need a counter to keep track of the clock ticks after the system boot.
 ```
 long clock_ticks;
 ```
+
 
 #### Struct Name Here
 *struct description here*

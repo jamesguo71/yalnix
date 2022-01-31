@@ -237,14 +237,45 @@ int internal_CvarSignal (int cvar_id) {
     return 0;
 }
 
-int internal_CvarBroadcast (int) {
-    // 1. Check arguments. Return error if invalid.
+/*!
+ * \desc               Broadcast the condition variable identified by cvar id.
+ *
+ * \param[in] cvar_id  The id of the cvar to be broadcast
+ *
+ * \return             0 on success, ERROR otherwise
+ */
+int internal_CvarBroadcast (int cvar_id) {
+    // Check if the cvar_id exists? Return ERROR if not
+    // for each process in the cvar_id's waiting queue, remove it from the waiting queue and put it on the ready_queue
+    // Mesa style: Caller continues to execute
+    // Return 0
 }
 
-int internal_CvarWait (int, int) {
-    // 1. Check arguments. Return error if invalid.
+/*!
+ * \desc               The kernel-level process releases the lock identified by lock id and waits on the condition variable indentified by cvar id
+ *
+ * \param[in] cvar_id  The id of the cvar to be broadcast
+ *
+ * \return             0 on success, ERROR otherwise
+ */
+int internal_CvarWait (int cvar_id, int lock_id) {
+    // Assert the lock of `lock_id` is held by the current process
+    // Release the lock identified by lock_id
+    // Add the current process to the waiting queue of the cvar_id
+    // Ask the scheduler to choose a process from the ready queue and KernelContextSwitch to it
+    // The above steps probably can be wrapped in a function `Suspend`, See Textbook Page 243
+    // Acquire the lock of `lock_id`
 }
 
-int internal_Reclaim (int) {
-    // 1. Check arguments. Return error if invalid.
+/*!
+ * \desc               Destroy the lock, condition variable, or pipe indentified by id, and release any associated resources. 
+ *
+ * \param[in] cvar_id  The id of the lock, cvar or pipe
+ *
+ * \return             0 on success, ERROR otherwise
+ */
+
+int internal_Reclaim (int id) {
+    // Check which type of primitive the `id` is of
+    // Free its malloc'ed memory
 }
