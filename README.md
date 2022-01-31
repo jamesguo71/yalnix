@@ -14,32 +14,18 @@ Below are descriptions and pseudocode for the structures that we think we will n
 #### Process Control Block (PCB)
 *struct description here*
 
-```c
-typedef struct pcb {
-    int pid;
-
-    void *pc;       // points to current instruction
-    void *sp;       // points to current stack frame
-
-    void *data;     // points to bottom of global data memory segment
-    void *heap;     // points to bottom of heap memory segment
-    void *stack;    // points to top of stack memory segment
-    void *text;     // points to bottom of text memory segment
-
-    pcb_t *children;
-
-    pt_t *pageTable;
-} pcb_t
-```
-
 > Based on Page 71
 ```c
 typedef struct pcb {
     int pid;
-    UserContext *uctxt; // Defined in `hardware.h`    
-    pte_t *ks_frames;
+
+    UserContext   *uctxt; // Defined in `hardware.h`    
     KernelContext *kctxt; // Needed for KernelCopy? See Page 45 
-    pte_t *pt;          // Defined in `hardware.h`
+
+    pte_t *ks_frames;
+    pte_t *pt;            // Defined in `hardware.h`
+
+    pcb_t *children;
 } pcb_t;
 ```
 
