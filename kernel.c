@@ -87,8 +87,24 @@ void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // Should traceprint “leaving KernelStart” at the end of KernelStart.
 }
 
-KernelContext *MyKCS(KernelContext *, void *, void *) {
-    // Copy the kernel context into the current process’s PCB and return a pointer to a kernel context it had earlier saved in the next process’s PCB.
+/*!
+ * \desc                 
+ *                       
+ *                       
+ * 
+ * \param[in] kc_in         a pointer to a temporary copy of the current kernel context of the caller
+ * \param[in] curr_pcb_p    a void pointer to current process's pcb
+ * \param[in] next_pcb_p    a void pointer to the next process's pcb
+ * 
+ * \return                  return a pointer to a kernel context it had earlier saved in the next process’s PCB.
+ */
+KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
+    // Check if parameters are null
+    // Copy the kernel context into the current process’s PCB
+    // Change Page Table Register  REG_PTBR0 for the new Region 1 address of the new process
+    // Change kernel stack page table entries for next process
+    // Flush TLB for kernel stack and Region 1
+    // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
 }
 
 
