@@ -1,59 +1,73 @@
 #include "kernel.h"
 
 
+/*!
+ * \desc            Sets the kernel's brk (i.e., the address right above the kernel heap)
+ * 
+ * \param[in] _brk  The address of the new brk
+ * 
+ * \return          0 on success, ERROR otherwise.
+ */
 int SetKernelBrk(void *_brk) {
-    // 1. Check arguments. Return error if invalid. The new brk should be (1) a valid
-    //    pointer that is (2) not below our heap and (3) not in our stack space.
+    // 1. Check arguments. Return error if invalid. The new brk should be
+    //    (1) a valid pointer and (2) should not point below the heap.
     if (!_brk) {
-        return ERROR_CODE;
+        return ERROR;
     }
 
-    if (_brk < heapBottom || _brk > stackBottom) {
-        return ERROR_CODE;
+    if (_brk <= _kernel_data_end) {
+        return ERROR;
     }
 
-    // 2. Check to see if we are growing or shrinking the brk and calculate the difference
+    // 2. Round our new brk value *up* to the nearest page
+    UP_TO_PAGE(_brk);
+
+    // 3. Check to see if we are growing or shrinking the brk and calculate the difference
     int growing    = 0;
     int difference = 0;
-    if (_brk > brk) {
+    if (_brk > _kernel_curr_brk) {
         growing    = 1;
-        difference = _brk - brk;
+        difference = _brk - _kernel_curr_brk;
     } else {
-        difference = brk - _brk;
+        difference = _kernel_curr_brk - _brk;
     }
 
-    // 3. Calculate the number of frames we need to add or remove.
-    //
-    // TODO: We need to consider what happens when difference is < FRAME_SIZE.
-    //       It may be the case that brk is only increased or decreased by a
-    //       small amount. If so, it may be the case that we do not need to
-    //       add or remove any pages.
-    int numFrames = difference / FRAME_SIZE;
-    if (difference % FRAME_SIZE) {
-        numFrames++;
-    }
+    // 4. Calculate the number of frames we need to add or remove.
+    int numFrames = difference / PAGE_SIZE;
 
-    // 4. Add or remove frames/pages based on whether we are growing or shrinking.
+    // 5. Add or remove frames/pages based on whether we are growing or shrinking.
     //    I imagine we will have some list to track the available frames and a 
     //    list for the kernels pages, along with some getter/setter helper
     //    functions for modifying each.
     for (int i = 0; i < numFrames; i++) {
 
-        // TODO: I think we need to consider what the virtual address for
-        //       the new page will be. Specifically, it should be the
-        //       current last kernel page addr + FRAME_SIZE.
         if (growing) {
+
+            // Find a free frame. If NULL is returned, we must be out of memory!
             frame = getFreeFrame();
-            kernelAddPage(frame, pageAddress);
+            if (!frame) {
+                return ERROR;
+            }
+
+            // Update the kernel's page table. Somehow I am supposed to account for
+            // whether we have initialized virtual memory or not.
+            kernelAddPage(frame);
         } else {
-            frame = kernelRemovePage(pageAddress);
+
+            // Remove the last page. Would this ever return error?
+            frame = kernelRemovePage();
+            if (!frame) {
+                return ERROR;
+            }
+
+            // Mark that frame as free
             addFreeFrame(frame);
         }
     }
 
-    // 5. Set the kernel brk to the new brk value and return a success code
-    brk = _brk 
-    return SUCCESS_CODE;
+    // 6. Set the kernel brk to the new brk value and return a success code
+    _kernel_curr_brk = _brk 
+    return 0;
 }
 
 void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
@@ -77,6 +91,39 @@ KernelContext *MyKCS(KernelContext *, void *, void *) {
     // Copy the kernel context into the current process’s PCB and return a pointer to a kernel context it had earlier saved in the next process’s PCB.
 }
 
+
+/*!
+ * \desc                 Copies the kernel context from kc_in into the new pcb, and copies the
+ *                       contents of the current kernel stack into the frames that have been
+ *                       allocated for the new process' kernel stack.
+ * 
+ * \param[in] kc_in      A pointer to the kernel context to be copied
+ * \param[in] new_pcb_p  A pointer to the pcb of the new process
+ * \param[in] not_used   Not used
+ * 
+ * \return               Returns the kc_in pointer
+ */
 KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
     // 1. Check arguments. Return error if invalid.
+    if (!kc_in || !new_pcb_p) {
+        return NULL;
+    }
+
+    // 2. Cast our new process pcb pointer so that we can reference the internal variables.
+    pcb_t *pcb = (pcb_t *) new_pcb_p;
+
+    // 3. Copy the incoming KernelContext into the new process' pcb. Can I use memcpy
+    //    in the kernel or do I need to implement it myself (i.e., use void pointers
+    //    and loop over copying byte-by-byte)? I bet I have to do it manually...
+    memcpy(pcb->kctxt, kc_in, sizeof(KernelContext));
+
+    // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
+    //    I do not understand how I access the current kernel stack frames with only kc_in. Is
+    //    it something related to kstack_cs? What is that variable?
+    for (int i = 0; i < numFrames; i++) {
+        // copy frames over somehow???
+    }
+
+    // x. Return the incoming KernelContext
+    return kc_in
 }
