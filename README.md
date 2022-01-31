@@ -28,7 +28,7 @@ typedef struct pcb {
 
     pte_t *ks_frames;
     pte_t *pt;            // Defined in `hardware.h`
-    int status;         // for saving the process's exit status, See Page 32
+    int exit_status;         // for saving the process's exit status, See Page 32
     int exited;         // if the process has exited?
 } pcb_t;
 ```
