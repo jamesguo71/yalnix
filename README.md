@@ -35,11 +35,16 @@ typedef struct pcb {
 > Based on Page 71
 ```c
 typedef struct pcb {
+    struct pcb *parent; // For keeping track of process relationship
+    struct pcb *children; 
     int pid;
+    int brk;
     UserContext *uctxt; // Defined in `hardware.h`    
-    pte_t *ks_frames;
+    pte_t *ks_frames;   // Kernel Stack frames
     KernelContext *kctxt; // Needed for KernelCopy? See Page 45 
     pte_t *pt;          // Defined in `hardware.h`
+    int status;         // for saving the process's exit status, See Page 32
+    int exited;         // if the process has exited?
 } pcb_t;
 ```
 
@@ -49,7 +54,12 @@ typedef struct pcb {
 pcb_t *current;
 pcb_t *ready_queue;
 pcb_t *blocked;
+```
 
+#### Counter of clock_ticks
+We need a counter to keep track of the clock ticks after the system boot.
+```
+long clock_ticks;
 ```
 
 #### Struct Name Here
