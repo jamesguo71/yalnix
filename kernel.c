@@ -105,4 +105,25 @@ KernelContext *MyKCS(KernelContext *, void *, void *) {
  */
 KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
     // 1. Check arguments. Return error if invalid.
+    if (!kc_in || !new_pcb_p) {
+        return NULL;
+    }
+
+    // 2. Cast our new process pcb pointer so that we can reference the internal variables.
+    pcb_t *pcb = (pcb_t *) new_pcb_p;
+
+    // 3. Copy the incoming KernelContext into the new process' pcb. Can I use memcpy
+    //    in the kernel or do I need to implement it myself (i.e., use void pointers
+    //    and loop over copying byte-by-byte)? I bet I have to do it manually...
+    memcpy(pcb->kctxt, kc_in, sizeof(KernelContext));
+
+    // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
+    //    I do not understand how I access the current kernel stack frames with only kc_in. Is
+    //    it something related to kstack_cs? What is that variable?
+    for (int i = 0; i < numFrames; i++) {
+        // copy frames over somehow???
+    }
+
+    // x. Return the incoming KernelContext
+    return kc_in
 }
