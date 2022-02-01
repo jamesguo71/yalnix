@@ -13,7 +13,6 @@ typedef struct cvar {
 
 typedef struct lock {
     int  id;     
-    int  value;     // FREE or LOCKED?
     int  owner;     // which process currently owns the lock?
     int *waiting;   // which processes are waiting for the lock?
 } lock_t;
@@ -44,9 +43,9 @@ typedef struct pipe {
 } pipe_t;
 
 /*
- * Variable definitions - I *think* extern keyword allows us to define these variables such that
- *                        any file that includes "kernel.h" may use them. If we don't need to
- *                        export them, however, move to kernel.c so that they remain hidden.
+ * Variable definitions - Declare these globally in kernel.c, but not in trap.c or syscalls.c;
+                          they should be able to refer to them normally---no need to define or
+                          declare them in trap.c/h or syscall.c/h
  */
 extern int g_cvars_len;
 extern int g_locks_len;
