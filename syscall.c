@@ -205,6 +205,8 @@ int internal_PipeInit (int *pipe_idp) {
     pipe_t *newpipe = (pipe_t *) internal_malloc(sizeof(pipe_t));
     newpipe->id     = g_pipes_len++;
     newpipe->plen   = 0;
+    newpipe->read   = 0;
+    newpipe->write  = 0;
     newpipe->buf    = (void *) internal_malloc(PIPE_BUFFER_LEN); 
 
     // 3. Add new pipe to our global pipe array/table/structure to keep track
@@ -225,10 +227,37 @@ int internal_PipeInit (int *pipe_idp) {
  * \return              Number of bytes read on success, ERROR otherwise
  */
 int internal_PipeRead (int pipe_id, void *buf, int len) {
-    // 1. Check arguments. Return ERROR if invalid.
-    if (!buf) {
+    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
+    //    valid (2) that the buffer is not NULL and (3) that len is not negative.
+    if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
         return ERROR;
     }
+
+    // 2. Check to see if pipe is empty. If so, block. TODO: How?
+    pipe_t *pipe = g_pipes[pipe_id];
+    if (pipe->plen == 0) {
+        // block the calling process
+    }
+
+    // 3. If plen <= len, give the caller all the bytes in the pipe.
+    //    Otherwise, return them len bytes.
+    int read = len;
+    if (pipe->plen <= len) {
+        read = pipe->plen;
+    }
+
+    // 4. Treat pipe internal buffer as a circular queue. Use the start variable and
+    //    pipe length to calculate correct index. Copy bytes to output array. TODO:
+    //    I dont know if this calculation is correct now that I realize we have to
+    //    track where to read and where to write.
+    for (int i = 0; i < read; i++) {
+        int index = (pipe->read + i) % PIPE_BUFFER_LEN;
+        buf[i] = pipe->[index];
+    }
+
+    // 5. Update pipe queue start and length variables
+    pipe->read  = (pipe->read + read) % PIPE_BUFFER_LEN;
+    pipe->plen -= read;
     return 0;
 }
 
@@ -243,10 +272,37 @@ int internal_PipeRead (int pipe_id, void *buf, int len) {
  * \return             Number of bytes written on success, ERROR otherwise
  */
 int internal_PipeWrite (int pipe_id, void *buf, int len) {
-    // 1. Check arguments. Return ERROR if invalid.
-    if (!buf) {
+    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
+    //    valid (2) that the buffer is not NULL and (3) that len is not negative.
+    if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
         return ERROR;
     }
+
+    // 2. Check to see if pipe is empty. If so, block. TODO: How?
+    pipe_t *pipe = g_pipes[pipe_id];
+    if (pipe->plen == 0) {
+        // block the calling process
+    }
+
+    // 3. If plen <= len, give the caller all the bytes in the pipe.
+    //    Otherwise, return them len bytes.
+    int write = len;
+    if (pipe->plen <= len) {
+        write = pipe->plen;
+    }
+
+    // 4. Treat pipe internal buffer as a circular queue. Use the end variable and
+    //    pipe length to calculate correct index. Copy bytes to pipe buffer. TODO:
+    //    I dont know if this calculation is correct now that I realize we have to
+    //    track where to read and where to write.
+    for (int i = 0; i < write; i++) {
+        int index = (pipe->write + i) % PIPE_BUFFER_LEN;
+        pipe->[index] = buf[i];
+    }
+
+    // 5. Update pipe queue end and length variables.
+    pipe->write  = (pipe->write + write) % PIPE_BUFFER_LEN;
+    pipe->plen  += write;
     return 0;
 }
 
