@@ -38,6 +38,8 @@ typedef struct pcb {
 typedef struct pipe {
     int   id;
     int   plen;
+    int   start;
+    int   end;
     void *buf;
 } pipe_t;
 
