@@ -200,6 +200,17 @@ int internal_PipeInit (int *pipe_idp) {
     if (!pipe_idp) {
         return ERROR;
     }
+
+    // 2. Initialize a new pipe structure
+    pipe_t *newpipe = (pipe_t *) internal_malloc(sizeof(pipe_t));
+    newpipe->id     = g_pipes_len++;
+    newpipe->plen   = 0;
+    newpipe->buf    = (void *) internal_malloc(PIPE_BUFFER_LEN); 
+
+    // 3. Add new pipe to our global pipe array/table/structure to keep track
+
+    // 4. Save the pipe id to the output variable
+    *pipe_idp = newpipe->id;
     return 0;
 }
 
@@ -252,6 +263,18 @@ int internal_LockInit (int *lock_idp) {
     if (!lock_idp) {
         return ERROR;
     }
+
+    // 2. Initialize a new lock structure
+    lock_t *newlock  = (lock_t *) internal_malloc(sizeof(lock_t));
+    newlock->id      = g_locks_len++;
+    newlock->value   = 0;
+    newlock->owner   = 0;
+    newlock->waiting = NULL;
+
+    // 3. Add new lock to our global locks array/table/structure to keep track
+
+    // 4. Save the lock id to the output variable
+    *lock_idp = newlock->id;
     return 0;
 }
 
@@ -294,6 +317,16 @@ int internal_CvarInit (int *cvar_idp) {
     if (!cvar_idp) {
         return ERROR;
     }
+
+    // 2. Initialize a new lock structure
+    cvar_t *newcvar  = (cvar_t *) internal_malloc(sizeof(cvar_t));
+    newcvar->id      = g_cvars_len++;
+    newlock->waiting = NULL;
+
+    // 3. Add new cvar to our global cvar array/table/structure to keep track
+
+    // 4. Save the lock id to the output variable
+    *cvar_idp = newcvar->id;
     return 0;
 }
 
