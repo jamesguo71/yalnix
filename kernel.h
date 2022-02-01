@@ -1,7 +1,55 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 
-extern void *_kernel_curr_brk;
+
+/*
+ * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
+                        them opaque?
+ */
+typedef struct pcb {
+    int  pid;
+    int  brk;
+    int  exit_status;   // for saving the process's exit status, See Page 32
+    int  exited;        // if the process has exited?  
+    int *held_locks;    // locks held by the current process, used by sync syscalls
+
+    struct pcb *parent;     // For keeping track of parent process
+    struct pcb *children;   // For keeping track of children processes
+
+    UserContext   *uctxt; // Defined in `hardware.h`    
+    KernelContext *kctxt;    // Needed for KernelCopy? See Page 45 
+
+    pte_t *ks_frames;
+    pte_t *pt;              // Defined in `hardware.h`
+} pcb_t;
+
+typedef struct lock {
+    int  id;     
+    int  value;     // FREE or LOCKED?
+    int  owner;     // which process currently owns the lock?
+    int *waiting;   // which processes are waiting for the lock?
+} lock_t;
+
+typedef struct cvar {
+    int  id;
+    int *waiting;   // which processes are waiting for the cvar?
+} cvar_t;
+
+
+/*
+ * Variable definitions - I *think* extern keyword allows us to define these variables such that
+ *                        any file that includes "kernel.h" may use them. If we don't need to
+ *                        export them, however, move to kernel.c so that they remain hidden.
+ */
+extern int g_ready_len;
+extern int g_blocked_len;
+extern int g_terminated_len;
+extern pcb_t *g_current;
+extern pcb_t *g_ready;
+extern pcb_t *g_blocked;
+extern pcb_t *g_terminated;
+extern void  *g_kernel_curr_brk;
+
 
 /*!
  * \desc            Sets the kernel's brk (i.e., the address right above the kernel heap)
