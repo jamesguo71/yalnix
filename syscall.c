@@ -343,7 +343,22 @@ int internal_LockInit (int *lock_idp) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Acquire (int lock_id) {
-    // 1. Check arguments. Return ERROR if invalid.
+    // 1. Check arguments. Return ERROR if invalid. The lock id should
+    //    be within 0 and the total number of initialized locks.
+    if (lock_id < 0 || lock_id > g_locks_len) {
+        return ERROR;
+    }
+
+    // 2. Check to see if the lock is already owned. If so, add the
+    //    current process to the waiting queue and return ERROR.
+    lock_t *lock = g_locks[lock_id];
+    if (lock->owner) {
+        lock->waiting = g_current->pid;
+        return ERROR;
+    }
+
+    // 3. Mark the current process as the owner of the lock
+    lock->owner = g_current->pid;
     return 0;
 }
 
@@ -356,7 +371,21 @@ int internal_Acquire (int lock_id) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Release (int lock_id) {
-    // 1. Check arguments. Return ERROR if invalid.
+    // 1. Check arguments. Return ERROR if invalid. The lock id should
+    //    be within 0 and the total number of initialized locks.
+    if (lock_id < 0 || lock_id > g_locks_len) {
+        return ERROR;
+    }
+
+    // 2. Check to see that the current process actually owns the lock.
+    //    If not, do nothing and return ERROR.
+    lock_t *lock = g_locks[lock_id];
+    if (lock->owner != g_current->pid) {
+        return ERROR;
+    }
+
+    // 3. Mark the lock as free (use 0 to indicate free and PID as taken)
+    lock->owner = 0;
     return 0;
 }
 
@@ -395,7 +424,11 @@ int internal_CvarInit (int *cvar_idp) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_CvarSignal (int cvar_id) {
-    // 1. Check arguments. Return ERROR if invalid.
+    // 1. Check arguments. Return ERROR if invalid. The cvar id should
+    //    be within 0 and the total number of initialized cvars.
+    if (cvar_id < 0 || cvar_id > g_cvars_len) {
+        return ERROR;
+    }
     return 0;
 }
 
