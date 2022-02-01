@@ -6,6 +6,18 @@
  * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
                         them opaque?
  */
+typedef struct cvar {
+    int  id;
+    int *waiting;   // which processes are waiting for the cvar?
+} cvar_t;
+
+typedef struct lock {
+    int  id;     
+    int  value;     // FREE or LOCKED?
+    int  owner;     // which process currently owns the lock?
+    int *waiting;   // which processes are waiting for the lock?
+} lock_t;
+
 typedef struct pcb {
     int  pid;
     int  brk;
@@ -23,18 +35,11 @@ typedef struct pcb {
     pte_t *pt;              // Defined in `hardware.h`
 } pcb_t;
 
-typedef struct lock {
-    int  id;     
-    int  value;     // FREE or LOCKED?
-    int  owner;     // which process currently owns the lock?
-    int *waiting;   // which processes are waiting for the lock?
-} lock_t;
-
-typedef struct cvar {
-    int  id;
-    int *waiting;   // which processes are waiting for the cvar?
-} cvar_t;
-
+typedef struct pipe {
+    int   id;
+    int   plen;
+    void *buf;
+} pipe_t;
 
 /*
  * Variable definitions - I *think* extern keyword allows us to define these variables such that
@@ -43,6 +48,7 @@ typedef struct cvar {
  */
 extern int g_cvars_len;
 extern int g_locks_len;
+extern int g_pipes_len;
 extern int g_ready_len;
 extern int g_blocked_len;
 extern int g_terminated_len;
@@ -52,8 +58,11 @@ extern int g_terminated_len;
 extern int *g_tty_read_ready;
 extern int *g_tty_write_ready;
 
+// Used to track locks and cvars. Is array best way to track these? We will have to
+// realloc everytime we make a new one. Maybe add "next" pointer to lock/cvar struct?
 extern cvar_t *g_cvars;
 extern lock_t *g_locks;
+extern pipe_t *g_pipes;
 
 extern pcb_t *g_current;
 extern pcb_t *g_ready;
