@@ -1,6 +1,6 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
-
+#include "hardware.h"
 
 /*!
  * \desc    a

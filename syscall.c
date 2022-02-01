@@ -92,10 +92,45 @@ int internal_Delay (int clock_ticks) {
  * \return             Number of bytes read on success, ERROR otherwise
  */
 int internal_TtyRead (int tty_id, void *buf, int len) {
-    // 1. Check arguments. Return error if invalid.
-    if (!buf) {
+    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
+    //    id is valid (2) that buffer is not NULL and (3) length is positive.
+    if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
         return ERROR;
     }
+
+    // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
+    //    memory region 0). I assume that means I should find space and copy the contents
+    //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
+    g_tty_read_buf[tty_id] = (void *) internal_malloc(len);
+
+    // 3. Write to the terminal specified by tty_id using the special hardware "operation"
+    //    TtyTransmit. TODO: The guide states that this function returns immediately but
+    //    will generate a trap when the write completes. What do I do here to "wait" for
+    //    the trap? Do I need some sort of global variable that I "spin" on that gets
+    //    reset in the trap handler?
+    void *kbuf = g_tty_read_buf[tty_id];
+    while (1) {
+
+        // wait for the read this way?
+        while (!g_tty_read_ready[tty_id]);
+
+        if (len > TERMINAL_MAX_LINE) {
+            TtyReceive(tty_id,
+                       kbuf,
+                       TERMINAL_MAX_LINE);
+            kbuf += TERMINAL_MAX_LINE;
+            len  -= TERMINAL_MAX_LINE;
+        } else {
+            TtyReceive(tty_id,
+                       kbuf,
+                       len);
+            break;
+        }
+    }
+
+    // Reset this so other processes can use terminal? Also, do I need variable to indicate
+    // this terminal is in use and other processes should not use it?
+    g_tty_read_ready[tty_id] = 1;
     return 0;
 }
 
@@ -110,10 +145,45 @@ int internal_TtyRead (int tty_id, void *buf, int len) {
  * \return            Number of bytes written on success, ERROR otherwise
  */
 int internal_TtyWrite (int tty_id, void *buf, int len) {
-    // 1. Check arguments. Return error if invalid.
-    if (!buf) {
+    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
+    //    id is valid (2) that buffer is not NULL and (3) length is positive.
+    if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
         return ERROR;
     }
+
+    // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
+    //    memory region 0). I assume that means I should find space and copy the contents
+    //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
+    g_tty_write_buf[tty_id] = (void *) internal_malloc(len);
+
+    // 3. Write to the terminal specified by tty_id using the special hardware "operation"
+    //    TtyTransmit. TODO: The guide states that this function returns immediately but
+    //    will generate a trap when the write completes. What do I do here to "wait" for
+    //    the trap? Do I need some sort of global variable that I "spin" on that gets
+    //    reset in the trap handler?
+    void *kbuf = g_tty_write_buf[tty_id];
+    while (1) {
+
+        // wait for the write this way?
+        while (!g_tty_write_ready[tty_id]);
+
+        if (len > TERMINAL_MAX_LINE) {
+            TtyTransmit(tty_id,
+                        kbuf,
+                        TERMINAL_MAX_LINE);
+            kbuf += TERMINAL_MAX_LINE;
+            len  -= TERMINAL_MAX_LINE;
+        } else {
+            TtyTransmit(tty_id,
+                        kbuf,
+                        len);
+            break;
+        }
+    }
+
+    // Reset this so other processes can use terminal? Also, do I need variable to indicate
+    // this terminal is in use and other processes should not use it?
+    g_tty_write_ready[tty_id] = 1;
     return 0;
 }
 
@@ -126,7 +196,7 @@ int internal_TtyWrite (int tty_id, void *buf, int len) {
  * \return               0 on success, ERROR otherwise
  */
 int internal_PipeInit (int *pipe_idp) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     if (!pipe_idp) {
         return ERROR;
     }
@@ -144,7 +214,7 @@ int internal_PipeInit (int *pipe_idp) {
  * \return              Number of bytes read on success, ERROR otherwise
  */
 int internal_PipeRead (int pipe_id, void *buf, int len) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     if (!buf) {
         return ERROR;
     }
@@ -162,7 +232,7 @@ int internal_PipeRead (int pipe_id, void *buf, int len) {
  * \return             Number of bytes written on success, ERROR otherwise
  */
 int internal_PipeWrite (int pipe_id, void *buf, int len) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     if (!buf) {
         return ERROR;
     }
@@ -178,7 +248,7 @@ int internal_PipeWrite (int pipe_id, void *buf, int len) {
  * \return               0 on success, ERROR otherwise
  */
 int internal_LockInit (int *lock_idp) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     if (!lock_idp) {
         return ERROR;
     }
@@ -194,7 +264,7 @@ int internal_LockInit (int *lock_idp) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Acquire (int lock_id) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     return 0;
 }
 
@@ -207,7 +277,7 @@ int internal_Acquire (int lock_id) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Release (int lock_id) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     return 0;
 }
 
@@ -220,7 +290,7 @@ int internal_Release (int lock_id) {
  * \return               0 on success, ERROR otherwise
  */
 int internal_CvarInit (int *cvar_idp) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     if (!cvar_idp) {
         return ERROR;
     }
@@ -236,7 +306,7 @@ int internal_CvarInit (int *cvar_idp) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_CvarSignal (int cvar_id) {
-    // 1. Check arguments. Return error if invalid.
+    // 1. Check arguments. Return ERROR if invalid.
     return 0;
 }
 
