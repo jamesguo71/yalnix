@@ -1,6 +1,6 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
-
+#include "hardware.h"
 
 /*
  * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
@@ -9,15 +9,15 @@
 typedef struct pcb {
     int  pid;
     int  brk;
-    int  exit_status;   // for saving the process's exit status, See Page 32
-    int  exited;        // if the process has exited?  
-    int *held_locks;    // locks held by the current process, used by sync syscalls
+    int  exit_status;       // for saving the process's exit status, See Page 32
+    int  exited;            // if the process has exited?  
+    int *held_locks;        // locks held by the current process, used by sync syscalls
 
     struct pcb *parent;     // For keeping track of parent process
     struct pcb *children;   // For keeping track of children processes
 
-    UserContext   *uctxt; // Defined in `hardware.h`    
-    KernelContext *kctxt;    // Needed for KernelCopy? See Page 45 
+    UserContext   *uctxt;   // Defined in `hardware.h`    
+    KernelContext *kctxt;   // Needed for KernelCopy? See Page 45 
 
     pte_t *ks_frames;
     pte_t *pt;              // Defined in `hardware.h`
@@ -44,11 +44,25 @@ typedef struct cvar {
 extern int g_ready_len;
 extern int g_blocked_len;
 extern int g_terminated_len;
+
+// Used by TTY traps to indicate when Receive/Write hardware operations complete.
+// Initialize to hold NUM_TERMINALS ints (i.e., a flag for each tty device)
+extern int *g_tty_read_ready;
+extern int *g_tty_write_ready;
+
 extern pcb_t *g_current;
 extern pcb_t *g_ready;
 extern pcb_t *g_blocked;
 extern pcb_t *g_terminated;
-extern void  *g_kernel_curr_brk;
+
+// Used to determine if the original brk has changed - initialized to og brk value
+extern void *g_kernel_curr_brk;
+
+// I *think* I need these for storing results of tty read/writes since TtyReceive/Transmit require
+// that the buf reside in kernel memory. Initialize to hold NUM_TERMINALS void pointers (i.e., a
+// pointer for each tty device.). Do I need length variables for these too?
+extern void **g_tty_read_buf;
+extern void **g_tty_write_buf;
 
 
 /*!
