@@ -323,7 +323,6 @@ int internal_LockInit (int *lock_idp) {
     // 2. Initialize a new lock structure
     lock_t *newlock  = (lock_t *) internal_malloc(sizeof(lock_t));
     newlock->id      = g_locks_len++;
-    newlock->value   = 0;
     newlock->owner   = 0;
     newlock->waiting = NULL;
 
@@ -430,6 +429,12 @@ int internal_CvarSignal (int cvar_id) {
         return ERROR;
     }
     return 0;
+
+    // 2. Signal the first waiting process for the cvar indicated by cvar_id.
+    //    What exactly does that look like?
+    // g_cvars->waiting[0]
+
+    // 3. Remove the signaled process from the waiting list
 }
 
 /*!
