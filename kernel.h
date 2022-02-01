@@ -41,6 +41,8 @@ typedef struct cvar {
  *                        any file that includes "kernel.h" may use them. If we don't need to
  *                        export them, however, move to kernel.c so that they remain hidden.
  */
+extern int g_cvars_len;
+extern int g_locks_len;
 extern int g_ready_len;
 extern int g_blocked_len;
 extern int g_terminated_len;
@@ -49,6 +51,9 @@ extern int g_terminated_len;
 // Initialize to hold NUM_TERMINALS ints (i.e., a flag for each tty device)
 extern int *g_tty_read_ready;
 extern int *g_tty_write_ready;
+
+extern cvar_t *g_cvars;
+extern lock_t *g_locks;
 
 extern pcb_t *g_current;
 extern pcb_t *g_ready;
