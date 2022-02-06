@@ -17,9 +17,13 @@ typedef struct lock {
     int *waiting;   // which processes are waiting for the lock?
 } lock_t;
 
+
+//void *kernel_brk; // Current kernel brk
+
+pte_t *kernel_pt; // Kernel Page Table
+
 typedef struct pcb {
     int  pid;
-    int  kernel_brk;
     int  user_brk;
     int  exit_status;       // for saving the process's exit status, See Page 32
     int  exited;            // if the process has exited?  

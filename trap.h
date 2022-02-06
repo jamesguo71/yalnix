@@ -46,4 +46,7 @@ int trap_tty_transmit(UserContext *context);
  * \return             0 on success, ERROR otherwise.
  */
 int trap_disk(UserContext *context);
+
+int trap_not_handled(UserContext *context);
+
 #endif

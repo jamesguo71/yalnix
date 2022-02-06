@@ -1,5 +1,5 @@
 #include "trap.h"
-
+#include "../include/ylib.h"
 
 /*!
  * \desc               Calls the appropriate internel syscall function based on the current process
@@ -244,5 +244,10 @@ int trap_disk(UserContext *context) {
     if (!context) {
         return ERROR;
     }
+    return 0;
+}
+
+int trap_not_handled(UserContext *context) {
+    TracePrintf(1, "This trap is not yet handled.\n");
     return 0;
 }

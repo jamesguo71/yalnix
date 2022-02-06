@@ -1,5 +1,7 @@
 #include "kernel.h"
+#include "../include/yalnix.h"
 #include "../include/hardware.h"
+#include "trap.h"
 
 /*!
  * \desc            Sets the kernel's brk (i.e., the address right above the kernel heap)
@@ -93,12 +95,27 @@ int SetKernelBrk(void *_brk) {
     return 0;
 }
 
-int nframes = 0; // Number of physical frames available
-int *bit_vec; // Bit vector for free frames tracking
+
+int nframes = 0; // Number of physical frames available, initialized in KernelStart
+int *bit_vec; // Bit vector for free frames tracking, initialized in KernelStart
 //Bit Manipulation: http://www.mathcs.emory.edu/~cheung/Courses/255/Syllabus/1-C-intro/Progs/bit-array2.c
-#define SetBit(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
-#define ClearBit(A,k)   ( A[(k/32)] &= ~(1 << (k%32)) )
-#define TestBit(A,k)    ( A[(k/32)] & (1 << (k%32)) )
+
+#define SetBit(A,k)     ( A[(k/sizeof(int))] |= (1 << (k%sizeof(int))) )
+#define ClearBit(A,k)   ( A[(k/sizeof(int))] &= ~(1 << (k%sizeof(int))) )
+#define TestBit(A,k)    ( A[(k/sizeof(int))] & (1 << (k%sizeof(int)) ) )
+/*
+ * Find a free frame from the physical memory
+ * if succeeded, return the index
+ * Otherwise, return ERROR
+ */
+int find_free_frame(void) {
+    for (int i = 0; i < nframes; i++) {
+        if (TestBit(bit_vec, i) == 0) {
+            return i;
+        }
+    }
+    return ERROR;
+}
 
 void interrupt_table[TRAP_VECTOR_SIZE] = {
         trap_kernel,
@@ -110,47 +127,140 @@ void interrupt_table[TRAP_VECTOR_SIZE] = {
         trap_tty_transmit,
         trap_disk,
         // ToDo: Eight pointers pointing to "this trap is not yet handled" handler
-        NULL,NULL,NULL,NULL,
-        NULL,NULL,NULL,NULL
+        trap_not_handled,
+        trap_not_handled,,
+        trap_not_handled,
+        trap_not_handled,
+        trap_not_handled,
+        trap_not_handled,
+        trap_not_handled,
+        trap_not_handled,
 }
-void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
-    // 1. Check arguments. Return error if invalid.
-    // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”. 
-    // Otherwise, load `cmd_args[0]` as its initial process.
 
+void set_pte(pte_t *pt, int index, int valid, int prot, int pfn) {
+    pt[index].valid = valid;
+    pt[index].prot = prot;
+    pt[index].pfn = pfn;
+}
+
+void DoIdle(void) {
+    while(1) {
+        TracePrintf(1,"DoIdle\n");
+        Pause();
+    }
+}
+
+void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
+    if (uctxt == NULL || pmem_size < PAGESIZE) {
+        Halt();
+    }
+
+    // Set up a way to track free frames
     nframes = pmem_size / PAGESIZE;
     int int_arr_size = nframes/sizeof(int);
-    bit_vec = malloc(int_arr_size); // this is using Kernel Malloc
-    for (int i = 0; i < int_arr_size; i++)
-        // To begin, all frames are unused
-        bit_vec[i] = 0;
-    // ASSUMPTION: PMEM_BASE to _kernel_orig_brk are used physical memeroy
-    // ASSUMPTION: _kernel_orig_brk is a multiple of PAGESIZE
-    int kernel_used_frames = (_kernel_orig_brk - PMEM_BASE) / PAGESIZE;
-    for (int i = 0; i < kernel_used_frames; i++) {
+    // To begin, all frames are unused
+    bit_vec = calloc(int_arr_size); // this is using Kernel Malloc
+    if (bit_vec == NULL) {
+        TracePrintf(1, "Calloc for bit_vec failed!\n");
+    }
+
+    // number of frames used by Kernel Text and Kernel Data
+    int nk_frames = (_kernel_data_end - PMEM_BASE) / PAGESIZE;
+    for (int i = 0; i < nk_frames; i++) {
         SetBit(bit_vec, i);
     }
-    int pt_size = VMEM_SIZE / PAGESIZE;
-    pte_t *pt = malloc(pt_size * sizeof(pte_t));
 
+    // Set up the initial Region 0 page table
+    assert(VMEM_0_BASE == PMEM_BASE);
+    int kernel_pt_size = VMEM_0_SIZE / PAGESIZE;
+    pte_t *kernel_pt = calloc(kernel_pt_size * sizeof(pte_t));
+    if (kernel_pt == NULL) {
+        TracePrintf(1, "Calloc for kernel_pt failed!\n");
+    }
+
+    // this variable will be used for indexing into kernel page table entries
+    int free_pfn = 0;
+
+    int n_kernel_text_pages = (_kernel_data_start - VMEM_0_BASE) / PAGESIZE;
+    for(; free_pfn < n_kernel_text_pages; free_pfn++) {
+        set_pte(kernel_pt, free_pfn, 1, PROT_READ | PROT_EXEC, free_pfn);
+    }
+
+    // Assumption: kernel text and kernel data are contiguous ( No Page Gap between them )
+    int n_kernel_data_pages = (_kernel_data_end - _kernel_data_start) / PAGESIZE;
+    for (; free_pfn < n_kernel_data_pages; free_pfn++) {
+        set_pte(kernel_pt, free_pfn, 1, PROT_READ | PROT_WRITE, free_pfn);
+    }
+
+    WriteRegister(REG_PTBR0, kernel_pt);
+    WriteRegister(REG_PTLR0, kernel_pt_size);
+
+    // Set up a Region 1 page table for idle.
+    int user_pt_size = VMEM_1_SIZE / PAGESIZE;
+    pte_t *user_pt = calloc(user_pt_size * sizeof(pte_t));
+    if (user_pt == NULL) {
+        TracePrintf(1, "Calloc for user_pt failed!\n");
+    }
+    // This should have one valid page, for idle’s user stack.
+    // Assumption: i-th frame is free now
+    set_pte(user_pt, user_pt_size - 1, 1, PROT_READ | PROT_WRITE, /*TODO: buggy?*/free_pfn);
+    SetBit(bit_vec, free_pfn++);
+
+    // Make that formal by creating an idlePCB that keeps track of this identity:
+    pcb_t *idlePCB = malloc(sizeof(pcb_t));
+    if (idlePCB == NULL) {
+        TracePrintf(1, "Malloc for idlePCB failed!\n");
+    }
+    idlePCB->pt = user_pt;
+    // Set up its kernel stack frames
+    int n_ks_frames = KERNEL_STACK_MAXSIZE / PAGESIZE;
+    idlePCB->ks_frames = calloc(n_ks_frames * sizeof(pte_t));
+    if (idlePCB->ks_frames == NULL) {
+        TracePrintf(1, "Calloc for idlePCB->ks_frames failed!\n");
+    }
+    int ks_frame_start = KERNEL_STACK_BASE >> PAGESHIFT;
+    for (int ks_i = 0; ks_i < n_ks_frames; ks_i++) {
+        set_pte(idlePCB->ks_frames, ks_i, 1,, PROT_READ|PROT_WRITE, ks_frame_start);
+        ks_frame_start++;
+    }
+    memcpy(&kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ksframes, n_ks_frames * sizeof(pte_t));
+
+    // In the UserContext in idlePCB, set the pc to point to this code and the sp to point towards the top of the user stack you set up.
+    idlePCB->uctxt = malloc(sizeof(UserContext));
+    if (idlePCB->uctxt == NULL) {
+        TracePrintf(1, "Malloc for UserContext failed!\n");
+    }
+    memcpy(idlePCB->uctxt, uctxt, sizeof(UserContext));
+    idlePCB->uctxt->pc = DoIdle;
+    idlePCB->uctxt->sp = VMEM_1_LIMIT;
+    idlePCB->pid = helper_new_pid();
+
+    WriteRegister(REG_PTBR1, user_pt);
+    WriteRegister(REG_PTLR1, user_pt_size);
 
     WriteRegister(REG_VECTOR_BASE, interrupt_table);
 
+    // Enable virtual memory.
+    // Note that if the kernel brk has been raised since you built your Region 0 page table,
+    // you need to adjust the page table appropriately before turning VM on
+    int n_kh_frames = (_kernel_curr_brk - _kernel_orig_brk) >> PAGESHIFT;
+    for ( ; free_pfn < (_kernel_data_end >> PAGESHIFT) + n_kh_frames; free_pfn++) {
+        set_pte(kernel_pt, free_pfn, 1, PROT_READ|PROT_WRITE, free_pfn);
+        SetBit(bit_vec, free_pfn);
+    }
 
-
-
-
-
-    // For Checkpoint 2, create an idlePCB that keeps track of the idld process.
-    // Write a simple idle function in the kernel text, and
-    // In the UserContext in idlePCB, set the pc to point to this code and the sp to point towards the top of the user stack you set up.
+    WriteRegister(REG_VM_ENABLE, 1);
     // Make sure that when you return to user mode at the end of KernelStart, you return to this modified UserContext.
+
+    // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
+    // Otherwise, load `cmd_args[0]` as its initial process.
 
     // For Checkpoint 3, KernelStart needs to create an initPCB and Set up the identity for the new initPCB
     // Then write KCCopy() to: copy the current KernelContext into initPCB and
     // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
 
     // Should traceprint “leaving KernelStart” at the end of KernelStart.
+    TracePrintf(1, "leaving KernelStart\n");
 }
 
 /*!
