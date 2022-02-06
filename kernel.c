@@ -1,5 +1,5 @@
 #include "kernel.h"
-
+#include "../include/hardware.h"
 
 /*!
  * \desc            Sets the kernel's brk (i.e., the address right above the kernel heap)
@@ -70,10 +70,53 @@ int SetKernelBrk(void *_brk) {
     return 0;
 }
 
+int nframes = 0; // Number of physical frames available
+int *bit_vec; // Bit vector for free frames tracking
+//Bit Manipulation: http://www.mathcs.emory.edu/~cheung/Courses/255/Syllabus/1-C-intro/Progs/bit-array2.c
+#define SetBit(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
+#define ClearBit(A,k)   ( A[(k/32)] &= ~(1 << (k%32)) )
+#define TestBit(A,k)    ( A[(k/32)] & (1 << (k%32)) )
+
+void interrupt_table[TRAP_VECTOR_SIZE] = {
+        trap_kernel,
+        trap_clock,
+        trap_illegal,
+        trap_memory,
+        trap_math,
+        trap_tty_receive,
+        trap_tty_transmit,
+        trap_disk,
+        // ToDo: Eight pointers pointing to "this trap is not yet handled" handler
+        NULL,NULL,NULL,NULL,
+        NULL,NULL,NULL,NULL
+}
 void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // 1. Check arguments. Return error if invalid.
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”. 
     // Otherwise, load `cmd_args[0]` as its initial process.
+
+    nframes = pmem_size / PAGESIZE;
+    int int_arr_size = nframes/sizeof(int);
+    bit_vec = malloc(int_arr_size); // this is using Kernel Malloc
+    for (int i = 0; i < int_arr_size; i++)
+        // To begin, all frames are unused
+        bit_vec[i] = 0;
+    // ASSUMPTION: PMEM_BASE to _kernel_orig_brk are used physical memeroy
+    // ASSUMPTION: _kernel_orig_brk is a multiple of PAGESIZE
+    int kernel_used_frames = (_kernel_orig_brk - PMEM_BASE) / PAGESIZE;
+    for (int i = 0; i < kernel_used_frames; i++) {
+        SetBit(bit_vec, i);
+    }
+    int pt_size = VMEM_SIZE / PAGESIZE;
+    pte_t *pt = malloc(pt_size * sizeof(pte_t));
+
+
+    WriteRegister(REG_VECTOR_BASE, interrupt_table);
+
+
+
+
+
 
     // For Checkpoint 2, create an idlePCB that keeps track of the idld process.
     // Write a simple idle function in the kernel text, and
