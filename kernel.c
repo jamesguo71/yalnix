@@ -202,9 +202,10 @@ void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for user_pt failed!\n");
     }
     // This should have one valid page, for idle’s user stack.
-    // Assumption: i-th frame is free now
-    set_pte(user_pt, user_pt_size - 1, 1, PROT_READ | PROT_WRITE, /*TODO: buggy?*/free_pfn);
-    SetBit(bit_vec, free_pfn++);
+    // TODO: IS IT OKAY TO USE THE FRAME ABOVE KERNEL STACK FOR THE FIRST PROCESS'S USER STACK Page?
+    int userstack_frame = VMEM_1_BASE >> PAGESIZE;
+    set_pte(user_pt, user_pt_size - 1, 1, PROT_READ | PROT_WRITE, userstack_frame);
+    SetBit(bit_vec, userstack_frame);
 
     // Make that formal by creating an idlePCB that keeps track of this identity:
     pcb_t *idlePCB = malloc(sizeof(pcb_t));
@@ -220,7 +221,7 @@ void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
     int ks_frame_start = KERNEL_STACK_BASE >> PAGESHIFT;
     for (int ks_i = 0; ks_i < n_ks_frames; ks_i++) {
-        set_pte(idlePCB->ks_frames, ks_i, 1,, PROT_READ|PROT_WRITE, ks_frame_start);
+        set_pte(idlePCB->ks_frames, ks_i, 1, PROT_READ|PROT_WRITE, ks_frame_start);
         ks_frame_start++;
     }
     memcpy(&kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ksframes, n_ks_frames * sizeof(pte_t));
@@ -250,7 +251,10 @@ void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
 
     WriteRegister(REG_VM_ENABLE, 1);
+
     // Make sure that when you return to user mode at the end of KernelStart, you return to this modified UserContext.
+    // ASSUMPTION: we can return to the modified UserContext by overriding the given uctxt
+    memset(uctxt, idlePCB->uctxt, sizeof(UserContext));
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
