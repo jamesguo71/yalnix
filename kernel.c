@@ -9,20 +9,37 @@
  * \return          0 on success, ERROR otherwise.
  */
 int SetKernelBrk(void *_brk) {
-    // 1. Check arguments. Return error if invalid. The new brk should be
-    //    (1) a valid pointer and (2) should not point below the heap.
+    // 1. Make sure the incoming address is not NULL. If so, return ERROR.
     if (!_brk) {
-        return ERROR;
-    }
-
-    if (_brk <= _kernel_data_end) {
         return ERROR;
     }
 
     // 2. Round our new brk value *up* to the nearest page
     UP_TO_PAGE(_brk);
 
-    // 3. Check to see if we are growing or shrinking the brk and calculate the difference
+    // 3. Check to see it we have enabled virtual memory. If it is, use our internal
+    //    helper function to handle the brk under our virtual memory model.
+    if (g_virtual_memory) {
+        return SetKernelBrkVirtual(_brk);
+    }
+
+    // 4. If virtual memory is not enabled, then the process for changing the brk is simpler
+    //    and is as follows:
+    //        (1) Make sure the new brk does not point below our heap. If so, return ERROR
+    //        (2) Determine whether we are growing or shrinking the heap
+    //        (3) Find or free frames depending on whether we are growing or shrinking
+    //        (4) Update our current brk pointer
+    //
+    //    NOTE: Currently, we may not maintain the exact brk value provided by the caller as it
+    //          rounds the brk up to the nearest page boundary. In other words, the only valid
+    //          brk values are those that fall on page boundaries, so the kernel may end up with
+    //          *more* memory than it asked for. It should never end up freeing more memory than
+    //          it specified, however, because we round up.
+    if (_brk <= _kernel_data_end) {
+        return ERROR;
+    }
+
+    // 5. Check to see if we are growing or shrinking the brk and calculate the difference
     int growing    = 0;
     int difference = 0;
     if (_brk > _kernel_curr_brk) {
@@ -32,40 +49,46 @@ int SetKernelBrk(void *_brk) {
         difference = _kernel_curr_brk - _brk;
     }
 
-    // 4. Calculate the number of frames we need to add or remove.
-    int numFrames = difference / PAGE_SIZE;
+    // 6. Calculate the number of frames we need to add or remove. Furthermore, calculate the
+    //    frame number for the current brk, as we will use it to index into our frame bit
+    //    vector. Specifically, we want to add/remove frames starting with the frame that
+    //    our current brk points to.
+    int numFrames   = difference       / PAGE_SIZE;
+    int curBrkFrame = _kernel_curr_brk / PAGE_SIZE;
 
-    // 5. Add or remove frames/pages based on whether we are growing or shrinking.
-    //    I imagine we will have some list to track the available frames and a 
-    //    list for the kernels pages, along with some getter/setter helper
-    //    functions for modifying each.
+    // 7. Add or remove frames/pages based on whether we are growing or shrinking.
     for (int i = 0; i < numFrames; i++) {
 
         if (growing) {
 
-            // Find a free frame. If NULL is returned, we must be out of memory!
-            frame = getFreeFrame();
-            if (!frame) {
+            // 7a. Calculate the frame number for the next frame that we will add to the heap.
+            // Make sure that we actually have a frame to add! If not, return ERROR.
+            // Otherwise, mark the frame as taken.
+            int frameNum = curBrkFrame + i;
+            if (frameNum > bit_vec_len) {
                 return ERROR;
             }
+            bit_vec[frameNum] = 1;              // TODO: Use bit_vec operation functions
 
-            // Update the kernel's page table. Somehow I am supposed to account for
-            // whether we have initialized virtual memory or not.
-            kernelAddPage(frame);
         } else {
 
-            // Remove the last page. Would this ever return error?
-            frame = kernelRemovePage();
-            if (!frame) {
+            // 7b. Calculate the frame number for the next frame that we will remove from the heap.
+            // Make sure that we actually have a frame to remove! If not, return ERROR.
+            // Otherwise, mark the frame as free..
+            int frameNum = curBrkFrame - i;
+            if (frameNum < 0) {
                 return ERROR;
             }
-
-            // Mark that frame as free
-            addFreeFrame(frame);
+            bit_vec[frameNum] = 0;              // TODO: Use bit_vec operation functions
         }
     }
 
-    // 6. Set the kernel brk to the new brk value and return a success code
+    // 8. Set the kernel brk to the new brk value and return success
+    //    TODO: I think that KernelStart needs to initialize _kernel_curr_brk
+    //    *before* it makes any calls to malloc (or enables virtual memory).
+    //    Specifically, it should:
+    //
+    //        _kernel_curr_brk = _kernel_orig_brk;
     _kernel_curr_brk = _brk 
     return 0;
 }
