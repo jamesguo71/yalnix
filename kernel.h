@@ -1,10 +1,13 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include "hardware.h"
+#include "trap.h"
+#include "yalnix.h"
+
 
 /*
  * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
-                        them opaque?
+ *                      them opaque?
  */
 typedef struct cvar {
     int  id;
@@ -20,7 +23,7 @@ typedef struct lock {
 
 //void *kernel_brk; // Current kernel brk
 
-pte_t *kernel_pt; // Kernel Page Table
+extern pte_t *kernel_pt; // Kernel Page Table
 
 typedef struct pcb {
     int  pid;
@@ -47,10 +50,11 @@ typedef struct pipe {
     void *buf;
 } pipe_t;
 
+
 /*
  * Variable definitions - Declare these globally in kernel.c, but not in trap.c or syscalls.c;
-                          they should be able to refer to them normally---no need to define or
-                          declare them in trap.c/h or syscall.c/h
+ *                        they should be able to refer to them normally---no need to define or
+ *                        declare them in trap.c/h or syscall.c/h
  */
 extern int g_cvars_len;
 extern int g_locks_len;
@@ -93,8 +97,31 @@ extern void **g_tty_write_buf;
  * \return          0 on success, ERROR otherwise.
  */
 int SetKernelBrk(void *_brk);
+
+
+/*!
+ * \desc                 TODO
+ * 
+ * \param[in] cmd_args   TODO
+ * \param[in] pmem_size  TODO
+ * \param[in] uctxt      TODO
+ */
 void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt);
-KernelContext *MyKCS(KernelContext *, void *, void *);
+
+
+/*!
+ * \desc                  TODO
+ *                       
+ *                       
+ * 
+ * \param[in] kc_in       a pointer to a temporary copy of the current kernel context of the caller
+ * \param[in] curr_pcb_p  a void pointer to current process's pcb
+ * \param[in] next_pcb_p  a void pointer to the next process's pcb
+ * 
+ * \return                return a pointer to a kernel context it had earlier saved in the next
+ *                        process’s PCB.
+ */
+KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p);
 
 
 /*!
