@@ -56,37 +56,37 @@ typedef struct pipe {
  *                        they should be able to refer to them normally---no need to define or
  *                        declare them in trap.c/h or syscall.c/h
  */
-extern int g_cvars_len;
-extern int g_locks_len;
-extern int g_pipes_len;
-extern int g_ready_len;
-extern int g_blocked_len;
-extern int g_terminated_len;
+extern int e_cvars_len;
+extern int e_locks_len;
+extern int e_pipes_len;
+extern int e_ready_len;
+extern int e_blocked_len;
+extern int e_terminated_len;
 
 // Used by TTY traps to indicate when Receive/Write hardware operations complete.
 // Initialize to hold NUM_TERMINALS ints (i.e., a flag for each tty device)
-extern int *g_tty_read_ready;
-extern int *g_tty_write_ready;
+extern int *e_tty_read_ready;
+extern int *e_tty_write_ready;
 
 // Used to track locks and cvars. Is array best way to track these? We will have to
 // realloc everytime we make a new one. Maybe add "next" pointer to lock/cvar struct?
-extern cvar_t *g_cvars;
-extern lock_t *g_locks;
-extern pipe_t *g_pipes;
+extern cvar_t *e_cvars;
+extern lock_t *e_locks;
+extern pipe_t *e_pipes;
 
-extern pcb_t *g_current;
-extern pcb_t *g_ready;
-extern pcb_t *g_blocked;
-extern pcb_t *g_terminated;
+extern pcb_t *e_current;
+extern pcb_t *e_ready;
+extern pcb_t *e_blocked;
+extern pcb_t *e_terminated;
 
 // Used to determine if the original brk has changed - initialized to og brk value
-extern void *g_kernel_curr_brk;
+extern void *e_kernel_curr_brk;
 
 // I *think* I need these for storing results of tty read/writes since TtyReceive/Transmit require
 // that the buf reside in kernel memory. Initialize to hold NUM_TERMINALS void pointers (i.e., a
 // pointer for each tty device.). Do I need length variables for these too?
-extern void **g_tty_read_buf;
-extern void **g_tty_write_buf;
+extern void **e_tty_read_buf;
+extern void **e_tty_write_buf;
 
 
 /*!
