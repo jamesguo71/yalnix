@@ -29,16 +29,15 @@ int trap_kernel(UserContext *context) {
             context->regs[0] = ret;
 
         case YALNIX_EXEC:
-            ret = internal_Exec(context->regs[0],
-                                context->regs[1]);
+            ret = internal_Exec((char *)  context->regs[0],
+                                (char **) context->regs[1]);
             context->regs[0] = ret;
 
         case YALNIX_EXIT:
-            ret = internal_Exit(context->regs[0]);
-            context->regs[0] = ret;
+            internal_Exit((int ) context->regs[0]);
 
         case YALNIX_WAIT:
-            ret = internal_Wait(context->regs[0]);
+            ret = internal_Wait((int *) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_GETPID:
@@ -46,72 +45,72 @@ int trap_kernel(UserContext *context) {
             context->regs[0] = ret;
 
         case YALNIX_BRK:
-            ret = internal_Brk(context->regs[0]);
+            ret = internal_Brk((void *) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_DELAY:
-            ret = internal_Delay(context->regs[0]);
+            ret = internal_Delay((int ) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_TTY_READ:
-            ret = internal_TtyRead(context->regs[0],
-                                   context->regs[1],
-                                   context->regs[2]);
+            ret = internal_TtyRead((int )   context->regs[0],
+                                   (void *) context->regs[1],
+                                   (int)    context->regs[2]);
             context->regs[0] = ret;
 
         case YALNIX_TTY_WRITE:
-            ret = internal_TtyWrite(context->regs[0],
-                                    context->regs[1],
-                                    context->regs[2]);
+            ret = internal_TtyWrite((int)    context->regs[0],
+                                    (void *) context->regs[1],
+                                    (int )   context->regs[2]);
             context->regs[0] = ret;
 
         case YALNIX_PIPE_INIT:
-            ret = internal_PipeInit(context->regs[0]);
+            ret = internal_PipeInit((int *) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_PIPE_READ:
-            ret = internal_PipeRead(context->regs[0],
-                                    context->regs[1],
-                                    context->regs[2]);
+            ret = internal_PipeRead((int)    context->regs[0],
+                                    (void *) context->regs[1],
+                                    (int)    context->regs[2]);
             context->regs[0] = ret;
 
         case YALNIX_PIPE_WRITE:
-            ret = internal_PipeWrite(context->regs[0],
-                                     context->regs[1],
-                                     context->regs[2]);
+            ret = internal_PipeWrite((int)    context->regs[0],
+                                     (void *) context->regs[1],
+                                     (int)    context->regs[2]);
             context->regs[0] = ret;
 
         case YALNIX_LOCK_INIT:
-            ret = internal_LockInit(context->regs[0]);
+            ret = internal_LockInit((int *) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_LOCK_ACQUIRE:
-            ret = internal_Acquire(context->regs[0]);
+            ret = internal_Acquire((int ) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_LOCK_RELEASE:
-            ret = internal_Release(context->regs[0]);
+            ret = internal_Release((int) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_CVAR_INIT:
-            ret = internal_CvarInit(context->regs[0]);
+            ret = internal_CvarInit((int *) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_CVAR_SIGNAL:
-            ret = internal_CvarSignal(context->regs[0]);
+            ret = internal_CvarSignal((int ) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_CVAR_BROADCAST:
-            ret = internal_CvarBroadcast(context->regs[0]);
+            ret = internal_CvarBroadcast((int ) context->regs[0]);
             context->regs[0] = ret;
 
         case YALNIX_CVAR_WAIT:
-            ret = internal_CvarWait(context->regs[0],
+            ret = internal_CvarWait((int ) context->regs[0],
                                     context->regs[1]);
             context->regs[0] = ret;
 
         case YALNIX_RECLAIM:
-            ret = internal_Reclaim(context->regs[0]);
+            ret = internal_Reclaim((int ) context->regs[0]);
             context->regs[0] = ret;
 
         default: break;
