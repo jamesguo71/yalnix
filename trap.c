@@ -16,6 +16,7 @@ int trap_kernel(UserContext *context) {
     if (!context) {
         return ERROR;
     }
+    TracePrintf(1, "[trap_kernel] context->sp: %p\n", context->sp);
 
     // 2. Page. 36 of the manual states that the "code" field in UserContext will contain
     //    the number of the syscal (as defined in yalnix.h). Additionally, any arguments
@@ -132,6 +133,11 @@ int trap_clock(UserContext *context) {
     // Check if there're processes on the ready queue
         // If so, KernelContextSwitch to it
         // Otherwise, dispatch idle.
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
+    TracePrintf(1, "[trap_clock] context->sp: %p\n", context->sp);
     return 0;
 }
 
@@ -151,6 +157,11 @@ int trap_illegal(UserContext *context) {
     // Free its resources now or only when its parent calls Wait?
     // KernelContextSwitch to a ready process (does KCS need special treatment with an aborted process?) 
     // If there's no process in the ready queue, switch to `idle`
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
+    TracePrintf(1, "[trap_illegal] context->sp: %p\n", context->sp);
     return 0;
 }
 
@@ -167,6 +178,11 @@ int trap_memory(UserContext *context) {
         // YALNIX_MAPERR: Is it because the address is not mapped in the current page tables?
         // YALNIX_ACCERR: or because the access violates the page protection specified in the corresponding page table entry?
         // OTHERWISE: Is the address outside the virtual address range of the hardware (outside Region 0 and Region 1)?
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
+    TracePrintf(1, "[trap_memory] context->sp: %p\n", context->sp);
     return 0;
 }
 
@@ -181,6 +197,11 @@ int trap_memory(UserContext *context) {
 int trap_math(UserContext *context) {
     // TracePrintf the error message identified with the `code` field in `context`
     // Refer to `trap_illegal` above: `Abort` the process and switch to a process in the ready_queue
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
+    TracePrintf(1, "[trap_math] context->sp: %p\n", context->sp);
     return 0;
 }
 
@@ -194,14 +215,15 @@ int trap_math(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_tty_receive(UserContext *context) {
-    // // 1. Check arguments. Return error if invalid.
-    // if (!context) {
-    //     return ERROR;
-    // }
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
 
     // // 2. Page 25. states that this gets called once there is input ready for a given tty device.
     // //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
     // g_tty_read_ready[context->code] = 1;
+    TracePrintf(1, "[trap_tty_receive] context->sp: %p\n", context->sp);
     return 0;
 }
 
@@ -215,10 +237,10 @@ int trap_tty_receive(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_tty_transmit(UserContext *context) {
-    // // 1. Check arguments. Return error if invalid.
-    // if (!context) {
-    //     return ERROR;
-    // }
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
 
     // // 2. From my understanding, the steps leading up to this handler getting called are:
     // //        - process calls TtyWrite
@@ -230,6 +252,7 @@ int trap_tty_transmit(UserContext *context) {
     // //    has finished so that (1) the process can move on or (2) the internal_TtyWrite can
     // //    write more if there are bytes remaining in buf. How do I do this?
     // g_tty_write_ready[context->code] = 1;
+    TracePrintf(1, "[trap_tty_transmit] context->sp: %p\n", context->sp);
     return 0;
 }
 
@@ -246,10 +269,15 @@ int trap_disk(UserContext *context) {
     if (!context) {
         return ERROR;
     }
+    TracePrintf(1, "[trap_disk] context->sp: %p\n", context->sp);
     return 0;
 }
 
 int trap_not_handled(UserContext *context) {
-    TracePrintf(1, "This trap is not yet handled.\n");
+    // 1. Check arguments. Return error if invalid.
+    if (!context) {
+        return ERROR;
+    }
+    TracePrintf(1, "[trap_not_handled] context->sp: %p\n", context->sp);
     return 0;
 }
