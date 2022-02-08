@@ -343,7 +343,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //       above the kernel stack, maybe we should just call our FindFreeFrame function---it may
     //       return a frame within region 0 or it may return a frame in region 1 if we have enough
     //       physical memory for it. Does that make sense?
-    int user_stack_page_num  = ((int ) idlePCB->uctxt->sp) >> PAGESHIFT;
+    int user_stack_page_num  = ((int ) idlePCB->uctxt->sp) >> PAGESHIFT - MAX_PT_LEN;
     int user_stack_frame_num = FindFreeFrame();
     if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
