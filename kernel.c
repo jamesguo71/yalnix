@@ -312,7 +312,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     idlePCB->pt        = user_pt;
     idlePCB->uctxt     = uctxt;
     idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) DOWN_TO_PAGE(VMEM_1_LIMIT - 1);
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     idlePCB->pid       = 0;
 
     // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
