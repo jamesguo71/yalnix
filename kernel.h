@@ -5,6 +5,7 @@
 #include "yalnix.h"
 
 #define KERNEL_BYTE_SIZE 8
+#define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE
 
 /*
  * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
