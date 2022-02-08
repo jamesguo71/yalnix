@@ -4,6 +4,7 @@
 #include "trap.h"
 #include "yalnix.h"
 
+#define KERNEL_BYTE_SIZE 8
 
 /*
  * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
