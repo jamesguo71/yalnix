@@ -1,5 +1,7 @@
 #include "trap.h"
-
+#include "hardware.h"
+#include "yalnix.h"
+#include "ylib.h"
 
 /*!
  * \desc               Calls the appropriate internel syscall function based on the current process

@@ -1,5 +1,7 @@
 #include "kernel.h"
-
+#include "hardware.h"
+#include "trap.h"
+#include "yalnix.h"
 
 // TODO: Consider making these static inline functions. The inline keyword tells the compiler to
 //       replace every function call instance with the code itself where it is being called. This

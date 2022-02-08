@@ -1,4 +1,6 @@
 #include "syscall.h"
+#include "hardware.h"
+#include "yalnix.h"
 
 int internal_Fork (void) {
     // Reference Checkpoint 3 for more details
