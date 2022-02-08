@@ -307,13 +307,14 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
 
     // 12. Configure the pcb for our dummy idle process. Use the UserContext passed in by the build
     //     system, but change its program counter so that it starts executing at DoIdle. Then, set
-    //     the stack pointer to point to the last byte of Region 1; recall that the stack grows
-    //     *downwards*, which is why we point it to the end of a page.
+    //     the stack pointer to point to the end of Region 1, but leave enough room for a pointer
+    //     since we need room to place the return address of the init function; recall that the
+    //     stack grows *downwards*, which is why we point it to the end of a page.
     idlePCB->pt        = user_pt;
     idlePCB->uctxt     = uctxt;
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    idlePCB->pid       = 0;
+    idlePCB->pid       = helper_new_pid();
 
     // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
     //     stack, the max size of which is defined in hardware.h. Use the max stack size to
@@ -321,14 +322,14 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //     page table, configure its page entries, and mark the corresponding frames as in use.
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        SetPTE(idlePCB->ks_frames,        // page table pointer
-               i,                         // page number
-               1,                         // valid bit
-               PROT_READ | PROT_WRITE,    // page protection bits
-               i + kernel_stack_start_page_num);       // frame number
+        SetPTE(idlePCB->ks_frames,                  // page table pointer
+               i,                                   // page number
+               1,                                   // valid bit
+               PROT_READ | PROT_WRITE,              // page protection bits
+               i + kernel_stack_start_page_num);    // frame number
 
-        SetFrame(g_frames,                // frame bit vector pointer
-                 i + kernel_stack_start_page_num);     // frame number
+        SetFrame(g_frames,                          // frame bit vector pointer
+                 i + kernel_stack_start_page_num);  // frame number
     }
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     memcpy(&e_kernel_pt[kernel_stack_start_page_num],
