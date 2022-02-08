@@ -11,6 +11,7 @@ int internal_Fork (void) {
     // Copy the frame stack to a new frame stack by temporarily mapping the destination frame into some page
     // E.g, the page right below the kernel stack.
     // Make the return value different between parent process and child process
+    return 0;
 }
 
 /*!
@@ -35,6 +36,7 @@ int internal_Exec (char *filename, char **argvec) {
     // Change the PROT field of the TEXT section
     // Set the entry point in the process's UserContext
     // Build the argument list on the new stack.
+    return 0;
 }
 
 void internal_Exit (int status) {
@@ -42,6 +44,7 @@ void internal_Exit (int status) {
     // Check to see if the current process has a parent (parent pointer is null?), if so, save the `status` parameter into the pcb
     // Otherwise, free this pcb in the kernel (?) or put it on an orphan list (?)
     // Check if the process is the initial process, if so, halt the system.
+    return 0;
 }
 
 int internal_Wait (int *status_ptr) {
@@ -52,10 +55,12 @@ int internal_Wait (int *status_ptr) {
     // Check if status_ptr is not null, collect its status and Save its exit status into `status_ptr`, otherwise just continue
     // retire its pid, delete it from the process's children list, then return
     // then, the call returns with the pid of that child.
+    return 0;
 }
 
 int internal_GetPid (void) {
     // Return the pid of the current pcb
+    return 0;
 }
 
 int internal_Brk (void *addr) {
@@ -79,6 +84,7 @@ int internal_Delay (int clock_ticks) {
         // Suspend the caller process
         // Whenever the process gets switched back, check the delta of cur_clock_ticks and check if it's reached `clock_ticks`
     // Upon completion of the delay, the value 0 is returned
+    return 0;
 }
 
 
@@ -449,6 +455,7 @@ int internal_CvarBroadcast (int cvar_id) {
     // for each process in the cvar_id's waiting queue, remove it from the waiting queue and put it on the ready_queue
     // Mesa style: Caller continues to execute
     // Return 0
+    return 0;
 }
 
 /*!
@@ -465,6 +472,7 @@ int internal_CvarWait (int cvar_id, int lock_id) {
     // Ask the scheduler to choose a process from the ready queue and KernelContextSwitch to it
     // The above steps probably can be wrapped in a function `Suspend`, See Textbook Page 243
     // Acquire the lock of `lock_id`
+    return 0;
 }
 
 /*!
@@ -478,4 +486,5 @@ int internal_CvarWait (int cvar_id, int lock_id) {
 int internal_Reclaim (int id) {
     // Check which type of primitive the `id` is of
     // Free its malloc'ed memory
+    return 0;
 }
