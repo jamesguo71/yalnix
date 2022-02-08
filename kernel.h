@@ -23,7 +23,7 @@ typedef struct lock {
 
 //void *kernel_brk; // Current kernel brk
 
-extern pte_t *kernel_pt; // Kernel Page Table
+extern pte_t *e_kernel_pt; // Kernel Page Table
 
 typedef struct pcb {
     int  pid;
