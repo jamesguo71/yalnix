@@ -1,5 +1,6 @@
 #ifndef __TRAP_H
 #define __TRAP_H
+#include "hardware.h"
 #include "ylib.h"
 
 
