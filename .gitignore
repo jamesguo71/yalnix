@@ -2,3 +2,9 @@
 core
 yalnix_framework/
 .idea/
+
+*.swp
+yalnix
+DISK
+TRACE
+TTYLOG*
