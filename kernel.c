@@ -4,23 +4,24 @@
 #include "yalnix.h"
 #include "ykernel.h"
 
-
-// TODO: Consider making these static inline functions. The inline keyword tells the compiler to
-//       replace every function call instance with the code itself where it is being called. This
-//       is more efficient in terms of runtime overhead because you do not need to make the function
-//       call, but makes the overall code size larger since the code is copied everywhere the function
-//       is called. For our case, the code bloat should be really small though.
 //Bit Manipulation: http://www.mathcs.emory.edu/~cheung/Courses/255/Syllabus/1-C-intro/Progs/bit-array2.c
-#define SetFrame(A,k)   ( A[(k/KERNEL_BYTE_SIZE)] |=  (1 << (k%KERNEL_BYTE_SIZE)) )
-#define ClearFrame(A,k) ( A[(k/KERNEL_BYTE_SIZE)] &= ~(1 << (k%KERNEL_BYTE_SIZE)) )
-#define TestFrame(A,k)  ( A[(k/KERNEL_BYTE_SIZE)] &   (1 << (k%KERNEL_BYTE_SIZE)) )
+#define BitClear(A,k) ( A[(k/KERNEL_BYTE_SIZE)] &= ~(1 << (k%KERNEL_BYTE_SIZE)) )
+#define BitSet(A,k)   ( A[(k/KERNEL_BYTE_SIZE)] |=  (1 << (k%KERNEL_BYTE_SIZE)) )
+#define BitTest(A,k)  ( A[(k/KERNEL_BYTE_SIZE)] &   (1 << (k%KERNEL_BYTE_SIZE)) )
 
 
 /*
  * Extern Global Variable Definitions
  */
-pte_t *e_kernel_pt;
-void  *e_kernel_curr_brk;
+int    e_ready_len       = 0;
+int    e_blocked_len     = 0;
+int    e_terminated_len  = 0;
+pcb_t *e_current         = NULL;
+pcb_t *e_ready           = NULL;
+pcb_t *e_blocked         = NULL;
+pcb_t *e_terminated      = NULL;
+pte_t *e_kernel_pt       = NULL;
+void  *e_kernel_curr_brk = NULL;
 
 
 /*
@@ -38,7 +39,6 @@ static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
     trap_tty_receive,
     trap_tty_transmit,
     trap_disk,
-    // ToDo: Eight pointers pointing to "this trap is not yet handled" handler
     trap_not_handled,
     trap_not_handled,
     trap_not_handled,
@@ -53,9 +53,12 @@ static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
 /*
  * Local Function Definitions
  */
+static int  FrameClear(int frame_num);
+static int  FrameFind(void);
+static int  FrameSet(int frame_num);
+static int  PTEClear(pte_t *pt, int page_num);
+static int  PTESet(pte_t *pt, int page_num, int prot, int pfn);
 static void DoIdle(void);
-static int  FindFreeFrame(void);
-static void SetPTE(pte_t *pt, int index, int valid, int prot, int pfn);
 
 
 /*!
@@ -124,7 +127,7 @@ int SetKernelBrk(void *_kernel_new_brk) {
         if (growing) {
             // 6a. If we are growing the heap, then we first need to find an available frame.
             //     If we can't find one (i.e., we are out of memory) return ERROR.
-            int frame_num = FindFreeFrame();
+            int frame_num = FrameFind();
             if (frame_num == ERROR) {
                 TracePrintf(1, "[SetKernelBrk] Unable to find free frame\n");
                 return ERROR;
@@ -132,29 +135,22 @@ int SetKernelBrk(void *_kernel_new_brk) {
 
             // 6b. Map the frame to a page in the kernel's page table. Specifically, start with the
             //     current page pointed to by the kernel brk. Afterwards, mark the frame as in use.
-            SetPTE(e_kernel_pt,               // page table pointer
+            PTESet(e_kernel_pt,             // page table pointer
                    cur_brk_page_num + i,    // page number
-                   1,                       // valid bit
                    PROT_READ | PROT_WRITE,  // page protection bits
                    frame_num);              // frame number
-
-            SetFrame(g_frames,              // frame bit vector pointer
-                     frame_num);            // frame number
-
+            FrameSet(frame_num);
         } else {
             // 6c. If we are shrinking the heap, then we need to unmap pages. Start by grabbing
             //     the number of the frame mapped to the current brk page. Free the frame.
             //
             //     TODO: Should I create some more getter/setter functions for our page table?
-            //           Maybe a getFrame function and a ClearPTE?
-            pte_t page = e_kernel_pt[cur_brk_page_num - i];
-            ClearFrame(g_frames,              // frame bit vector pointer
-                       page.pfn);             // frame number
+            //           Maybe a getFrame function and a PTEClear?
+            int frame_num = e_kernel_pt[cur_brk_page_num - i].pfn;
+            FrameClear(frame_num);
 
             // 6d. Clear the page in the kernel's page table so it is no longer valid
-            e_kernel_pt[cur_brk_page_num - i].valid = 0;
-            e_kernel_pt[cur_brk_page_num - i].prot  = 0;
-            e_kernel_pt[cur_brk_page_num - i].pfn   = 0;
+            PTEClear(e_kernel_pt, cur_brk_page_num - i);
         }
     }
 
@@ -195,8 +191,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     if (g_num_frames % 8) {
         frames_len++;
     }
-    TracePrintf(1, "[KernelStart] g_num_frames:                %d\n", g_num_frames);
-    TracePrintf(1, "[KernelStart] frames_len:                  %d\n", frames_len);
 
     // 4. Allocate space for our frames bit vector. Use calloc to ensure that the memory is
     //    zero'd out (i.e., that every frame is currently marked as free). Halt upon error.
@@ -205,7 +199,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for g_frames failed!\n");
         Halt();
     }
-    TracePrintf(1, "[KernelStart] g_frames:                    %p\n", g_frames);
 
     // 5. Allocate space for Region 0 page table (i.e., the kernel's page table). Halt upon error.
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
@@ -213,7 +206,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
     }
-    TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
 
     // 6. Allocate space for Region 1 page table (i.e., the dummy idle process). Halt upon error.
     pte_t *user_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
@@ -221,7 +213,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for user_pt failed!\n");
         Halt();
     }
-    TracePrintf(1, "[KernelStart] user_pt:                     %p\n", user_pt);
 
     // 7. Allocate space for the PCB of our dummy idle process. Halt upon error.
     //
@@ -256,17 +247,16 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //    (as text contains code), and mark the corresponding physical frames as in use.
     int kernel_text_end_page_num = ((int ) _kernel_data_start) >> PAGESHIFT;
     for(int i = 0; i < kernel_text_end_page_num; i++) {
-        SetPTE(e_kernel_pt,              // page table pointer
+        PTESet(e_kernel_pt,              // page table pointer
                i,                        // page number
-               1,                        // valid bit
                PROT_READ | PROT_EXEC,    // page protection bits
                i);                       // frame number
         
-        SetFrame(g_frames,               // frame bit vector pointer
-                 i);                     // frame number
+        FrameSet(i);
+        // BitSet(g_frames,               // frame bit vector pointer
+        //          i);                     // frame number
 
     }
-    TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
 
     // 10. Calculate the number of pages being used to store the kernel data. Again, since the
     //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
@@ -276,16 +266,15 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //     so offset the page/frame numbers by the last text page number.
     int kernel_data_end_page_num = ((int ) _kernel_data_end) >> PAGESHIFT;
     for (int i = kernel_text_end_page_num; i < kernel_data_end_page_num; i++) {
-        SetPTE(e_kernel_pt,               // page table pointer
+        PTESet(e_kernel_pt,               // page table pointer
                i,                         // page number
-               1,                         // valid bit
                PROT_READ | PROT_WRITE,    // page protection bits
                i);                        // frame number
         
-        SetFrame(g_frames,                // frame bit vector pointer
-                 i);                      // frame number
+        FrameSet(i);
+        // BitSet(g_frames,                // frame bit vector pointer
+        //          i);                      // frame number
     }
-    TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
 
     // 11. Calculate the number of pages being used to store the kernel heap. Again, since the
     //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
@@ -295,16 +284,15 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //     so offset the page/frame numbers by the last data page number.
     int kernel_heap_end_page_num = ((int ) e_kernel_curr_brk) >> PAGESHIFT;
     for (int i = kernel_data_end_page_num; i < kernel_heap_end_page_num; i++) {
-        SetPTE(e_kernel_pt,               // page table pointer
+        PTESet(e_kernel_pt,               // page table pointer
                i,                         // page number
-               1,                         // valid bit
                PROT_READ | PROT_WRITE,    // page protection bits
                i);                        // frame number
         
-        SetFrame(g_frames,                // frame bit vector pointer
-                 i);                      // frame number
+        FrameSet(i);
+        // BitSet(g_frames,                // frame bit vector pointer
+        //          i);                      // frame number
     }
-    TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
 
     // 12. Configure the pcb for our dummy idle process. Use the UserContext passed in by the build
     //     system, but change its program counter so that it starts executing at DoIdle. Then, set
@@ -323,39 +311,35 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //     page table, configure its page entries, and mark the corresponding frames as in use.
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        SetPTE(idlePCB->ks_frames,                  // page table pointer
+        PTESet(idlePCB->ks_frames,                  // page table pointer
                i,                                   // page number
-               1,                                   // valid bit
                PROT_READ | PROT_WRITE,              // page protection bits
                i + kernel_stack_start_page_num);    // frame number
 
-        SetFrame(g_frames,                          // frame bit vector pointer
-                 i + kernel_stack_start_page_num);  // frame number
+        FrameSet(i + kernel_stack_start_page_num);
+        // BitSet(g_frames,                          // frame bit vector pointer
+        //          i + kernel_stack_start_page_num);  // frame number
     }
-    TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     memcpy(&e_kernel_pt[kernel_stack_start_page_num],
            idlePCB->ks_frames,
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));
 
     // 13. Find a free frame for the dummy idle process' stack.
     int user_stack_page_num  = (((int ) idlePCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
-    int user_stack_frame_num = FindFreeFrame();
+    int user_stack_frame_num = FrameFind();
     if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
         Halt();
     }
 
-    SetPTE(user_pt,                   // page table pointer
+    PTESet(user_pt,                   // page table pointer
            user_stack_page_num,       // page number
-           1,                         // valid bit
            PROT_READ | PROT_WRITE,    // page protection bits
            user_stack_frame_num);     // frame number
     
-    SetFrame(g_frames,                // frame bit vector pointer
-             user_stack_frame_num);   // frame number
-    TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
-    TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
-    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
+    FrameSet(user_stack_frame_num);
+    // BitSet(g_frames,                // frame bit vector pointer
+    //          user_stack_frame_num);   // frame number
 
     // 14. Tell the CPU where to find our kernel's page table and how large it is
     WriteRegister(REG_PTBR0, (unsigned int) e_kernel_pt);
@@ -381,9 +365,18 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // For Checkpoint 3, KernelStart needs to create an initPCB and Set up the identity for the new initPCB
     // Then write KCCopy() to: copy the current KernelContext into initPCB and
     // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
-
-    // Should traceprint “leaving KernelStart” at the end of KernelStart.
-    TracePrintf(1, "leaving KernelStart\n");
+    TracePrintf(1, "[KernelStart] g_num_frames:                %d\n", g_num_frames);
+    TracePrintf(1, "[KernelStart] frames_len:                  %d\n", frames_len);
+    TracePrintf(1, "[KernelStart] g_frames:                    %p\n", g_frames);
+    TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
+    TracePrintf(1, "[KernelStart] user_pt:                     %p\n", user_pt);
+    TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
+    TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
+    TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
 }
 
 
@@ -447,24 +440,40 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
 
 
 /*!
- * \desc  A dummy userland process that the kernel runs whenever there are no other processes.
+ * \desc                 Marks the frame indicated by "frame_num" as free by clearing its bit
+ *                       in our global frame bit vector.
+ * 
+ * \param[in] frame_num  The number of the frame to free
+ * 
+ * \return               0 on success, ERROR otherwise.
  */
-static void DoIdle(void) {
-    while(1) {
-        TracePrintf(1,"DoIdle\n");
-        Pause();
+static int FrameClear(int frame_num) {
+    // 1. Check that our frame number is valid. If not, print message and return error.
+    if (frame_num < 0 || frame_num >= g_num_frames) {
+        TracePrintf(1, "[FrameClear] Invalid frame number: %d\n", frame_num);
+        return ERROR;
     }
+
+    // 2. Check to see if the frame indicated by frame_num is already invalid.
+    //    If so, print a warning message but do not return ERROR.
+    if(!BitTest(g_frames, frame_num)) {
+        TracePrintf(1, "[FrameClear] Warning: frame %d is already invalid\n", frame_num);
+    }
+
+    // 3. "Free" the frame indicated by frame_num by clearing its bit in our frames bit vector.
+    BitClear(g_frames, frame_num);
+    return 0;
 }
 
 
 /*!
  * \desc    Find a free frame from the physical memory
  * 
- * \return  Frame index on success, ERROR otherwise.
+ * \return  Frame number on success, ERROR otherwise.
  */
-static int FindFreeFrame(void) {
+static int FrameFind(void) {
     for (int i = 0; i < g_num_frames; i++) {
-        if (TestFrame(g_frames, i) == 0) {
+        if (BitTest(g_frames, i) == 0) {
             return i;
         }
     }
@@ -473,16 +482,118 @@ static int FindFreeFrame(void) {
 
 
 /*!
+ * \desc                 Marks the frame indicated by "frame_num" as in use by setting its bit
+ *                       in our global frame bit vector.
+ * 
+ * \param[in] frame_num  The number of the frame to mark as in use
+ * 
+ * \return               0 on success, ERROR otherwise.
+ */
+static int FrameSet(int frame_num) {
+    // 1. Check that our frame number is valid. If not, print message and return error.
+    if (frame_num < 0 || frame_num >= g_num_frames) {
+        TracePrintf(1, "[FrameSet] Invalid frame number: %d\n", frame_num);
+        return ERROR;
+    }
+
+    // 2. Check to see if the frame indicated by frame_num is already valid.
+    //    If so, print a warning message but do not return ERROR.
+    if(BitTest(g_frames, frame_num)) {
+        TracePrintf(1, "[FrameSet] Warning: frame %d is already valid\n", frame_num);
+    }
+
+    // 3. Mark the frame indicated by frame_num as in use by
+    //    setting its bit in the frame bit vector.
+    BitSet(g_frames, frame_num);
+    return 0;
+}
+
+
+/*!
  * \desc             A
  * 
  * \param[in] pt     T
  * \param[in] index  T
- * \param[in] valid  T
- * \param[in] prot   T
- * \param[in] pfn    T
+ * 
+ * \return  Frame index on success, ERROR otherwise.
  */
-static void SetPTE(pte_t *pt, int index, int valid, int prot, int pfn) {
-    pt[index].valid = valid;
-    pt[index].prot  = prot;
-    pt[index].pfn   = pfn;
+static int PTEClear(pte_t *pt, int page_num) {
+    // 1. Check that our page table pointer is invalid. If not, print message and return error.
+    if (!pt) {
+        TracePrintf(1, "[PTEClear] Invalid page table pointer\n");
+        return ERROR;
+    }
+
+    // 2. Check that our page number is valid. If not, print message and return error.
+    if (page_num < 0 || page_num >= MAX_PT_LEN) {
+        TracePrintf(1, "[PTEClear] Invalid page number: %d\n", page_num);
+        return ERROR;
+    }
+
+    // 3. Check to see if the entry indicated by page_num is already invalid.
+    //    If so, print a warning message, but do not return ERROR. 
+    if (!pt[page_num].valid) {
+        TracePrintf(1, "[PTEClear] Warning: page %d is alread invalid\n", page_num);
+    }
+
+    // 4. Mark the page table entry indicated by page_num as invalid.
+    pt[page_num].valid = 0;
+    pt[page_num].prot  = 0;
+    pt[page_num].pfn   = 0;
+    return 0;
+}
+
+
+/*!
+ * \desc                A
+ * 
+ * \param[in] pt        T
+ * \param[in] page_num  T
+ * \param[in] prot      T
+ * \param[in] pfn       T
+ * 
+ * \return  Frame index on success, ERROR otherwise.
+ */
+static int PTESet(pte_t *pt, int page_num, int prot, int pfn) {
+    // 1. Check that our page table pointer is invalid. If not, print message and return error.
+    if (!pt) {
+        TracePrintf(1, "[PTESet] Invalid page table pointer\n");
+        return ERROR;
+    }
+
+    // 2. Check that our page number is valid. If not, print message and return error.
+    if (page_num < 0 || page_num >= MAX_PT_LEN) {
+        TracePrintf(1, "[PTESet] Invalid page number: %d\n", page_num);
+        return ERROR;
+    }
+
+    // 3. Check that our frame number is valid. If not, print message and return error.
+    if (pfn < 0 || pfn >= g_num_frames) {
+        TracePrintf(1, "[PTESet] Invalid frame number: %d\n", frame_num);
+        return ERROR;
+    }
+
+    // 4. Check to see if the entry indicated by page_num is already valid.
+    //    If so, print a warning message, but do not return ERROR. 
+    if (pt[page_num].valid) {
+        TracePrintf(1, "[PTESet] Warning: page %d is alread valid\n", page_num);
+    }
+
+    // 5. Make the page table entry indicated by page_num valid, set
+    //    its protections and map it to the frame indicated by pfn.
+    pt[page_num].valid = 1;
+    pt[page_num].prot  = prot;
+    pt[page_num].pfn   = pfn;
+    return 0;
+}
+
+
+/*!
+ * \desc  A dummy userland process that the kernel runs when there are no other processes.
+ */
+static void DoIdle(void) {
+    while(1) {
+        TracePrintf(1,"DoIdle\n");
+        Pause();
+    }
 }
