@@ -360,6 +360,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
              user_stack_frame_num);        // frame number
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
 
     // 14. Tell the CPU where to find our kernel's page table and how large it is
     WriteRegister(REG_PTBR0, (unsigned int) e_kernel_pt);
