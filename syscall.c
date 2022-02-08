@@ -44,7 +44,6 @@ void internal_Exit (int status) {
     // Check to see if the current process has a parent (parent pointer is null?), if so, save the `status` parameter into the pcb
     // Otherwise, free this pcb in the kernel (?) or put it on an orphan list (?)
     // Check if the process is the initial process, if so, halt the system.
-    return 0;
 }
 
 int internal_Wait (int *status_ptr) {
@@ -73,7 +72,7 @@ int internal_Brk (void *addr) {
         // Return ERROR if not
         // Call DOWN_TO_PAGE to get the suitable new addr
         // Adjust page table to account for the new brk
-    return 0
+    return 0;
 }
 
 int internal_Delay (int clock_ticks) {
