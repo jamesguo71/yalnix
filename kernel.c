@@ -312,7 +312,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     idlePCB->pt        = user_pt;
     idlePCB->uctxt     = uctxt;
     idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - 100;
+    idlePCB->uctxt->sp = (void *) DOWN_TO_PAGE(VMEM_1_LIMIT - 1);
     idlePCB->pid       = 0;
 
     // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
@@ -336,15 +336,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));
 
     // 13. Find a free frame for the dummy idle process' stack.
-    //
-    // TODO: IS IT OKAY TO USE THE FRAME ABOVE KERNEL STACK FOR THE FIRST PROCESS'S USER STACK Page?
-    //
-    // TODO: No, I don't think it is ok to use a frame above the kernel's stack. At least, based on
-    //       Sean's response to my ED question, it seems like we can't assume that physical memory
-    //       is larger than region 0. So, instead of hardcoding it so that we always choose a frame
-    //       above the kernel stack, maybe we should just call our FindFreeFrame function---it may
-    //       return a frame within region 0 or it may return a frame in region 1 if we have enough
-    //       physical memory for it. Does that make sense?
     int user_stack_page_num  = (((int ) idlePCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
     int user_stack_frame_num = FindFreeFrame();
     if (user_stack_frame_num == ERROR) {
