@@ -331,7 +331,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
                  i + kernel_stack_start_page_num);     // frame number
     }
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
-    //memcpy(&e_kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
+    memcpy(&e_kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
 
     // 13. Find a free frame for the dummy idle process' stack.
     //
