@@ -18,7 +18,7 @@
 static char *g_frames         = NULL;   // Bit vector to track frames (set in KernelStart)
 static int   g_num_frames     = 0;      // Number of frames           (set in KernelStart)
 static int   g_virtual_memory = 0;      // Flag for tracking whether virtual memory is enabled
-static void  g_interrupt_table[TRAP_VECTOR_SIZE] = {
+static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
     trap_kernel,
     trap_clock,
     trap_illegal,
@@ -29,14 +29,14 @@ static void  g_interrupt_table[TRAP_VECTOR_SIZE] = {
     trap_disk,
     // ToDo: Eight pointers pointing to "this trap is not yet handled" handler
     trap_not_handled,
-    trap_not_handled,,
     trap_not_handled,
     trap_not_handled,
     trap_not_handled,
     trap_not_handled,
     trap_not_handled,
     trap_not_handled,
-}
+    trap_not_handled,
+};
 
 
 /*
@@ -76,7 +76,7 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //          it specified, however, because we round up.
     //
     //    TODO: Do I need to round up? I need to think about this more...
-    _kernel_new_brk = UP_TO_PAGE(_kernel_new_brk);
+    _kernel_new_brk = (void *) UP_TO_PAGE(_kernel_new_brk);
 
     // 3. If virtual memory has not yet been enabled, then simply save the proposed brk.
     if (!g_virtual_memory) {
@@ -88,8 +88,12 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //    page table to reflect any pages/frames that have been added/removed as a result of
     //    the brk change. Start off by calculating the page numbers for our new proposed brk
     //    and our current brk.
-    int new_brk_page_num = _kernel_new_brk   >> PAGESHIFT;
-    int cur_brk_page_num = e_kernel_curr_brk >> PAGESHIFT;
+    //
+    //    Note that we have to do some casting magic here... First cast the void * addresses to
+    //    long ints so that we may perform bit operations on them, then we can cast the result
+    //    down to an integer as we do not need to top bytes.
+    int new_brk_page_num = (int) ((long int) _kernel_new_brk)   >> PAGESHIFT;
+    int cur_brk_page_num = (int) ((long int) e_kernel_curr_brk) >> PAGESHIFT;
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.
@@ -143,7 +147,7 @@ int SetKernelBrk(void *_kernel_new_brk) {
     }
 
     // 7. Set the kernel brk to the new brk value and return success
-    e_kernel_curr_brk = _kernel_new_brk 
+    e_kernel_curr_brk = _kernel_new_brk;
     return 0;
 }
 
@@ -165,7 +169,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // 2. Before we do any dynamic memory allocation (i.e., malloc), make sure that we set our
     //    current brk variable to the incoming original brk, as this is how we will determine
     //    if our brk has changed during our setup process.
-    void *e_kernel_curr_brk = _kernel_orig_brk
+    void *e_kernel_curr_brk = _kernel_orig_brk;
 
     // 3. Calculate how many frames we have given our physical memory and page sizes. We will use
     //    a bit vector to track whether a frame is free or in use (0 = free, 1 = used). Calculate
@@ -202,7 +206,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //    
     //    Configure the page table entries for the text pages with read and execute permissions
     //    (as text contains code), and mark the corresponding physical frames as in use.
-    int n_kernel_text_pages = (_kernel_data_start - PMEM_BASE) / PAGESIZE;
+    int n_kernel_text_pages = (((int) _kernel_data_start) - PMEM_BASE) / PAGESIZE;
     for(int i = 0; i < n_kernel_text_pages; i++) {
         SetPTE(kernel_pt,                // page table pointer
                i,                        // page number
@@ -234,8 +238,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
 
     // 8. Tell the CPU where to find our kernel's page table and how large it is
-    WriteRegister(REG_PTBR0, kernel_pt);
-    WriteRegister(REG_PTLR0, MAX_PT_LEN);
+    WriteRegister(REG_PTBR0, (unsigned int) kernel_pt);
+    WriteRegister(REG_PTLR0, (unsigned int) MAX_PT_LEN);
 
     // 9. Set up the Region 1 page table (i.e., the dummy idle process). Halt upon error.
     pte_t *user_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
@@ -300,7 +304,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         SetFrame(g_frames,                // frame bit vector pointer
                  i + ks_stack_start);     // frame number
     }
-    memcpy(&kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ksframes, n_ks_frames * sizeof(pte_t));
+    memcpy(&kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
 
     // 13. Initialize the user context struct for our dummy idle process. Set the program counter
     //     to point to our DoIdle function, and the stack pointer to the end of region 1 (i.e., to
@@ -311,15 +315,14 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
     memcpy(idlePCB->uctxt, uctxt, sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = VMEM_1_LIMIT;
-    idlePCB->pid = helper_new_pid();
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT;
+    // idlePCB->pid = helper_new_pid();
+    idlePCB->pid = 0;
 
     // 14. Tell the CPU where to find our dummy idle's page table and how large it is
-    //
-    //     TODO: Again, shouldn't we use MAX_PT_LEN?
-    WriteRegister(REG_PTBR1, user_pt);
-    WriteRegister(REG_PTLR1, user_pt_size);
-    WriteRegister(REG_VECTOR_BASE, g_interrupt_table);
+    WriteRegister(REG_PTBR1,       (unsigned int) user_pt);
+    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);
+    WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);
 
     // 15. Initialize the page table and frame bit vector entries for the kernel's heap.
     //     Since we have been using frames sequentially for the kernel text and data, then
@@ -343,7 +346,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
 
     // Make sure that when you return to user mode at the end of KernelStart, you return to this modified UserContext.
     // ASSUMPTION: we can return to the modified UserContext by overriding the given uctxt
-    memset(uctxt, idlePCB->uctxt, sizeof(UserContext));
+    memcpy(uctxt, idlePCB->uctxt, sizeof(UserContext));
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
@@ -369,28 +372,28 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
  * \return               Returns the kc_in pointer
  */
 KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
-    // 1. Check arguments. Return error if invalid.
-    if (!kc_in || !new_pcb_p) {
-        return NULL;
-    }
+    // // 1. Check arguments. Return error if invalid.
+    // if (!kc_in || !new_pcb_p) {
+    //     return NULL;
+    // }
 
-    // 2. Cast our new process pcb pointer so that we can reference the internal variables.
-    pcb_t *pcb = (pcb_t *) new_pcb_p;
+    // // 2. Cast our new process pcb pointer so that we can reference the internal variables.
+    // pcb_t *pcb = (pcb_t *) new_pcb_p;
 
-    // 3. Copy the incoming KernelContext into the new process' pcb. Can I use memcpy
-    //    in the kernel or do I need to implement it myself (i.e., use void pointers
-    //    and loop over copying byte-by-byte)? I bet I have to do it manually...
-    memcpy(pcb->kctxt, kc_in, sizeof(KernelContext));
+    // // 3. Copy the incoming KernelContext into the new process' pcb. Can I use memcpy
+    // //    in the kernel or do I need to implement it myself (i.e., use void pointers
+    // //    and loop over copying byte-by-byte)? I bet I have to do it manually...
+    // memcpy(pcb->kctxt, kc_in, sizeof(KernelContext));
 
-    // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
-    //    I do not understand how I access the current kernel stack frames with only kc_in. Is
-    //    it something related to kstack_cs? What is that variable?
-    for (int i = 0; i < numFrames; i++) {
-        // copy frames over somehow???
-    }
+    // // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
+    // //    I do not understand how I access the current kernel stack frames with only kc_in. Is
+    // //    it something related to kstack_cs? What is that variable?
+    // for (int i = 0; i < numFrames; i++) {
+    //     // copy frames over somehow???
+    // }
 
-    // x. Return the incoming KernelContext
-    return kc_in
+    // // x. Return the incoming KernelContext
+    // return kc_in
 }
 
 
