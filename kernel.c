@@ -312,7 +312,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     idlePCB->pt        = user_pt;
     idlePCB->uctxt     = uctxt;
     idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - 1;
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - 100;
     idlePCB->pid       = 0;
 
     // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
@@ -353,13 +353,13 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
 
     SetPTE(user_pt,                   // page table pointer
-           user_stack_page_num,           // page number
+           user_stack_page_num,       // page number
            1,                         // valid bit
            PROT_READ | PROT_WRITE,    // page protection bits
-           user_stack_frame_num);          // frame number
+           user_stack_frame_num);     // frame number
     
     SetFrame(g_frames,                // frame bit vector pointer
-             user_stack_frame_num);        // frame number
+             user_stack_frame_num);   // frame number
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
