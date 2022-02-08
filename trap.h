@@ -1,6 +1,7 @@
 #ifndef __TRAP_H
 #define __TRAP_H
 #include "hardware.h"
+#include "syscall.h"
 #include "yalnix.h"
 #include "ylib.h"
 
@@ -13,9 +14,45 @@
  * \return             0 on success, ERROR otherwise.
  */
 int trap_kernel(UserContext *context);
+
+
+/*!
+ * \desc               These requests are ignored (for now)
+ * 
+ * \param[in] context  The UserContext for the process associated with the TRAP
+ * 
+ * \return             0 on success, ERROR otherwise.
+ */
 int trap_clock(UserContext *context);
+
+
+/*!
+ * \desc               These requests are ignored (for now)
+ * 
+ * \param[in] context  The UserContext for the process associated with the TRAP
+ * 
+ * \return             0 on success, ERROR otherwise.
+ */
 int trap_illegal(UserContext *context);
+
+
+/*!
+ * \desc               These requests are ignored (for now)
+ * 
+ * \param[in] context  The UserContext for the process associated with the TRAP
+ * 
+ * \return             0 on success, ERROR otherwise.
+ */
 int trap_memory(UserContext *context);
+
+
+/*!
+ * \desc               These requests are ignored (for now)
+ * 
+ * \param[in] context  The UserContext for the process associated with the TRAP
+ * 
+ * \return             0 on success, ERROR otherwise.
+ */
 int trap_math(UserContext *context);
 
 
@@ -50,6 +87,13 @@ int trap_tty_transmit(UserContext *context);
  */
 int trap_disk(UserContext *context);
 
-int trap_not_handled(UserContext *context);
 
+/*!
+ * \desc               These requests are ignored (for now)
+ * 
+ * \param[in] context  The UserContext for the process associated with the TRAP
+ * 
+ * \return             0 on success, ERROR otherwise.
+ */
+int trap_not_handled(UserContext *context);
 #endif
