@@ -2,6 +2,7 @@
 #include "hardware.h"
 #include "trap.h"
 #include "yalnix.h"
+#include "ykernel.h"
 
 
 // TODO: Consider making these static inline functions. The inline keyword tells the compiler to
