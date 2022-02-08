@@ -13,6 +13,8 @@
 #define ClearFrame(A,k)   ( A[(k/8)] &= ~(1 << (k%8)) )
 #define TestFrame(A,k)    ( A[(k/8)] & (1 << (k%8) ) )
 
+pte_t *kernel_pt;
+void *e_kernel_curr_brk;
 
 /*
  * Local Variable Definitions
@@ -171,7 +173,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // 2. Before we do any dynamic memory allocation (i.e., malloc), make sure that we set our
     //    current brk variable to the incoming original brk, as this is how we will determine
     //    if our brk has changed during our setup process.
-    void *e_kernel_curr_brk = _kernel_orig_brk;
+    e_kernel_curr_brk = _kernel_orig_brk;
 
     // 3. Calculate how many frames we have given our physical memory and page sizes. We will use
     //    a bit vector to track whether a frame is free or in use (0 = free, 1 = used). Calculate
@@ -195,7 +197,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
 
     // 5. Set up the Region 0 page table (i.e., the kernel's page table). Halt upon error.
-    pte_t *kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
+    kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (kernel_pt == NULL) {
         TracePrintf(1, "Calloc for kernel_pt failed!\n");
         Halt();
