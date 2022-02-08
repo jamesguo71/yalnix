@@ -315,7 +315,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     idlePCB->uctxt     = uctxt;
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    idlePCB->pid       = helper_new_pid();
+    idlePCB->pid       = helper_new_pid(idlePCB->pt);
 
     // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
     //     stack, the max size of which is defined in hardware.h. Use the max stack size to
