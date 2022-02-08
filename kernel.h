@@ -3,9 +3,11 @@
 #include "hardware.h"
 #include "trap.h"
 #include "yalnix.h"
+#include "ykernel.h"
 
-#define KERNEL_BYTE_SIZE 8
+#define KERNEL_BYTE_SIZE           8
 #define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE
+
 
 /*
  * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
@@ -21,11 +23,6 @@ typedef struct lock {
     int  owner;     // which process currently owns the lock?
     int *waiting;   // which processes are waiting for the lock?
 } lock_t;
-
-
-//void *kernel_brk; // Current kernel brk
-
-extern pte_t *e_kernel_pt; // Kernel Page Table
 
 typedef struct pcb {
     int  pid;
@@ -75,6 +72,8 @@ extern int *e_tty_write_ready;
 extern cvar_t *e_cvars;
 extern lock_t *e_locks;
 extern pipe_t *e_pipes;
+
+extern pte_t *e_kernel_pt; // Kernel Page Table
 
 extern pcb_t *e_current;
 extern pcb_t *e_ready;
