@@ -92,45 +92,45 @@ int internal_Delay (int clock_ticks) {
  * \return             Number of bytes read on success, ERROR otherwise
  */
 int internal_TtyRead (int tty_id, void *buf, int len) {
-    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
-    //    id is valid (2) that buffer is not NULL and (3) length is positive.
-    if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
+    // //    id is valid (2) that buffer is not NULL and (3) length is positive.
+    // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
+    //     return ERROR;
+    // }
 
-    // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
-    //    memory region 0). I assume that means I should find space and copy the contents
-    //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
-    g_tty_read_buf[tty_id] = (void *) internal_malloc(len);
+    // // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
+    // //    memory region 0). I assume that means I should find space and copy the contents
+    // //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
+    // g_tty_read_buf[tty_id] = (void *) internal_malloc(len);
 
-    // 3. Write to the terminal specified by tty_id using the special hardware "operation"
-    //    TtyTransmit. TODO: The guide states that this function returns immediately but
-    //    will generate a trap when the write completes. What do I do here to "wait" for
-    //    the trap? Do I need some sort of global variable that I "spin" on that gets
-    //    reset in the trap handler?
-    void *kbuf = g_tty_read_buf[tty_id];
-    while (1) {
+    // // 3. Write to the terminal specified by tty_id using the special hardware "operation"
+    // //    TtyTransmit. TODO: The guide states that this function returns immediately but
+    // //    will generate a trap when the write completes. What do I do here to "wait" for
+    // //    the trap? Do I need some sort of global variable that I "spin" on that gets
+    // //    reset in the trap handler?
+    // void *kbuf = g_tty_read_buf[tty_id];
+    // while (1) {
 
-        // wait for the read this way?
-        while (!g_tty_read_ready[tty_id]);
+    //     // wait for the read this way?
+    //     while (!g_tty_read_ready[tty_id]);
 
-        if (len > TERMINAL_MAX_LINE) {
-            TtyReceive(tty_id,
-                       kbuf,
-                       TERMINAL_MAX_LINE);
-            kbuf += TERMINAL_MAX_LINE;
-            len  -= TERMINAL_MAX_LINE;
-        } else {
-            TtyReceive(tty_id,
-                       kbuf,
-                       len);
-            break;
-        }
-    }
+    //     if (len > TERMINAL_MAX_LINE) {
+    //         TtyReceive(tty_id,
+    //                    kbuf,
+    //                    TERMINAL_MAX_LINE);
+    //         kbuf += TERMINAL_MAX_LINE;
+    //         len  -= TERMINAL_MAX_LINE;
+    //     } else {
+    //         TtyReceive(tty_id,
+    //                    kbuf,
+    //                    len);
+    //         break;
+    //     }
+    // }
 
-    // Reset this so other processes can use terminal? Also, do I need variable to indicate
-    // this terminal is in use and other processes should not use it?
-    g_tty_read_ready[tty_id] = 1;
+    // // Reset this so other processes can use terminal? Also, do I need variable to indicate
+    // // this terminal is in use and other processes should not use it?
+    // g_tty_read_ready[tty_id] = 1;
     return 0;
 }
 
@@ -145,45 +145,45 @@ int internal_TtyRead (int tty_id, void *buf, int len) {
  * \return            Number of bytes written on success, ERROR otherwise
  */
 int internal_TtyWrite (int tty_id, void *buf, int len) {
-    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
-    //    id is valid (2) that buffer is not NULL and (3) length is positive.
-    if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
+    // //    id is valid (2) that buffer is not NULL and (3) length is positive.
+    // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
+    //     return ERROR;
+    // }
 
-    // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
-    //    memory region 0). I assume that means I should find space and copy the contents
-    //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
-    g_tty_write_buf[tty_id] = (void *) internal_malloc(len);
+    // // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
+    // //    memory region 0). I assume that means I should find space and copy the contents
+    // //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
+    // g_tty_write_buf[tty_id] = (void *) internal_malloc(len);
 
-    // 3. Write to the terminal specified by tty_id using the special hardware "operation"
-    //    TtyTransmit. TODO: The guide states that this function returns immediately but
-    //    will generate a trap when the write completes. What do I do here to "wait" for
-    //    the trap? Do I need some sort of global variable that I "spin" on that gets
-    //    reset in the trap handler?
-    void *kbuf = g_tty_write_buf[tty_id];
-    while (1) {
+    // // 3. Write to the terminal specified by tty_id using the special hardware "operation"
+    // //    TtyTransmit. TODO: The guide states that this function returns immediately but
+    // //    will generate a trap when the write completes. What do I do here to "wait" for
+    // //    the trap? Do I need some sort of global variable that I "spin" on that gets
+    // //    reset in the trap handler?
+    // void *kbuf = g_tty_write_buf[tty_id];
+    // while (1) {
 
-        // wait for the write this way?
-        while (!g_tty_write_ready[tty_id]);
+    //     // wait for the write this way?
+    //     while (!g_tty_write_ready[tty_id]);
 
-        if (len > TERMINAL_MAX_LINE) {
-            TtyTransmit(tty_id,
-                        kbuf,
-                        TERMINAL_MAX_LINE);
-            kbuf += TERMINAL_MAX_LINE;
-            len  -= TERMINAL_MAX_LINE;
-        } else {
-            TtyTransmit(tty_id,
-                        kbuf,
-                        len);
-            break;
-        }
-    }
+    //     if (len > TERMINAL_MAX_LINE) {
+    //         TtyTransmit(tty_id,
+    //                     kbuf,
+    //                     TERMINAL_MAX_LINE);
+    //         kbuf += TERMINAL_MAX_LINE;
+    //         len  -= TERMINAL_MAX_LINE;
+    //     } else {
+    //         TtyTransmit(tty_id,
+    //                     kbuf,
+    //                     len);
+    //         break;
+    //     }
+    // }
 
-    // Reset this so other processes can use terminal? Also, do I need variable to indicate
-    // this terminal is in use and other processes should not use it?
-    g_tty_write_ready[tty_id] = 1;
+    // // Reset this so other processes can use terminal? Also, do I need variable to indicate
+    // // this terminal is in use and other processes should not use it?
+    // g_tty_write_ready[tty_id] = 1;
     return 0;
 }
 
@@ -196,23 +196,23 @@ int internal_TtyWrite (int tty_id, void *buf, int len) {
  * \return               0 on success, ERROR otherwise
  */
 int internal_PipeInit (int *pipe_idp) {
-    // 1. Check arguments. Return ERROR if invalid.
-    if (!pipe_idp) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid.
+    // if (!pipe_idp) {
+    //     return ERROR;
+    // }
 
-    // 2. Initialize a new pipe structure
-    pipe_t *newpipe = (pipe_t *) internal_malloc(sizeof(pipe_t));
-    newpipe->id     = g_pipes_len++;
-    newpipe->plen   = 0;
-    newpipe->read   = 0;
-    newpipe->write  = 0;
-    newpipe->buf    = (void *) internal_malloc(PIPE_BUFFER_LEN); 
+    // // 2. Initialize a new pipe structure
+    // pipe_t *newpipe = (pipe_t *) internal_malloc(sizeof(pipe_t));
+    // newpipe->id     = g_pipes_len++;
+    // newpipe->plen   = 0;
+    // newpipe->read   = 0;
+    // newpipe->write  = 0;
+    // newpipe->buf    = (void *) internal_malloc(PIPE_BUFFER_LEN); 
 
-    // 3. Add new pipe to our global pipe array/table/structure to keep track
+    // // 3. Add new pipe to our global pipe array/table/structure to keep track
 
-    // 4. Save the pipe id to the output variable
-    *pipe_idp = newpipe->id;
+    // // 4. Save the pipe id to the output variable
+    // *pipe_idp = newpipe->id;
     return 0;
 }
 
@@ -227,37 +227,37 @@ int internal_PipeInit (int *pipe_idp) {
  * \return              Number of bytes read on success, ERROR otherwise
  */
 int internal_PipeRead (int pipe_id, void *buf, int len) {
-    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
-    //    valid (2) that the buffer is not NULL and (3) that len is not negative.
-    if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
+    // //    valid (2) that the buffer is not NULL and (3) that len is not negative.
+    // if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
+    //     return ERROR;
+    // }
 
-    // 2. Check to see if pipe is empty. If so, block. TODO: How?
-    pipe_t *pipe = g_pipes[pipe_id];
-    if (pipe->plen == 0) {
-        // block the calling process
-    }
+    // // 2. Check to see if pipe is empty. If so, block. TODO: How?
+    // pipe_t *pipe = g_pipes[pipe_id];
+    // if (pipe->plen == 0) {
+    //     // block the calling process
+    // }
 
-    // 3. If plen <= len, give the caller all the bytes in the pipe.
-    //    Otherwise, return them len bytes.
-    int read = len;
-    if (pipe->plen <= len) {
-        read = pipe->plen;
-    }
+    // // 3. If plen <= len, give the caller all the bytes in the pipe.
+    // //    Otherwise, return them len bytes.
+    // int read = len;
+    // if (pipe->plen <= len) {
+    //     read = pipe->plen;
+    // }
 
-    // 4. Treat pipe internal buffer as a circular queue. Use the start variable and
-    //    pipe length to calculate correct index. Copy bytes to output array. TODO:
-    //    I dont know if this calculation is correct now that I realize we have to
-    //    track where to read and where to write.
-    for (int i = 0; i < read; i++) {
-        int index = (pipe->read + i) % PIPE_BUFFER_LEN;
-        buf[i] = pipe->[index];
-    }
+    // // 4. Treat pipe internal buffer as a circular queue. Use the start variable and
+    // //    pipe length to calculate correct index. Copy bytes to output array. TODO:
+    // //    I dont know if this calculation is correct now that I realize we have to
+    // //    track where to read and where to write.
+    // for (int i = 0; i < read; i++) {
+    //     int index = (pipe->read + i) % PIPE_BUFFER_LEN;
+    //     buf[i] = pipe->[index];
+    // }
 
-    // 5. Update pipe queue start and length variables
-    pipe->read  = (pipe->read + read) % PIPE_BUFFER_LEN;
-    pipe->plen -= read;
+    // // 5. Update pipe queue start and length variables
+    // pipe->read  = (pipe->read + read) % PIPE_BUFFER_LEN;
+    // pipe->plen -= read;
     return 0;
 }
 
@@ -272,37 +272,37 @@ int internal_PipeRead (int pipe_id, void *buf, int len) {
  * \return             Number of bytes written on success, ERROR otherwise
  */
 int internal_PipeWrite (int pipe_id, void *buf, int len) {
-    // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
-    //    valid (2) that the buffer is not NULL and (3) that len is not negative.
-    if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
+    // //    valid (2) that the buffer is not NULL and (3) that len is not negative.
+    // if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
+    //     return ERROR;
+    // }
 
-    // 2. Check to see if pipe is empty. If so, block. TODO: How?
-    pipe_t *pipe = g_pipes[pipe_id];
-    if (pipe->plen == 0) {
-        // block the calling process
-    }
+    // // 2. Check to see if pipe is empty. If so, block. TODO: How?
+    // pipe_t *pipe = g_pipes[pipe_id];
+    // if (pipe->plen == 0) {
+    //     // block the calling process
+    // }
 
-    // 3. If plen <= len, give the caller all the bytes in the pipe.
-    //    Otherwise, return them len bytes.
-    int write = len;
-    if (pipe->plen <= len) {
-        write = pipe->plen;
-    }
+    // // 3. If plen <= len, give the caller all the bytes in the pipe.
+    // //    Otherwise, return them len bytes.
+    // int write = len;
+    // if (pipe->plen <= len) {
+    //     write = pipe->plen;
+    // }
 
-    // 4. Treat pipe internal buffer as a circular queue. Use the end variable and
-    //    pipe length to calculate correct index. Copy bytes to pipe buffer. TODO:
-    //    I dont know if this calculation is correct now that I realize we have to
-    //    track where to read and where to write.
-    for (int i = 0; i < write; i++) {
-        int index = (pipe->write + i) % PIPE_BUFFER_LEN;
-        pipe->[index] = buf[i];
-    }
+    // // 4. Treat pipe internal buffer as a circular queue. Use the end variable and
+    // //    pipe length to calculate correct index. Copy bytes to pipe buffer. TODO:
+    // //    I dont know if this calculation is correct now that I realize we have to
+    // //    track where to read and where to write.
+    // for (int i = 0; i < write; i++) {
+    //     int index = (pipe->write + i) % PIPE_BUFFER_LEN;
+    //     pipe->[index] = buf[i];
+    // }
 
-    // 5. Update pipe queue end and length variables.
-    pipe->write  = (pipe->write + write) % PIPE_BUFFER_LEN;
-    pipe->plen  += write;
+    // // 5. Update pipe queue end and length variables.
+    // pipe->write  = (pipe->write + write) % PIPE_BUFFER_LEN;
+    // pipe->plen  += write;
     return 0;
 }
 
@@ -315,21 +315,21 @@ int internal_PipeWrite (int pipe_id, void *buf, int len) {
  * \return               0 on success, ERROR otherwise
  */
 int internal_LockInit (int *lock_idp) {
-    // 1. Check arguments. Return ERROR if invalid.
-    if (!lock_idp) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid.
+    // if (!lock_idp) {
+    //     return ERROR;
+    // }
 
-    // 2. Initialize a new lock structure
-    lock_t *newlock  = (lock_t *) internal_malloc(sizeof(lock_t));
-    newlock->id      = g_locks_len++;
-    newlock->owner   = 0;
-    newlock->waiting = NULL;
+    // // 2. Initialize a new lock structure
+    // lock_t *newlock  = (lock_t *) internal_malloc(sizeof(lock_t));
+    // newlock->id      = g_locks_len++;
+    // newlock->owner   = 0;
+    // newlock->waiting = NULL;
 
-    // 3. Add new lock to our global locks array/table/structure to keep track
+    // // 3. Add new lock to our global locks array/table/structure to keep track
 
-    // 4. Save the lock id to the output variable
-    *lock_idp = newlock->id;
+    // // 4. Save the lock id to the output variable
+    // *lock_idp = newlock->id;
     return 0;
 }
 
@@ -342,22 +342,22 @@ int internal_LockInit (int *lock_idp) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Acquire (int lock_id) {
-    // 1. Check arguments. Return ERROR if invalid. The lock id should
-    //    be within 0 and the total number of initialized locks.
-    if (lock_id < 0 || lock_id > g_locks_len) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. The lock id should
+    // //    be within 0 and the total number of initialized locks.
+    // if (lock_id < 0 || lock_id > g_locks_len) {
+    //     return ERROR;
+    // }
 
-    // 2. Check to see if the lock is already owned. If so, add the
-    //    current process to the waiting queue and return ERROR.
-    lock_t *lock = g_locks[lock_id];
-    if (lock->owner) {
-        lock->waiting = g_current->pid;
-        return ERROR;
-    }
+    // // 2. Check to see if the lock is already owned. If so, add the
+    // //    current process to the waiting queue and return ERROR.
+    // lock_t *lock = g_locks[lock_id];
+    // if (lock->owner) {
+    //     lock->waiting = g_current->pid;
+    //     return ERROR;
+    // }
 
-    // 3. Mark the current process as the owner of the lock
-    lock->owner = g_current->pid;
+    // // 3. Mark the current process as the owner of the lock
+    // lock->owner = g_current->pid;
     return 0;
 }
 
@@ -370,21 +370,21 @@ int internal_Acquire (int lock_id) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Release (int lock_id) {
-    // 1. Check arguments. Return ERROR if invalid. The lock id should
-    //    be within 0 and the total number of initialized locks.
-    if (lock_id < 0 || lock_id > g_locks_len) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. The lock id should
+    // //    be within 0 and the total number of initialized locks.
+    // if (lock_id < 0 || lock_id > g_locks_len) {
+    //     return ERROR;
+    // }
 
-    // 2. Check to see that the current process actually owns the lock.
-    //    If not, do nothing and return ERROR.
-    lock_t *lock = g_locks[lock_id];
-    if (lock->owner != g_current->pid) {
-        return ERROR;
-    }
+    // // 2. Check to see that the current process actually owns the lock.
+    // //    If not, do nothing and return ERROR.
+    // lock_t *lock = g_locks[lock_id];
+    // if (lock->owner != g_current->pid) {
+    //     return ERROR;
+    // }
 
-    // 3. Mark the lock as free (use 0 to indicate free and PID as taken)
-    lock->owner = 0;
+    // // 3. Mark the lock as free (use 0 to indicate free and PID as taken)
+    // lock->owner = 0;
     return 0;
 }
 
@@ -397,20 +397,20 @@ int internal_Release (int lock_id) {
  * \return               0 on success, ERROR otherwise
  */
 int internal_CvarInit (int *cvar_idp) {
-    // 1. Check arguments. Return ERROR if invalid.
-    if (!cvar_idp) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid.
+    // if (!cvar_idp) {
+    //     return ERROR;
+    // }
 
-    // 2. Initialize a new lock structure
-    cvar_t *newcvar  = (cvar_t *) internal_malloc(sizeof(cvar_t));
-    newcvar->id      = g_cvars_len++;
-    newlock->waiting = NULL;
+    // // 2. Initialize a new lock structure
+    // cvar_t *newcvar  = (cvar_t *) internal_malloc(sizeof(cvar_t));
+    // newcvar->id      = g_cvars_len++;
+    // newlock->waiting = NULL;
 
-    // 3. Add new cvar to our global cvar array/table/structure to keep track
+    // // 3. Add new cvar to our global cvar array/table/structure to keep track
 
-    // 4. Save the lock id to the output variable
-    *cvar_idp = newcvar->id;
+    // // 4. Save the lock id to the output variable
+    // *cvar_idp = newcvar->id;
     return 0;
 }
 
@@ -423,11 +423,11 @@ int internal_CvarInit (int *cvar_idp) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_CvarSignal (int cvar_id) {
-    // 1. Check arguments. Return ERROR if invalid. The cvar id should
-    //    be within 0 and the total number of initialized cvars.
-    if (cvar_id < 0 || cvar_id > g_cvars_len) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return ERROR if invalid. The cvar id should
+    // //    be within 0 and the total number of initialized cvars.
+    // if (cvar_id < 0 || cvar_id > g_cvars_len) {
+    //     return ERROR;
+    // }
     return 0;
 
     // 2. Signal the first waiting process for the cvar indicated by cvar_id.

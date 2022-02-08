@@ -192,14 +192,14 @@ int trap_math(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_tty_receive(UserContext *context) {
-    // 1. Check arguments. Return error if invalid.
-    if (!context) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return error if invalid.
+    // if (!context) {
+    //     return ERROR;
+    // }
 
-    // 2. Page 25. states that this gets called once there is input ready for a given tty device.
-    //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
-    g_tty_read_ready[context->code] = 1;
+    // // 2. Page 25. states that this gets called once there is input ready for a given tty device.
+    // //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
+    // g_tty_read_ready[context->code] = 1;
     return 0;
 }
 
@@ -213,21 +213,21 @@ int trap_tty_receive(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_tty_transmit(UserContext *context) {
-    // 1. Check arguments. Return error if invalid.
-    if (!context) {
-        return ERROR;
-    }
+    // // 1. Check arguments. Return error if invalid.
+    // if (!context) {
+    //     return ERROR;
+    // }
 
-    // 2. From my understanding, the steps leading up to this handler getting called are:
-    //        - process calls TtyWrite
-    //        - TtyWrite calls internal_TtyWrite
-    //        - internal_TtyWrite calls TtyTransmit
-    //        - TtyTransmit generates a trap when finishes which calls this function
-    //
-    //    At this point, I need to somehow unblock the process and indicate that its write
-    //    has finished so that (1) the process can move on or (2) the internal_TtyWrite can
-    //    write more if there are bytes remaining in buf. How do I do this?
-    g_tty_write_ready[context->code] = 1;
+    // // 2. From my understanding, the steps leading up to this handler getting called are:
+    // //        - process calls TtyWrite
+    // //        - TtyWrite calls internal_TtyWrite
+    // //        - internal_TtyWrite calls TtyTransmit
+    // //        - TtyTransmit generates a trap when finishes which calls this function
+    // //
+    // //    At this point, I need to somehow unblock the process and indicate that its write
+    // //    has finished so that (1) the process can move on or (2) the internal_TtyWrite can
+    // //    write more if there are bytes remaining in buf. How do I do this?
+    // g_tty_write_ready[context->code] = 1;
     return 0;
 }
 
