@@ -252,7 +252,74 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         Halt();
     }
 
-    // 10. Find a free frame for the dummy idle process' stack.
+    // 10. Initialize a pcb struct to track information for our dummy idle process.
+    //
+    //     TODO: We will have to add this to some global array so that the pcb can be
+    //           accessed and used during interrupts and syscalls.
+    pcb_t *idlePCB = malloc(sizeof(pcb_t));
+    if (idlePCB == NULL) {
+        TracePrintf(1, "Malloc for idlePCB failed!\n");
+    }
+    idlePCB->pt = user_pt;
+
+    // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
+    //     stack, the max size of which is defined in hardware.h. Use the max stack size to
+    //     calculate how many frames are needed. Then, initialize the process' kernel stack
+    //     page table, configure its page entries, and mark the corresponding frames as in use.
+    int n_ks_frames = KERNEL_STACK_MAXSIZE / PAGESIZE;
+    idlePCB->ks_frames = (pte_t *) calloc(n_ks_frames, sizeof(pte_t));
+    if (idlePCB->ks_frames == NULL) {
+        TracePrintf(1, "Calloc for idlePCB->ks_frames failed!\n");
+    }
+
+    int ks_stack_start = KERNEL_STACK_BASE >> PAGESHIFT;
+    for (int i = 0; i < n_ks_frames; i++) {
+        SetPTE(idlePCB->ks_frames,        // page table pointer
+               i,                         // page number
+               1,                         // valid bit
+               PROT_READ | PROT_WRITE,    // page protection bits
+               i + ks_stack_start);       // frame number
+
+        SetFrame(g_frames,                // frame bit vector pointer
+                 i + ks_stack_start);     // frame number
+    }
+    memcpy(&kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
+
+    // 12. Initialize the user context struct for our dummy idle process. Set the program counter
+    //     to point to our DoIdle function, and the stack pointer to the end of region 1 (i.e., to
+    //     the top of the stack region we setup in step 12).
+    idlePCB->uctxt = malloc(sizeof(UserContext));
+    if (idlePCB->uctxt == NULL) {
+        TracePrintf(1, "Malloc for UserContext failed!\n");
+    }
+    memcpy(idlePCB->uctxt, uctxt, sizeof(UserContext));
+    idlePCB->uctxt->pc = DoIdle;
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT;
+    // idlePCB->pid = helper_new_pid();
+    idlePCB->pid = 0;
+
+    // 13. Tell the CPU where to find our dummy idle's page table and how large it is
+    WriteRegister(REG_PTBR1,       (unsigned int) user_pt);
+    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);
+    WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);
+
+    // 14. Initialize the page table and frame bit vector entries for the kernel's heap.
+    //     Since we have been using frames sequentially for the kernel text and data, then
+    //     the start frame for the kernel heap is num_of_text_pages + num_of_data_pages.
+    int n_kernel_heap_pages = (e_kernel_curr_brk - _kernel_data_end) / PAGESIZE;
+    int kernel_heap_start   = n_kernel_text_pages + n_kernel_data_pages;
+    for (int i = 0; i < n_kernel_heap_pages; i++) {
+        SetPTE(kernel_pt,                   // page table pointer
+               i + kernel_heap_start,       // page number
+               1,                           // valid bit
+               PROT_READ | PROT_WRITE,      // page protection bits
+               i + kernel_heap_start);      // frame number
+        
+        SetFrame(g_frames,                  // frame bit vector pointer
+                 i + kernel_heap_start);    // frame number
+    }
+
+    // 15. Find a free frame for the dummy idle process' stack.
     //
     // TODO: IS IT OKAY TO USE THE FRAME ABOVE KERNEL STACK FOR THE FIRST PROCESS'S USER STACK Page?
     //
@@ -276,73 +343,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     
     SetFrame(g_frames,                // frame bit vector pointer
              userstack_frame);        // frame number
-
-    // 11. Initialize a pcb struct to track information for our dummy idle process.
-    //
-    //     TODO: We will have to add this to some global array so that the pcb can be
-    //           accessed and used during interrupts and syscalls.
-    pcb_t *idlePCB = malloc(sizeof(pcb_t));
-    if (idlePCB == NULL) {
-        TracePrintf(1, "Malloc for idlePCB failed!\n");
-    }
-    idlePCB->pt = user_pt;
-
-    // 12. Initialize the kernel stack for the dummy idle process. Every process has a kernel
-    //     stack, the max size of which is defined in hardware.h. Use the max stack size to
-    //     calculate how many frames are needed. Then, initialize the process' kernel stack
-    //     page table, configure its page entries, and mark the corresponding frames as in use.
-    int n_ks_frames = KERNEL_STACK_MAXSIZE / PAGESIZE;
-    idlePCB->ks_frames = (pte_t *) calloc(n_ks_frames, sizeof(pte_t));
-    if (idlePCB->ks_frames == NULL) {
-        TracePrintf(1, "Calloc for idlePCB->ks_frames failed!\n");
-    }
-
-    int ks_stack_start = KERNEL_STACK_BASE >> PAGESHIFT;
-    for (int i = 0; i < n_ks_frames; i++) {
-        SetPTE(idlePCB->ks_frames,        // page table pointer
-               i,                         // page number
-               1,                         // valid bit
-               PROT_READ | PROT_WRITE,    // page protection bits
-               i + ks_stack_start);       // frame number
-
-        SetFrame(g_frames,                // frame bit vector pointer
-                 i + ks_stack_start);     // frame number
-    }
-    memcpy(&kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
-
-    // 13. Initialize the user context struct for our dummy idle process. Set the program counter
-    //     to point to our DoIdle function, and the stack pointer to the end of region 1 (i.e., to
-    //     the top of the stack region we setup in step 12).
-    idlePCB->uctxt = malloc(sizeof(UserContext));
-    if (idlePCB->uctxt == NULL) {
-        TracePrintf(1, "Malloc for UserContext failed!\n");
-    }
-    memcpy(idlePCB->uctxt, uctxt, sizeof(UserContext));
-    idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT;
-    // idlePCB->pid = helper_new_pid();
-    idlePCB->pid = 0;
-
-    // 14. Tell the CPU where to find our dummy idle's page table and how large it is
-    WriteRegister(REG_PTBR1,       (unsigned int) user_pt);
-    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);
-    WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);
-
-    // 15. Initialize the page table and frame bit vector entries for the kernel's heap.
-    //     Since we have been using frames sequentially for the kernel text and data, then
-    //     the start frame for the kernel heap is num_of_text_pages + num_of_data_pages.
-    int n_kernel_heap_pages = (e_kernel_curr_brk - _kernel_data_end) / PAGESIZE;
-    int kernel_heap_start   = n_kernel_text_pages + n_kernel_data_pages;
-    for (int i = 0; i < n_kernel_heap_pages; i++) {
-        SetPTE(kernel_pt,                   // page table pointer
-               i + kernel_heap_start,       // page number
-               1,                           // valid bit
-               PROT_READ | PROT_WRITE,      // page protection bits
-               i + kernel_heap_start);      // frame number
-        
-        SetFrame(g_frames,                  // frame bit vector pointer
-                 i + kernel_heap_start);    // frame number
-    }
 
     // 16. Enable virtual memory!
     g_virtual_memory = 1;
