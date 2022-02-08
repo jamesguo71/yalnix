@@ -194,8 +194,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     if (g_num_frames % 8) {
         frames_len++;
     }
-    TracePrintf(1, "[KernelStart] g_num_frames:             %d\n", g_num_frames);
-    TracePrintf(1, "[KernelStart] frames_len:               %d\n", frames_len);
+    TracePrintf(1, "[KernelStart] g_num_frames:                %d\n", g_num_frames);
+    TracePrintf(1, "[KernelStart] frames_len:                  %d\n", frames_len);
 
     // 4. Allocate space for our frames bit vector. Use calloc to ensure that the memory is
     //    zero'd out (i.e., that every frame is currently marked as free). Halt upon error.
@@ -204,7 +204,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for g_frames failed!\n");
         Halt();
     }
-    TracePrintf(1, "[KernelStart] g_frames:                 %p\n", g_frames);
+    TracePrintf(1, "[KernelStart] g_frames:                    %p\n", g_frames);
 
     // 5. Allocate space for Region 0 page table (i.e., the kernel's page table). Halt upon error.
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
@@ -212,7 +212,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
     }
-    TracePrintf(1, "[KernelStart] e_kernel_pt:              %p\n", e_kernel_pt);
+    TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
 
     // 6. Allocate space for Region 1 page table (i.e., the dummy idle process). Halt upon error.
     pte_t *user_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
@@ -220,26 +220,29 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         TracePrintf(1, "Calloc for user_pt failed!\n");
         Halt();
     }
-    TracePrintf(1, "[KernelStart] user_pt:                  %p\n", user_pt);
+    TracePrintf(1, "[KernelStart] user_pt:                     %p\n", user_pt);
 
-    // 7. Initialize a pcb struct to track information for our dummy idle process.
+    // 7. Allocate space for the PCB of our dummy idle process. Halt upon error.
     //
     //     TODO: We will have to add this to some global array so that the pcb can be
     //           accessed and used during interrupts and syscalls.
     pcb_t *idlePCB = (pcb_t *) malloc(sizeof(pcb_t));
     if (idlePCB == NULL) {
-        TracePrintf(1, "Malloc for idlePCB failed!\n");
+        TracePrintf(1, "[KernelStart] Malloc for idlePCB failed!\n");
+        Halt();
     }
 
-    // 8. Configure the pcb for our dummy idle process. Use the UserContext passed in by the build
-    //    system, but change its program counter so that it starts executing at DoIdle. Addi
-    idlePCB->pt        = user_pt;
-    idlePCB->uctxt     = uctxt;
-    idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - 1;
-    idlePCB->pid       = 0;
+    // 8. Allocate space for the kernel stack page table of our dummy idle process. Halt upon error.
+    idlePCB->ks_frames = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
+    if (!idlePCB->ks_frames) {
+        TracePrintf(1, "[KernelStart] Calloc for idlePCB kernel stack failed!\n");
+        Halt();
+    }
 
-    // 9. Calculate the number of pages being used to store the kernel text, which begins at the
+    // 9. Now that we have finished all of our dynamic memory allocation, we can configure the
+    //    kernel's page table (previously, it may have changed due to malloc changing the brk).
+    //     
+    //    Calculate the number of pages being used to store the kernel text, which begins at the
     //    start of physical memory and goes up to the beginning of the kernel data region. Since
     //    the kernel text, data, and heap are laid out sequentially in *physical* memory, their
     //    virtual addresses will be exactly the same (i.e., frame and page numbers are the same).
@@ -251,8 +254,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //    Configure the page table entries for the text pages with read and execute permissions
     //    (as text contains code), and mark the corresponding physical frames as in use.
     int kernel_text_end_page_num = ((int ) _kernel_data_start) >> PAGESHIFT;
-    // int kernel_text_num_pages    = kernel_text_end_page_num;
-    // for(int i = 0; i < kernel_text_num_pages; i++) {
     for(int i = 0; i < kernel_text_end_page_num; i++) {
         SetPTE(e_kernel_pt,              // page table pointer
                i,                        // page number
@@ -264,81 +265,73 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
                  i);                     // frame number
 
     }
+    TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
 
     // 10. Calculate the number of pages being used to store the kernel data. Again, since the
     //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
     //
-    //     Figure out the page number of the last page in the data region (same process as above)
-    //     then subtract the last text page num to get how many pages are in the data region.
-    //
     //     Configure the page table entries for the data pages with read and write permissions,
     //     and mark the corresponding physical frames as taken. The data section is above text,
-    //     so offset the page/frame numbers by the number of text pages for the correct index.
+    //     so offset the page/frame numbers by the last text page number.
     int kernel_data_end_page_num = ((int ) _kernel_data_end) >> PAGESHIFT;
-    // int kernel_data_num_pages    = kernel_data_end_page_num - kernel_text_end_page_num;
-    // for (int i = 0; i < kernel_data_num_pages; i++) {
     for (int i = kernel_text_end_page_num; i < kernel_data_end_page_num; i++) {
-        SetPTE(e_kernel_pt,                     // page table pointer
-               // i + kernel_text_end_page_num,    // page number
-               i,                               // page number
-               1,                               // valid bit
-               PROT_READ | PROT_WRITE,          // page protection bits
-               // i + kernel_text_end_page_num);   // frame number
-               i);                              // frame number
+        SetPTE(e_kernel_pt,               // page table pointer
+               i,                         // page number
+               1,                         // valid bit
+               PROT_READ | PROT_WRITE,    // page protection bits
+               i);                        // frame number
         
-        SetFrame(g_frames,                      // frame bit vector pointer
-                 // i + kernel_text_end_page_num); // frame number
-                 i);                            // frame number
+        SetFrame(g_frames,                // frame bit vector pointer
+                 i);                      // frame number
     }
+    TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
 
-    // 11. Initialize the page table and frame bit vector entries for the kernel's heap.
-    //     Since we have been using frames sequentially for the kernel text and data, then
-    //     the start frame for the kernel heap is num_of_text_pages + num_of_data_pages.
+    // 11. Calculate the number of pages being used to store the kernel heap. Again, since the
+    //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
+    //
+    //     Configure the page table entries for the heap pages with read and write permissions,
+    //     and mark the corresponding physical frames as taken. The heap section is above data,
+    //     so offset the page/frame numbers by the last data page number.
     int kernel_heap_end_page_num = ((int ) e_kernel_curr_brk) >> PAGESHIFT;
-    // int kernel_heap_num_pages    = kernel_heap_end_page_num - kernel_data_end_page_num;
-    // for (int i = 0; i < kernel_heap_num_pages; i++) {
     for (int i = kernel_data_end_page_num; i < kernel_heap_end_page_num; i++) {
-        SetPTE(e_kernel_pt,                     // page table pointer
-               // i + kernel_data_end_page_num,    // page number
-               i,                               // page number
-               1,                               // valid bit
-               PROT_READ | PROT_WRITE,          // page protection bits
-               // i + kernel_data_end_page_num);   // frame number
-               i);                              // frame number
+        SetPTE(e_kernel_pt,               // page table pointer
+               i,                         // page number
+               1,                         // valid bit
+               PROT_READ | PROT_WRITE,    // page protection bits
+               i);                        // frame number
         
-        SetFrame(g_frames,                      // frame bit vector pointer
-                 // i + kernel_data_end_page_num); // frame number
-                 i);                            // frame number
+        SetFrame(g_frames,                // frame bit vector pointer
+                 i);                      // frame number
     }
-    // TracePrintf(1, "[KernelStart] kernel_text_num_pages:    %d\n", kernel_text_num_pages);
-    // TracePrintf(1, "[KernelStart] kernel_data_num_pages:    %d\n", kernel_data_num_pages);
-    // TracePrintf(1, "[KernelStart] kernel_heap_num_pages:    %d\n", kernel_heap_num_pages);
-    TracePrintf(1, "[KernelStart] kernel_text_end_page_num: %d\n", kernel_text_end_page_num);
-    TracePrintf(1, "[KernelStart] kernel_data_end_page_num: %d\n", kernel_data_end_page_num);
-    TracePrintf(1, "[KernelStart] kernel_heap_end_page_num: %d\n", kernel_heap_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
 
-    // 12. Initialize the kernel stack for the dummy idle process. Every process has a kernel
+    // 12. Configure the pcb for our dummy idle process. Use the UserContext passed in by the build
+    //     system, but change its program counter so that it starts executing at DoIdle. Then, set
+    //     the stack pointer to point to the last byte of Region 1; recall that the stack grows
+    //     *downwards*, which is why we point it to the end of a page.
+    idlePCB->pt        = user_pt;
+    idlePCB->uctxt     = uctxt;
+    idlePCB->uctxt->pc = DoIdle;
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - 1;
+    idlePCB->pid       = 0;
+
+    // 11. Initialize the kernel stack for the dummy idle process. Every process has a kernel
     //     stack, the max size of which is defined in hardware.h. Use the max stack size to
     //     calculate how many frames are needed. Then, initialize the process' kernel stack
     //     page table, configure its page entries, and mark the corresponding frames as in use.
-    int n_ks_frames = KERNEL_STACK_MAXSIZE / PAGESIZE;
-    idlePCB->ks_frames = (pte_t *) calloc(n_ks_frames, sizeof(pte_t));
-    if (idlePCB->ks_frames == NULL) {
-        TracePrintf(1, "Calloc for idlePCB->ks_frames failed!\n");
-    }
-
-    int ks_stack_start = KERNEL_STACK_BASE >> PAGESHIFT;
-    for (int i = 0; i < n_ks_frames; i++) {
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         SetPTE(idlePCB->ks_frames,        // page table pointer
                i,                         // page number
                1,                         // valid bit
                PROT_READ | PROT_WRITE,    // page protection bits
-               i + ks_stack_start);       // frame number
+               i + kernel_stack_start_page_num);       // frame number
 
         SetFrame(g_frames,                // frame bit vector pointer
-                 i + ks_stack_start);     // frame number
+                 i + kernel_stack_start_page_num);     // frame number
     }
-    memcpy(&e_kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
+    TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
+    //memcpy(&e_kernel_pt[KERNEL_STACK_BASE >> PAGESHIFT], idlePCB->ks_frames, n_ks_frames * sizeof(pte_t));
 
     // 13. Find a free frame for the dummy idle process' stack.
     //
@@ -350,21 +343,23 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     //       above the kernel stack, maybe we should just call our FindFreeFrame function---it may
     //       return a frame within region 0 or it may return a frame in region 1 if we have enough
     //       physical memory for it. Does that make sense?
-    int userstack_page  = ((int ) idlePCB->uctxt->sp) >> PAGESHIFT;
-    int userstack_frame = FindFreeFrame();
-    if (userstack_frame == ERROR) {
+    int user_stack_page_num  = ((int ) idlePCB->uctxt->sp) >> PAGESHIFT;
+    int user_stack_frame_num = FindFreeFrame();
+    if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
         Halt();
     }
 
     SetPTE(user_pt,                   // page table pointer
-           userstack_page,            // page number
+           user_stack_page_num,           // page number
            1,                         // valid bit
            PROT_READ | PROT_WRITE,    // page protection bits
-           userstack_frame);          // frame number
+           user_stack_frame_num);          // frame number
     
     SetFrame(g_frames,                // frame bit vector pointer
-             userstack_frame);        // frame number
+             user_stack_frame_num);        // frame number
+    TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
+    TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
 
     // 14. Tell the CPU where to find our kernel's page table and how large it is
     WriteRegister(REG_PTBR0, (unsigned int) e_kernel_pt);
@@ -379,7 +374,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     WriteRegister(REG_VM_ENABLE, 1);
     g_virtual_memory = 1;
 
-    // Make sure that when you return to user mode at the end of KernelStart, you return to this modified UserContext.
+    // Make sure that when you return to user mode at the end of KernelStart, you return to
+    // this modified UserContext.
     // ASSUMPTION: we can return to the modified UserContext by overriding the given uctxt
     // memcpy(uctxt, idlePCB->uctxt, sizeof(UserContext));
 
