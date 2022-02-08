@@ -1,5 +1,6 @@
 #include "trap.h"
 #include "hardware.h"
+#include "syscall.h"
 #include "yalnix.h"
 #include "ylib.h"
 
