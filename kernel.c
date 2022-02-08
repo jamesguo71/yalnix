@@ -569,7 +569,7 @@ static int PTESet(pte_t *pt, int page_num, int prot, int pfn) {
 
     // 3. Check that our frame number is valid. If not, print message and return error.
     if (pfn < 0 || pfn >= g_num_frames) {
-        TracePrintf(1, "[PTESet] Invalid frame number: %d\n", frame_num);
+        TracePrintf(1, "[PTESet] Invalid frame number: %d\n", page_num);
         return ERROR;
     }
 
