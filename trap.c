@@ -156,7 +156,8 @@ int trap_clock(UserContext *context) {
     if (!context) {
         return ERROR;
     }
-    TracePrintf(1, "[trap_clock] context->sp: %p\te_current->sp: %p\n", context->sp, e_current->sp);
+    // TracePrintf(1, "[trap_clock] context->sp: %p\te_current->sp: %p\n", context->sp, e_current->sp);
+    TracePrintf(1, "[trap_clock] context->sp: %p\n", context->sp);
     return 0;
 }
 
