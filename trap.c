@@ -1,6 +1,7 @@
-#include "trap.h"
 #include "hardware.h"
+#include "kernel.h"
 #include "syscall.h"
+#include "trap.h"
 #include "yalnix.h"
 #include "ylib.h"
 
@@ -156,8 +157,8 @@ int trap_clock(UserContext *context) {
     if (!context) {
         return ERROR;
     }
-    // TracePrintf(1, "[trap_clock] context->sp: %p\te_current->sp: %p\n", context->sp, e_current->sp);
-    TracePrintf(1, "[trap_clock] context->sp: %p\n", context->sp);
+    TracePrintf(1, "[trap_clock] context->sp: %p\te_current->sp: %p\n", context->sp, e_current->uctxt->sp);
+//    TracePrintf(1, "[trap_clock] context->sp: %p\n", context->sp);
     return 0;
 }
 
