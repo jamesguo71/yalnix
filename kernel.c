@@ -107,8 +107,8 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //    Note that we have to do some casting magic here... First cast the void * addresses to
     //    long ints so that we may perform bit operations on them, then we can cast the result
     //    down to an integer as we do not need to top bytes.
-    int new_brk_page_num = (int) ((long int) _kernel_new_brk)   >> PAGESHIFT;
-    int cur_brk_page_num = (int) ((long int) e_kernel_curr_brk) >> PAGESHIFT;
+    int new_brk_page_num = ((int) _kernel_new_brk)   >> PAGESHIFT;
+    int cur_brk_page_num = ((int) e_kernel_curr_brk) >> PAGESHIFT;
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.
@@ -140,6 +140,7 @@ int SetKernelBrk(void *_kernel_new_brk) {
                    PROT_READ | PROT_WRITE,  // page protection bits
                    frame_num);              // frame number
             FrameSet(frame_num);
+            TracePrintf(1, "[SetKernelBrk] Mapping page: %d to frame: %d\n", cur_brk_page_num + i, frame_num);
         } else {
             // 6c. If we are shrinking the heap, then we need to unmap pages. Start by grabbing
             //     the number of the frame mapped to the current brk page. Free the frame.
@@ -151,10 +152,15 @@ int SetKernelBrk(void *_kernel_new_brk) {
 
             // 6d. Clear the page in the kernel's page table so it is no longer valid
             PTEClear(e_kernel_pt, cur_brk_page_num - i);
+            TracePrintf(1, "[SetKernelBrk] Unmapping page: %d from frame: %d\n", cur_brk_page_num - i, frame_num);
         }
     }
 
     // 7. Set the kernel brk to the new brk value and return success
+    TracePrintf(1, "[SetKernelBrk] new_brk_page_num:  %d\n", new_brk_page_num);
+    TracePrintf(1, "[SetKernelBrk] cur_brk_page_num:  %d\n", cur_brk_page_num);
+    TracePrintf(1, "[SetKernelBrk] _kernel_new_brk:   %p\n", _kernel_new_brk);
+    TracePrintf(1, "[SetKernelBrk] e_kernel_curr_brk: %p\n", e_kernel_curr_brk);
     e_kernel_curr_brk = _kernel_new_brk;
     return 0;
 }
@@ -376,6 +382,14 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
+
+    // 16. Let's test out SetKernelBrk with virtual memory enabled...
+    TracePrintf(1, "[KernelStart] Mallocing 1000 pcb structs for ready queue...\n");
+    e_ready = (pcb_t *) malloc(1000 * sizeof(pcb_t));
+
+    TracePrintf(1, "[KernelStart] e_ready: %p\n", e_ready);
+    TracePrintf(1, "[KernelStart] Freeing ready queue...\n");
+    free(e_ready);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
