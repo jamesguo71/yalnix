@@ -16,7 +16,6 @@ int trap_kernel(UserContext *context) {
     if (!context) {
         return ERROR;
     }
-    TracePrintf(1, "[trap_kernel] context->sp: %p\n", context->sp);
 
     // 2. Page. 36 of the manual states that the "code" field in UserContext will contain
     //    the number of the syscal (as defined in yalnix.h). Additionally, any arguments
@@ -26,93 +25,113 @@ int trap_kernel(UserContext *context) {
     u_long ret = 0;
     switch(context->code) {
         case YALNIX_FORK:
-            ret = internal_Fork();
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Fork();
+            // context->regs[0] = ret;
 
         case YALNIX_EXEC:
-            ret = internal_Exec((char *)  context->regs[0],
-                                (char **) context->regs[1]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Exec((char *)  context->regs[0],
+            //                     (char **) context->regs[1]);
+            // context->regs[0] = ret;
 
         case YALNIX_EXIT:
-            internal_Exit((int ) context->regs[0]);
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // internal_Exit((int ) context->regs[0]);
 
         case YALNIX_WAIT:
-            ret = internal_Wait((int *) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Wait((int *) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_GETPID:
-            ret = internal_GetPid();
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_GetPid();
+            // context->regs[0] = ret;
 
         case YALNIX_BRK:
-            ret = internal_Brk((void *) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Brk((void *) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_DELAY:
-            ret = internal_Delay((int ) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Delay((int ) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_TTY_READ:
-            ret = internal_TtyRead((int )   context->regs[0],
-                                   (void *) context->regs[1],
-                                   (int)    context->regs[2]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_TtyRead((int )   context->regs[0],
+            //                        (void *) context->regs[1],
+            //                        (int)    context->regs[2]);
+            // context->regs[0] = ret;
 
         case YALNIX_TTY_WRITE:
-            ret = internal_TtyWrite((int)    context->regs[0],
-                                    (void *) context->regs[1],
-                                    (int )   context->regs[2]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_TtyWrite((int)    context->regs[0],
+            //                         (void *) context->regs[1],
+            //                         (int )   context->regs[2]);
+            // context->regs[0] = ret;
 
         case YALNIX_PIPE_INIT:
-            ret = internal_PipeInit((int *) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_PipeInit((int *) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_PIPE_READ:
-            ret = internal_PipeRead((int)    context->regs[0],
-                                    (void *) context->regs[1],
-                                    (int)    context->regs[2]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_PipeRead((int)    context->regs[0],
+            //                         (void *) context->regs[1],
+            //                         (int)    context->regs[2]);
+            // context->regs[0] = ret;
 
         case YALNIX_PIPE_WRITE:
-            ret = internal_PipeWrite((int)    context->regs[0],
-                                     (void *) context->regs[1],
-                                     (int)    context->regs[2]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_PipeWrite((int)    context->regs[0],
+            //                          (void *) context->regs[1],
+            //                          (int)    context->regs[2]);
+            // context->regs[0] = ret;
 
         case YALNIX_LOCK_INIT:
-            ret = internal_LockInit((int *) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_LockInit((int *) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_LOCK_ACQUIRE:
-            ret = internal_Acquire((int ) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Acquire((int ) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_LOCK_RELEASE:
-            ret = internal_Release((int) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Release((int) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_CVAR_INIT:
-            ret = internal_CvarInit((int *) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_CvarInit((int *) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_CVAR_SIGNAL:
-            ret = internal_CvarSignal((int ) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_CvarSignal((int ) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_CVAR_BROADCAST:
-            ret = internal_CvarBroadcast((int ) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_CvarBroadcast((int ) context->regs[0]);
+            // context->regs[0] = ret;
 
         case YALNIX_CVAR_WAIT:
-            ret = internal_CvarWait((int ) context->regs[0],
-                                    context->regs[1]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_CvarWait((int ) context->regs[0],
+            //                         context->regs[1]);
+            // context->regs[0] = ret;
 
         case YALNIX_RECLAIM:
-            ret = internal_Reclaim((int ) context->regs[0]);
-            context->regs[0] = ret;
+            TracePrintf(1, "[trap_kernel] context->code: %x\n", context->code);
+            // ret = internal_Reclaim((int ) context->regs[0]);
+            // context->regs[0] = ret;
 
         default: break;
     }
