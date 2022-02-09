@@ -383,14 +383,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
 
-    // 16. Let's test out SetKernelBrk with virtual memory enabled...
-    TracePrintf(1, "[KernelStart] Mallocing 1000 pcb structs for ready queue...\n");
-    e_ready = (pcb_t *) malloc(1000 * sizeof(pcb_t));
-
-    TracePrintf(1, "[KernelStart] e_ready: %p\n", e_ready);
-    TracePrintf(1, "[KernelStart] Freeing ready queue...\n");
-    free(e_ready);
-
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
 
