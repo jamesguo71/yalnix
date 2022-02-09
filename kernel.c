@@ -69,13 +69,13 @@ static void DoIdle(void);
  * \return          0 on success, ERROR otherwise.
  */
 int SetKernelBrk(void *_kernel_new_brk) {
-    TracePrintf(1, "[SetKernelBrk] _kernel_new_brk: %p\n", _kernel_new_brk);
     // 1. Make sure the incoming address is not NULL and that it does
     //    not point below our heap boundary. If so, return ERROR.
     if (!_kernel_new_brk) {
         TracePrintf(1, "[SetKernelBrk] Error: proposed brk is NULL\n");
         return ERROR;
     }
+    TracePrintf(1, "[SetKernelBrk] _kernel_new_brk: %p\n", _kernel_new_brk);
 
     if (_kernel_new_brk <= _kernel_data_end) {
         TracePrintf(1, "[SetKernelBrk] Error: proposed brk is below heap base\n");
