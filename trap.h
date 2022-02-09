@@ -1,9 +1,6 @@
 #ifndef __TRAP_H
 #define __TRAP_H
 #include "hardware.h"
-#include "syscall.h"
-#include "yalnix.h"
-#include "ylib.h"
 
 
 /*!

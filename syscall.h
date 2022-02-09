@@ -1,7 +1,6 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
-#include "hardware.h"
-#include "yalnix.h"
+
 
 /*!
  * \desc    a

@@ -1,9 +1,6 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include "hardware.h"
-#include "trap.h"
-#include "yalnix.h"
-#include "ykernel.h"
 
 #define KERNEL_BYTE_SIZE           8
 #define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE

@@ -1,5 +1,5 @@
-#include "syscall.h"
 #include "hardware.h"
+#include "syscall.h"
 #include "yalnix.h"
 
 int internal_Fork (void) {
