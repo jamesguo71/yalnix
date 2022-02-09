@@ -144,9 +144,6 @@ int SetKernelBrk(void *_kernel_new_brk) {
         } else {
             // 6c. If we are shrinking the heap, then we need to unmap pages. Start by grabbing
             //     the number of the frame mapped to the current brk page. Free the frame.
-            //
-            //     TODO: Should I create some more getter/setter functions for our page table?
-            //           Maybe a getFrame function and a PTEClear?
             int frame_num = e_kernel_pt[cur_brk_page_num - i].pfn;
             FrameClear(frame_num);
 
@@ -167,11 +164,14 @@ int SetKernelBrk(void *_kernel_new_brk) {
 
 
 /*!
- * \desc                 A
+ * \desc                 Initializes kernel variables and structures needs to track processes,
+ *                       locks, cvars, locks, and other OS related functionalities. Additionally,
+ *                       we setup the kernel's page table and a dummy "DoIdle" process to run
+ *                       when no other processes are available.
  * 
- * \param[in] cmd_args   A
- * \param[in] pmem_size  A
- * \param[in] uctxt      A
+ * \param[in] cmd_args   Not used for checkpoint 2
+ * \param[in] pmem_size  The size of the physical memory availabe to our system (in bytes)
+ * \param[in] uctxt      An initialized usercontext struct for the DoIdle process
  */
 void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     // 1. Make sure our user context struct is not NULL and that we
@@ -221,9 +221,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     }
 
     // 7. Allocate space for the PCB of our dummy idle process. Halt upon error.
-    //
-    //     TODO: We will have to add this to some global array so that the pcb can be
-    //           accessed and used during interrupts and syscalls.
     pcb_t *idlePCB = (pcb_t *) malloc(sizeof(pcb_t));
     if (idlePCB == NULL) {
         TracePrintf(1, "[KernelStart] Malloc for idlePCB failed!\n");
