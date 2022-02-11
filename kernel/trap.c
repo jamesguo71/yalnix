@@ -200,9 +200,9 @@ int TrapClock(UserContext *_uctxt) {
 
     // TODO: Flush the TLB so that we get a page fault and load our new page table
     //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
+    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 
     // 7. TODO: KCSwitch here???
 
