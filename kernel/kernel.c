@@ -1,6 +1,7 @@
 #include <hardware.h>
 #include <yalnix.h>
 #include <ykernel.h>
+#include <yuser.h>
 
 #include "frame.h"
 #include "kernel.h"
