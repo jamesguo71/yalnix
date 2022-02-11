@@ -195,8 +195,14 @@ int TrapClock(UserContext *_uctxt) {
 
 
     // 6. Tell the CPU where to find the page table for our new running process
-    WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
-    WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
+    WriteRegister(REG_PTBR1,     (unsigned int) running_new->pt);    // pt address
+    WriteRegister(REG_PTLR1,     (unsigned int) MAX_PT_LEN);         // num entries
+
+    // TODO: Flush the TLB so that we get a page fault and load our new page table
+    //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
+    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 
     // 7. TODO: KCSwitch here???
 
