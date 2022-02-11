@@ -1,5 +1,6 @@
 #include "kernel.h"
 #include "hardware.h"
+#include "proc_list.h"
 #include "trap.h"
 #include "yalnix.h"
 #include "ykernel.h"
@@ -13,15 +14,9 @@
 /*
  * Extern Global Variable Definitions
  */
-int    e_ready_len       = 0;
-int    e_blocked_len     = 0;
-int    e_terminated_len  = 0;
-pcb_t *e_current         = NULL;
-pcb_t *e_ready           = NULL;
-pcb_t *e_blocked         = NULL;
-pcb_t *e_terminated      = NULL;
-pte_t *e_kernel_pt       = NULL;
-void  *e_kernel_curr_brk = NULL;
+proc_list_t *e_proc_list        = NULL;
+pte_t       *e_kernel_pt        = NULL;
+void        *e_kernel_curr_brk  = NULL;
 
 
 /*
@@ -234,6 +229,13 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         Halt();
     }
 
+    // TODO: Allocate space for other kernel data structures
+    e_proc_list = ProcListCreate();
+    if (!e_proc_list) {
+        TracePrintf(1, "[KernelStart] Error allocating e_proc_list\n");
+        Halt();
+    }
+
     // 9. Now that we have finished all of our dynamic memory allocation, we can configure the
     //    kernel's page table (previously, it may have changed due to malloc changing the brk).
     //     
@@ -304,7 +306,11 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     idlePCB->pid       = helper_new_pid(idlePCB->pt);
-    e_current          = idlePCB;
+    
+    // TODO: Add process to our process list structure. Check return values???
+    // e_procs_current    = idlePCB;
+    ProcListProcessAdd(idlePCB);
+    ProcListRunningAdd(idlePCB);
 
     // 13. Initialize the kernel stack for the dummy idle process. Note that *every* process
     //     has a kernel stack, but that the kernel always looks for its kernel stack at the
