@@ -182,7 +182,7 @@ int TrapClock(UserContext *_uctxt) {
         Halt();
     }
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
-    ProcListRunningSet(running_new);
+    ProcListRunningSet(e_proc_list, running_new);
 
     // 5. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
