@@ -157,7 +157,7 @@ int TrapClock(UserContext *_uctxt) {
     }
 
     // 2. Get the pcb for the current running process and save its user context.
-    pcb_t *running_old = ProcListRunningRemove(e_proc_list);
+    pcb_t *running_old = ProcListRunningGet(e_proc_list);
     if (!running_old) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
         Halt();
@@ -166,7 +166,7 @@ int TrapClock(UserContext *_uctxt) {
 
     // 3. Add the old running process to our ready queue
     ProcListReadyAdd(e_proc_list, running_old);
-    ProcListReadPrint(e_proc_list);
+    ProcListReadyPrint(e_proc_list);
 
     // 4. Get the next process from our ready queue and write its user context to the address
     //    passed in by the yalnix system (this is where it looks to find the context for the
@@ -182,6 +182,7 @@ int TrapClock(UserContext *_uctxt) {
         Halt();
     }
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+    ProcListRunningAdd(running_new);
 
     // 5. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
