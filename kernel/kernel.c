@@ -462,7 +462,14 @@ static void DoIdle(void) {
     while(1) {
         int pid = SyscallGetPid();
         char *string = (char *) calloc(30000, sizeof(char));
-        strcpy(string, "DoIdle");
+        string[0] = 'D';
+        string[1] = 'o';
+        string[2] = 'I';
+        string[3] = 'd';
+        string[4] = 'l';
+        string[5] = 'e';
+        string[6] = '\0';
+        //strcpy(string, "DoIdle");
         TracePrintf(1,"%s\n");
         TracePrintf(1, "pid: %d", pid);
         Pause();
