@@ -325,7 +325,6 @@ int TrapTTYTransmit(UserContext *_uctxt) {
     //    At this point, I need to somehow unblock the process and indicate that its write
     //    has finished so that (1) the process can move on or (2) the SyscallTtyWrite can
     //    write more if there are bytes remaining in buf. How do I do this?
-    g_tty_write_ready[_uctxt->code] = 1;
     TracePrintf(1, "[TrapTTYTransmit] _uctxt->sp: %p\n", _uctxt->sp);
     return 0;
 }
