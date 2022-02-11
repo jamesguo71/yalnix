@@ -23,10 +23,12 @@ typedef struct lock {
 } lock_t;
 
 typedef struct pipe {
-    int   id;
-    int   plen;
-    int   read;
-    int   write;
+    int  id;
+    int  plen;
+    int  read;
+    int  write;
+    int  *waiting_readers;
+    int  *waiting_writers;
     void *buf;
 } pipe_t;
 

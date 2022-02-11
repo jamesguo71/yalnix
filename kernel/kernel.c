@@ -220,8 +220,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         TracePrintf(1, "[KernelStart] Malloc for idlePCB failed!\n");
         Halt();
     }
-    idlePCB->ks_frames = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
-    if (!idlePCB->ks_frames) {
+    idlePCB->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
+    if (!idlePCB->ks) {
         TracePrintf(1, "[KernelStart] Calloc for idlePCB kernel stack failed!\n");
         Halt();
     }
@@ -337,16 +337,16 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //     actual frame that it maps to).
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        PTESet(idlePCB->ks_frames,                  // page table pointer
+        PTESet(idlePCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                i + kernel_stack_start_page_num);    // frame number
 
         FrameSet(i + kernel_stack_start_page_num);
     }
-    memcpy(&e_kernel_pt[kernel_stack_start_page_num],       // Copy the DoIdle proc's page entries
-           idlePCB->ks_frames,                              // for its kernel stack into the master
-           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));     // kernel page table
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the DoIdle proc's page entries
+           idlePCB->ks,                                    // for its kernel stack into the master
+           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
     // 14. Initialize the userland stack for the dummy idle process. Since DoIdle doesn't need
     //     a lot of stack space, lets just give it a single page for its stack. Calculate the
