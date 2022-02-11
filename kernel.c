@@ -201,35 +201,33 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
         Halt();
     }
 
-    // 5. Allocate space for Region 0 page table (i.e., the kernel's page table). Halt upon error.
+    // 5. Allocate space for Region 0 page table (i.e., the kernel's page table) and the
+    //    Region 1 page table (i.e., the dummy idle process). Halt upon error for either.
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (e_kernel_pt == NULL) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
     }
-
-    // 6. Allocate space for Region 1 page table (i.e., the dummy idle process). Halt upon error.
     pte_t *user_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (user_pt == NULL) {
         TracePrintf(1, "Calloc for user_pt failed!\n");
         Halt();
     }
 
-    // 7. Allocate space for the PCB of our dummy idle process. Halt upon error.
+    // 6. Allocate space for the PCB and the kernel stack of our idle process. Halt upon error.
     pcb_t *idlePCB = (pcb_t *) malloc(sizeof(pcb_t));
     if (idlePCB == NULL) {
         TracePrintf(1, "[KernelStart] Malloc for idlePCB failed!\n");
         Halt();
     }
-
-    // 8. Allocate space for the dummy idle process kernel stack page table. Halt upon error.
     idlePCB->ks_frames = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
     if (!idlePCB->ks_frames) {
         TracePrintf(1, "[KernelStart] Calloc for idlePCB kernel stack failed!\n");
         Halt();
     }
 
-    // TODO: Allocate space for other kernel data structures
+    // 7. Allocate space for the kernel list structures, which are used to track processes,
+    //    locks, cvars, and pipes. Halt upon error if any of these initializations fail.
     e_proc_list = ProcListCreate();
     if (!e_proc_list) {
         TracePrintf(1, "[KernelStart] Error allocating e_proc_list\n");
@@ -385,7 +383,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
-
     ProcListProcessPrint(e_proc_list);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
