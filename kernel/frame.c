@@ -16,7 +16,7 @@
  * 
  * \return               0 on success, ERROR otherwise.
  */
-static int FrameClear(int _frame_num) {
+int FrameClear(int _frame_num) {
     // 1. Check that our frame number is valid. If not, print message and return error.
     if (_frame_num < 0 || _frame_num >= e_num_frames) {
         TracePrintf(1, "[FrameClear] Invalid frame number: %d\n", _frame_num);
@@ -46,7 +46,7 @@ static int FrameClear(int _frame_num) {
  * 
  * \return  Frame number on success, ERROR otherwise.
  */
-static int FrameFind() {
+int FrameFind() {
     // 1. Check that our frames bit vector is initialized. If not, print message and halt.
     if (!e_frames) {
     	TracePrintf(1, "[FrameFind] Frame bit vector e_frames is not initialized\n");
@@ -72,7 +72,7 @@ static int FrameFind() {
  * 
  * \return               0 on success, ERROR otherwise.
  */
-static int FrameSet(int _frame_num) {
+int FrameSet(int _frame_num) {
     // 1. Check that our frame number is valid. If not, print message and return error.
     if (_frame_num < 0 || _frame_num >= e_num_frames) {
         TracePrintf(1, "[FrameSet] Invalid frame number: %d\n", _frame_num);
