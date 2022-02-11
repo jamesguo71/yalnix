@@ -2,6 +2,7 @@
 #include "frame.h"
 #include "kernel.h"
 #include "proc_list.h"
+#include "pte.h"
 #include "trap.h"
 #include "yalnix.h"
 #include "ykernel.h"

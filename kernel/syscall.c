@@ -4,6 +4,7 @@
 #include "pte.h"
 #include "syscall.h"
 #include "yalnix.h"
+#include "ykernel.h"
 
 
 int SyscallFork (void) {
