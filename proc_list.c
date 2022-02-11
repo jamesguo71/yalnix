@@ -656,7 +656,7 @@ pcb_t *ProcListRunningGet(proc_list_t *_proc_list) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list) {
         TracePrintf(1, "[ProcListRunningGet] Invalid list pointer\n");
-        return ERROR;
+        return NULL;
     }
     return _proc_list->running;
 }
@@ -697,7 +697,7 @@ pcb_t *ProcListRunningSwitch(proc_list_t *_proc_list, pcb_t *_process) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list || !_process) {
         TracePrintf(1, "[ProcListRunningSwitch] Invalid list or process pointer\n");
-        return ERROR;
+        return NULL;
     }
 
     // 2.
@@ -830,10 +830,10 @@ int ProcListTerminatedRemove(proc_list_t *_proc_list, int _pid) {
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
     pcb_t *proc = _proc_list->terminated_start;
     if (proc->pid == _pid) {
-        proc_list->terminated_start               = proc->terminated_next;
-        proc_list->terminated_start->blocked_prev = NULL;
-        proc->terminated_next                     = NULL;
-        proc->terminated_prev                     = NULL;
+        _proc_list->terminated_start               = proc->terminated_next;
+        _proc_list->terminated_start->blocked_prev = NULL;
+        proc->terminated_next                      = NULL;
+        proc->terminated_prev                      = NULL;
         return 0;
     }
 
@@ -843,10 +843,10 @@ int ProcListTerminatedRemove(proc_list_t *_proc_list, int _pid) {
     //    in the list. Clear the next and prev pointers in "proc" for good measure.
     proc = _proc_list->terminated_end;
     if (proc->pid == _pid) {
-        proc_list->terminated_end                  = proc->terminated_prev;
-        proc_list->terminated_end->terminated_next = NULL;
-        proc->terminated_next                      = NULL;
-        proc->terminated_prev                      = NULL;
+        _proc_list->terminated_end                  = proc->terminated_prev;
+        _proc_list->terminated_end->terminated_next = NULL;
+        proc->terminated_next                       = NULL;
+        proc->terminated_prev                       = NULL;
         return 0;
     }
 
