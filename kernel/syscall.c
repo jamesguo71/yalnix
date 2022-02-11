@@ -1,8 +1,10 @@
 #include "hardware.h"
+#include "kernel.h"
 #include "syscall.h"
 #include "yalnix.h"
 
-int internal_Fork (void) {
+
+int SyscallFork (void) {
     // Reference Checkpoint 3 for more details
     // Create a new pcb for child process
     // Get a new pid for the child process
@@ -27,7 +29,7 @@ int internal_Fork (void) {
  *
  * \return              0 on success, ERROR otherwise
  */
-int internal_Exec (char *filename, char **argvec) {
+int SyscallExec (char *filename, char **argvec) {
     // Should be pretty similar to what LoadProgram in `template.c` does
     // Open the file
     // Calculate the start and end position of each section (Text, Data, Stack)
@@ -41,14 +43,14 @@ int internal_Exec (char *filename, char **argvec) {
     return 0;
 }
 
-void internal_Exit (int status) {
+void SyscallExit (int status) {
     // Free all the resources in the process's pcb
     // Check to see if the current process has a parent (parent pointer is null?), if so, save the `status` parameter into the pcb
     // Otherwise, free this pcb in the kernel (?) or put it on an orphan list (?)
     // Check if the process is the initial process, if so, halt the system.
 }
 
-int internal_Wait (int *status_ptr) {
+int SyscallWait (int *status_ptr) {
     // Check to see if the process's children list is empty (children is a null pointer),
     // if so, return ERROR
     // Otherwise, walk through the process's children list and see if there's a process with `exited = 1`
@@ -59,25 +61,111 @@ int internal_Wait (int *status_ptr) {
     return 0;
 }
 
-int internal_GetPid (void) {
-    // Return the pid of the current pcb
+int SyscallGetPid (void) {
+    // 1. Get the current running process from our process list. If there is none,
+    //    print a message and Halt. Otherwise, return the running process' pid.
+    pcb_t *running = ProcListRunningGet(e_proc_list);
+    if (!running) {
+        TracePrintf(1, "[SyscallGetPid] e_proc_list returned no running process\n");
+        Halt();
+    }
+    return running->pid;
+}
+
+int SyscallBrk (void *_brk) {
+    // 1. Make sure the incoming address is not NULL. If so, return ERROR.
+    if (!_brk) {
+        TracePrintf(1, "[SyscallBrk] Error: proposed brk is NULL\n");
+        return ERROR;
+    }
+    TracePrintf(1, "[SyscallBrk] _brk: %p\n", _brk);
+
+    // 2. Get the PCB for the current running process. If our process list thinks that there is
+    //    no current running process, print a message and halt. Otherwise, make sure that the
+    //    proposed _brk is not less than our lower heap boundary (i.e., data end).
+    pcb_t *running = ProcListRunningGet(e_proc_list);
+    if (!running) {
+        TracePrintf(1, "[SyscallBrk] e_proc_list returned no running process\n");
+        Halt();
+    }
+    if (_brk <= running->data_end) {
+        TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
+        return ERROR;
+    }
+
+    // 3. Round our new brk value *up* to the nearest page.
+    // 
+    //    NOTE: Currently, we do not maintain the exact brk value provided by the caller as it
+    //          rounds the brk up to the nearest page boundary. In other words, the only valid
+    //          brk values are those that fall on page boundaries, so the process may end up with
+    //          *more* memory than it asked for. It should never end up freeing more memory than
+    //          it specified, however, because we round up.
+    //
+    //    TODO: Do I need to round up? I need to think about this more...
+    _brk = (void *) UP_TO_PAGE(_brk);
+
+    // 4. If virtual memory has been enabled, then we are responsible for updating the process'
+    //    page table to reflect any pages/frames that have been added/removed as a result of
+    //    the brk change. Start off by calculating the page numbers for our new proposed brk
+    //    and our current brk.
+    int new_brk_page_num = ((int) _brk)         >> PAGESHIFT;
+    int cur_brk_page_num = ((int) running->brk) >> PAGESHIFT;
+
+    // 5. Check to see if we are growing or shrinking the brk and calculate the number
+    //    of pages that we either need to add or remove given the new proposed brk.
+    int growing   = 0;
+    int num_pages = 0;
+    if (_brk > running->brk) {
+        growing   = 1;
+        num_pages = new_brk_page_num - cur_brk_page_num;
+    } else {
+        num_pages = cur_brk_page_num - new_brk_page_num;
+    }
+
+    // 6. Add or remove frames/pages based on whether we are growing or shrinking the heap.
+    for (int i = 0; i < num_pages; i++) {
+
+        if (growing) {
+            // 6a. If we are growing the heap, then we first need to find an available frame.
+            //     If we can't find one (i.e., we are out of memory) return ERROR.
+            int frame_num = FrameFind();
+            if (frame_num == ERROR) {
+                TracePrintf(1, "[SyscallBrk] Unable to find free frame\n");
+                return ERROR;
+            }
+
+            // 6b. Map the frame to a page in the process' page table. Specifically, start with the
+            //     current page pointed to by the process brk. Afterwards, mark the frame as in use.
+            PTESet(running->pt,             // page table pointer
+                   cur_brk_page_num + i,    // page number
+                   PROT_READ | PROT_WRITE,  // page protection bits
+                   frame_num);              // frame number
+            FrameSet(frame_num);
+            TracePrintf(1, "[SyscallBrk] Mapping page: %d to frame: %d\n",
+                           cur_brk_page_num + i, frame_num);
+        } else {
+            // 6c. If we are shrinking the heap, then we need to unmap pages. Start by grabbing
+            //     the number of the frame mapped to the current brk page. Free the frame.
+            int frame_num = running->pt[cur_brk_page_num - i].pfn;
+            FrameClear(frame_num);
+
+            // 6d. Clear the page in the process' page table so it is no longer valid
+            PTEClear(running->pt, cur_brk_page_num - i);
+            TracePrintf(1, "[SyscallBrk] Unmapping page: %d from frame: %d\n",
+                           cur_brk_page_num - i, frame_num);
+        }
+    }
+
+    // 7. Set the process brk to the new brk value and return success
+    TracePrintf(1, "[SyscallBrk] new_brk_page_num:  %d\n", new_brk_page_num);
+    TracePrintf(1, "[SyscallBrk] cur_brk_page_num:  %d\n", cur_brk_page_num);
+    TracePrintf(1, "[SyscallBrk] _brk:              %p\n", _brk);
+    TracePrintf(1, "[SyscallBrk] running->brk:      %p\n", running->brk);
+    running->brk = _brk;
     return 0;
 }
 
-int internal_Brk (void *addr) {
-    // Check if addr is greater or less than the current brk of the process
-    // If greater, check if it is below the Userland Red Zone
-        // Return ERROR if not
-        // Call UP_TO_PAGE to get the suitable new addr
-        // Adjust page table to account for the new brk
-    // If less, check if it is above the USER DATA limit
-        // Return ERROR if not
-        // Call DOWN_TO_PAGE to get the suitable new addr
-        // Adjust page table to account for the new brk
-    return 0;
-}
-
-int internal_Delay (int clock_ticks) {
+int SyscallDelay (int clock_ticks) {
     // If clock ticks is 0, return is immediate.
     // If clock ticks is less than 0, return ERROR
     // Block current process until clock_ticks clock interrupts have occurred after the call
@@ -98,10 +186,10 @@ int internal_Delay (int clock_ticks) {
  *
  * \return             Number of bytes read on success, ERROR otherwise
  */
-int internal_TtyRead (int tty_id, void *buf, int len) {
+int SyscallTtyRead (int tty_id, void *buf, int len) {
     // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
     //           else.... and have the receive trap handler wake up the blocker! and similar
-    //           comments for internal_TtyWrite
+    //           comments for SyscallTtyWrite
 
     // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
     // //    id is valid (2) that buffer is not NULL and (3) length is positive.
@@ -112,7 +200,7 @@ int internal_TtyRead (int tty_id, void *buf, int len) {
     // // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
     // //    memory region 0). I assume that means I should find space and copy the contents
     // //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
-    // g_tty_read_buf[tty_id] = (void *) internal_malloc(len);
+    // g_tty_read_buf[tty_id] = (void *) Syscallmalloc(len);
 
     // // 3. Write to the terminal specified by tty_id using the special hardware "operation"
     // //    TtyTransmit. TODO: The guide states that this function returns immediately but
@@ -155,10 +243,10 @@ int internal_TtyRead (int tty_id, void *buf, int len) {
  *
  * \return            Number of bytes written on success, ERROR otherwise
  */
-int internal_TtyWrite (int tty_id, void *buf, int len) {
+int SyscallTtyWrite (int tty_id, void *buf, int len) {
     // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
     //           else.... and have the receive trap handler wake up the blocker! and similar
-    //           comments for internal_TtyWrite
+    //           comments for SyscallTtyWrite
     // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
     // //    id is valid (2) that buffer is not NULL and (3) length is positive.
     // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
@@ -168,7 +256,7 @@ int internal_TtyWrite (int tty_id, void *buf, int len) {
     // // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
     // //    memory region 0). I assume that means I should find space and copy the contents
     // //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
-    // g_tty_write_buf[tty_id] = (void *) internal_malloc(len);
+    // g_tty_write_buf[tty_id] = (void *) Syscallmalloc(len);
 
     // // 3. Write to the terminal specified by tty_id using the special hardware "operation"
     // //    TtyTransmit. TODO: The guide states that this function returns immediately but
@@ -209,19 +297,19 @@ int internal_TtyWrite (int tty_id, void *buf, int len) {
  *
  * \return               0 on success, ERROR otherwise
  */
-int internal_PipeInit (int *pipe_idp) {
+int SyscallPipeInit (int *pipe_idp) {
     // // 1. Check arguments. Return ERROR if invalid.
     // if (!pipe_idp) {
     //     return ERROR;
     // }
 
     // // 2. Initialize a new pipe structure
-    // pipe_t *newpipe = (pipe_t *) internal_malloc(sizeof(pipe_t));
+    // pipe_t *newpipe = (pipe_t *) Syscallmalloc(sizeof(pipe_t));
     // newpipe->id     = g_pipes_len++;
     // newpipe->plen   = 0;
     // newpipe->read   = 0;
     // newpipe->write  = 0;
-    // newpipe->buf    = (void *) internal_malloc(PIPE_BUFFER_LEN); 
+    // newpipe->buf    = (void *) Syscallmalloc(PIPE_BUFFER_LEN); 
 
     // // 3. Add new pipe to our global pipe array/table/structure to keep track
 
@@ -240,7 +328,7 @@ int internal_PipeInit (int *pipe_idp) {
  *
  * \return              Number of bytes read on success, ERROR otherwise
  */
-int internal_PipeRead (int pipe_id, void *buf, int len) {
+int SyscallPipeRead (int pipe_id, void *buf, int len) {
     // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
     // //    valid (2) that the buffer is not NULL and (3) that len is not negative.
     // if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
@@ -285,7 +373,7 @@ int internal_PipeRead (int pipe_id, void *buf, int len) {
  *
  * \return             Number of bytes written on success, ERROR otherwise
  */
-int internal_PipeWrite (int pipe_id, void *buf, int len) {
+int SyscallPipeWrite (int pipe_id, void *buf, int len) {
     // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the pipe id is
     // //    valid (2) that the buffer is not NULL and (3) that len is not negative.
     // if (pipe_id < 0 || pipe_id > g_pipes_len || !buf || len < 0) {
@@ -329,14 +417,14 @@ int internal_PipeWrite (int pipe_id, void *buf, int len) {
  *
  * \return               0 on success, ERROR otherwise
  */
-int internal_LockInit (int *lock_idp) {
+int SyscallLockInit (int *lock_idp) {
     // // 1. Check arguments. Return ERROR if invalid.
     // if (!lock_idp) {
     //     return ERROR;
     // }
 
     // // 2. Initialize a new lock structure
-    // lock_t *newlock  = (lock_t *) internal_malloc(sizeof(lock_t));
+    // lock_t *newlock  = (lock_t *) Syscallmalloc(sizeof(lock_t));
     // newlock->id      = g_locks_len++;
     // newlock->owner   = 0;
     // newlock->waiting = NULL;
@@ -356,7 +444,7 @@ int internal_LockInit (int *lock_idp) {
  *
  * \return             0 on success, ERROR otherwise
  */
-int internal_Acquire (int lock_id) {
+int SyscallAcquire (int lock_id) {
     // // 1. Check arguments. Return ERROR if invalid. The lock id should
     // //    be within 0 and the total number of initialized locks.
     // if (lock_id < 0 || lock_id > g_locks_len) {
@@ -384,7 +472,7 @@ int internal_Acquire (int lock_id) {
  *
  * \return             0 on success, ERROR otherwise
  */
-int internal_Release (int lock_id) {
+int SyscallRelease (int lock_id) {
     // FEEDBACK: What if someone was blocked waiting for this lock?
     // // 1. Check arguments. Return ERROR if invalid. The lock id should
     // //    be within 0 and the total number of initialized locks.
@@ -412,14 +500,14 @@ int internal_Release (int lock_id) {
  *
  * \return               0 on success, ERROR otherwise
  */
-int internal_CvarInit (int *cvar_idp) {
+int SyscallCvarInit (int *cvar_idp) {
     // // 1. Check arguments. Return ERROR if invalid.
     // if (!cvar_idp) {
     //     return ERROR;
     // }
 
     // // 2. Initialize a new lock structure
-    // cvar_t *newcvar  = (cvar_t *) internal_malloc(sizeof(cvar_t));
+    // cvar_t *newcvar  = (cvar_t *) Syscallmalloc(sizeof(cvar_t));
     // newcvar->id      = g_cvars_len++;
     // newlock->waiting = NULL;
 
@@ -438,7 +526,7 @@ int internal_CvarInit (int *cvar_idp) {
  *
  * \return             0 on success, ERROR otherwise
  */
-int internal_CvarSignal (int cvar_id) {
+int SyscallCvarSignal (int cvar_id) {
     // // 1. Check arguments. Return ERROR if invalid. The cvar id should
     // //    be within 0 and the total number of initialized cvars.
     // if (cvar_id < 0 || cvar_id > g_cvars_len) {
@@ -460,7 +548,7 @@ int internal_CvarSignal (int cvar_id) {
  *
  * \return             0 on success, ERROR otherwise
  */
-int internal_CvarBroadcast (int cvar_id) {
+int SyscallCvarBroadcast (int cvar_id) {
     // Check if the cvar_id exists? Return ERROR if not
     // for each process in the cvar_id's waiting queue, remove it from the waiting queue and put it on the ready_queue
     // Mesa style: Caller continues to execute
@@ -475,7 +563,7 @@ int internal_CvarBroadcast (int cvar_id) {
  *
  * \return             0 on success, ERROR otherwise
  */
-int internal_CvarWait (int cvar_id, int lock_id) {
+int SyscallCvarWait (int cvar_id, int lock_id) {
     // Assert the lock of `lock_id` is held by the current process
     // Release the lock identified by lock_id
     // Add the current process to the waiting queue of the cvar_id
@@ -493,7 +581,7 @@ int internal_CvarWait (int cvar_id, int lock_id) {
  * \return             0 on success, ERROR otherwise
  */
 
-int internal_Reclaim (int id) {
+int SyscallReclaim (int id) {
     // Check which type of primitive the `id` is of
     // Free its malloc'ed memory
     return 0;
