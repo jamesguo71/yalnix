@@ -12,7 +12,7 @@
  * 
  * \return  Frame index on success, ERROR otherwise.
  */
-static int PTEClear(pte_t *_pt, int _page_num) {
+int PTEClear(pte_t *_pt, int _page_num) {
     // 1. Check that our page table pointer is invalid. If not, print message and return error.
     if (!_pt) {
         TracePrintf(1, "[PTEClear] Invalid page table pointer\n");
@@ -49,7 +49,7 @@ static int PTEClear(pte_t *_pt, int _page_num) {
  * 
  * \return  Frame index on success, ERROR otherwise.
  */
-static int PTESet(pte_t *_pt, int _page_num, int _prot, int _pfn) {
+int PTESet(pte_t *_pt, int _page_num, int _prot, int _pfn) {
     // 1. Check that our page table pointer is invalid. If not, print message and return error.
     if (!_pt) {
         TracePrintf(1, "[PTESet] Invalid page table pointer\n");
