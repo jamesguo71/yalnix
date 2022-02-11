@@ -309,8 +309,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     
     // TODO: Add process to our process list structure. Check return values???
     // e_procs_current    = idlePCB;
-    ProcListProcessAdd(idlePCB);
-    ProcListRunningAdd(idlePCB);
+    ProcListProcessAdd(e_proc_list, idlePCB);
+    ProcListRunningAdd(e_proc_list, idlePCB);
 
     // 13. Initialize the kernel stack for the dummy idle process. Note that *every* process
     //     has a kernel stack, but that the kernel always looks for its kernel stack at the
@@ -385,6 +385,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *uctxt) {
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
+
+    ProcListProcessPrint(e_proc_list);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
