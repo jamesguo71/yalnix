@@ -7,7 +7,7 @@
 
 
 # Where's your kernel source?
-K_SRC_DIR = .
+K_SRC_DIR = ./kernel
 
 # What are the kernel c and include files?
 K_SRCS = kernel.c syscall.c trap.c proc_list.c
