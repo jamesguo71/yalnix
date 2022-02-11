@@ -183,16 +183,12 @@ int ProcListBlockedPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListBlockedPrint] Blocked List (pids):       [");
+    TracePrintf(1, "[ProcListBlockedPrint] Blocked List:");
     pcb_t *proc = _proc_list->blocked_start;
     while (proc) {
-        TracePrintf(1, "%d", proc->pid);
+        TracePrintf(1, "\tpid: %d\n", proc->pid);
         proc = proc->blocked_next;
-        if (proc) {
-            TracePrintf(1, ", ");
-        }
     }
-    TracePrintf(1, "]\n");
     return 0;
 }
 
@@ -343,16 +339,12 @@ int ProcListProcessPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListProcessPrint] Process List (pids):       [");
+    TracePrintf(1, "[ProcListProcessPrint] Process List:");
     pcb_t *proc = _proc_list->processes_start;
     while (proc) {
-        TracePrintf(1, "%d", proc->pid);
+        TracePrintf(1, "\tpid: %d\n", proc->pid);
         proc = proc->processes_next;
-        if (proc) {
-            TracePrintf(1, ", ");
-        }
     }
-    TracePrintf(1, "]\n");
     return 0;
 }
 
@@ -542,16 +534,12 @@ int ProcListReadyPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListReadyPrint] Ready List (pids):           [");
+    TracePrintf(1, "[ProcListReadyPrint] Ready List:");
     pcb_t *proc = _proc_list->ready_start;
     while (proc) {
-        TracePrintf(1, "%d", proc->pid);
+        TracePrintf(1, "\tpid: %d\n", proc->pid);
         proc = proc->ready_next;
-        if (proc) {
-            TracePrintf(1, ", ");
-        }
     }
-    TracePrintf(1, "]\n");
     return 0;
 }
 
@@ -788,16 +776,12 @@ int ProcListTerminatedPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListTerminatedPrint] Terminated List (pids): [");
+    TracePrintf(1, "[ProcListTerminatedPrint] Terminated List:");
     pcb_t *proc = _proc_list->terminated_start;
     while (proc) {
-        TracePrintf(1, "%d", proc->pid);
+        TracePrintf(1, "\tpid: %d\n", proc->pid);
         proc = proc->terminated_next;
-        if (proc) {
-            TracePrintf(1, ", ");
-        }
     }
-    TracePrintf(1, "]\n");
     return 0;
 }
 
