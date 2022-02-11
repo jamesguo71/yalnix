@@ -64,7 +64,7 @@ int    ProcListReadyPrint(proc_list_t *_proc_list);
 int    ProcListReadyRemove(proc_list_t *_proc_list, int _pid);
 
 
-int    ProcListRunningAdd(proc_list_t *_proc_list, pcb_t *_process);
+int    ProcListRunningSet(proc_list_t *_proc_list, pcb_t *_process);
 pcb_t *ProcListRunningGet(proc_list_t *_proc_list);
 int    ProcListRunningRemove(proc_list_t *_proc_list);
 pcb_t *ProcListRunningSwitch(proc_list_t *_proc_list, pcb_t *_process);

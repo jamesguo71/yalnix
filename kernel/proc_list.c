@@ -616,18 +616,14 @@ int ProcListReadyRemove(proc_list_t *_proc_list, int _pid) {
  * 
  * \return              0 on success, ERROR otherwise.
  */
-int ProcListRunningAdd(proc_list_t *_proc_list, pcb_t *_process) {
+int ProcListRunningSet(proc_list_t *_proc_list, pcb_t *_process) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list || !_process) {
-        TracePrintf(1, "[ProcListRunningAdd] Invalid list or process pointer\n");
+        TracePrintf(1, "[ProcListRunningSet] Invalid list or process pointer\n");
         return ERROR;
     }
 
-    // 2. Print a warning in case there is already another process running.
-    //    Then, set the incoming process as the new running process.
-    if (_proc_list->running) {
-        TracePrintf(1, "[ProcListRunningAdd] Replacing process %d\n", _proc_list->running->pid);
-    }
+    // 2. Set the incoming process as the new running process.
     _proc_list->running = _process;
     return 0;
 }
