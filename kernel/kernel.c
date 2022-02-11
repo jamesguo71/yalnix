@@ -26,22 +26,22 @@ static char *g_frames         = NULL;   // Bit vector to track frames (set in Ke
 static int   g_num_frames     = 0;      // Number of frames           (set in KernelStart)
 static int   g_virtual_memory = 0;      // Flag for tracking whether virtual memory is enabled
 static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
-    trap_kernel,
-    trap_clock,
-    trap_illegal,
-    trap_memory,
-    trap_math,
-    trap_tty_receive,
-    trap_tty_transmit,
-    trap_disk,
-    trap_not_handled,
-    trap_not_handled,
-    trap_not_handled,
-    trap_not_handled,
-    trap_not_handled,
-    trap_not_handled,
-    trap_not_handled,
-    trap_not_handled,
+    TrapKernel,
+    TrapClock,
+    TrapIllegal,
+    TrapMemory,
+    TrapMath,
+    TrapTTY_Receive,
+    TrapTTY_Transmit,
+    TrapDisk,
+    TrapNotHandled,
+    TrapNotHandled,
+    TrapNotHandled,
+    TrapNotHandled,
+    TrapNotHandled,
+    TrapNotHandled,
+    TrapNotHandled,
+    TrapNotHandled,
 };
 
 
