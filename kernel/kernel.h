@@ -1,6 +1,6 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
-#include "hardware.h"
+#include <hardware.h>
 #include "proc_list.h"
 
 #define KERNEL_BYTE_SIZE           8
