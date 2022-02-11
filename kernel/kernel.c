@@ -308,7 +308,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     _uctxt->sp     = (void *) VMEM_1_LIMIT - sizeof(void *);
     idlePCB->kctxt = NULL;
     idlePCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
-    memcpy(idlePCB->uctxt, _ucxtx, sizeof(UserContext));
+    memcpy(idlePCB->uctxt, _uctxt, sizeof(UserContext));
     
     // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
     //     assign our DoIdle process a pid with the build system helper function. Note that
