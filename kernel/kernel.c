@@ -465,7 +465,7 @@ static void DoIdle(void) {
         strcpy(string, "DoIdle");
         TracePrintf(1,"%s\n");
         TracePrintf(1, "pid: %d", pid);
-        free(string);
         Pause();
+        free(string);
     }
 }
