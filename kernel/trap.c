@@ -187,9 +187,9 @@ int TrapClock(UserContext *_uctxt) {
     // 5. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
-    memcpy(&e_kernel_pt[kernel_stack_start_page_num],       // Copy the running_new page entries
-           running_new->ks_frames,                          // for its kernel stack into the master
-           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));     // kernel page table
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the running_new page entries
+           running_new->ks,                                // for its kernel stack into the master
+           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
 
     // 6. Tell the CPU where to find the page table for our new running process
@@ -293,9 +293,9 @@ int TrapTTYReceive(UserContext *_uctxt) {
         return ERROR;
     }
 
-    // // 2. Page 25. states that this gets called once there is input ready for a given tty device
-    // //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
-    // g_tty_read_ready[_uctxt->code] = 1;
+    // FEEDBACK: What if someone was blocked waiting for this to conclude?
+    // 2. Page 25. states that this gets called once there is input ready for a given tty device
+    //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
     TracePrintf(1, "[TrapTTYReceive] _uctxt->sp: %p\n", _uctxt->sp);
     return 0;
 }
@@ -315,16 +315,17 @@ int TrapTTYTransmit(UserContext *_uctxt) {
         return ERROR;
     }
 
-    // // 2. From my understanding, the steps leading up to this handler getting called are:
-    // //        - process calls TtyWrite
-    // //        - TtyWrite calls internal_TtyWrite
-    // //        - internal_TtyWrite calls TtyTransmit
-    // //        - TtyTransmit generates a trap when finishes which calls this function
-    // //
-    // //    At this point, I need to somehow unblock the process and indicate that its write
-    // //    has finished so that (1) the process can move on or (2) the internal_TtyWrite can
-    // //    write more if there are bytes remaining in buf. How do I do this?
-    // g_tty_write_ready[_uctxt->code] = 1;
+    // FEEDBACK: What if someone was blocked waiting for this to conclude?
+    // 2. From my understanding, the steps leading up to this handler getting called are:
+    //        - process calls TtyWrite
+    //        - TtyWrite calls internal_TtyWrite
+    //        - internal_TtyWrite calls TtyTransmit
+    //        - TtyTransmit generates a trap when finishes which calls this function
+    //
+    //    At this point, I need to somehow unblock the process and indicate that its write
+    //    has finished so that (1) the process can move on or (2) the internal_TtyWrite can
+    //    write more if there are bytes remaining in buf. How do I do this?
+    g_tty_write_ready[_uctxt->code] = 1;
     TracePrintf(1, "[TrapTTYTransmit] _uctxt->sp: %p\n", _uctxt->sp);
     return 0;
 }
