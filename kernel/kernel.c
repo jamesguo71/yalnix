@@ -460,7 +460,7 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
  */
 static void DoIdle(void) {
     while(1) {
-        TracePrintf(1,"DoIdle\n", pid);
+        TracePrintf(1,"DoIdle\n");
         Pause();
     }
 }
