@@ -1,7 +1,8 @@
-#include "hardware.h"
+#include <hardware.h>
+#include <ykernel.h>
+
 #include "pte.h"
 #include "kernel.h"
-#include "ykernel.h"
 
 
 /*!
