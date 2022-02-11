@@ -21,23 +21,6 @@ typedef struct lock {
     int *waiting;   // which processes are waiting for the lock?
 } lock_t;
 
-typedef struct pcb {
-    int  pid;
-    int  user_brk;
-    int  exit_status;       // for saving the process's exit status, See Page 32
-    int  exited;            // if the process has exited?  
-    int *held_locks;        // locks held by the current process, used by sync syscalls
-
-    struct pcb *parent;     // For keeping track of parent process
-    struct pcb *children;   // For keeping track of children processes
-
-    UserContext   *uctxt;   // Defined in `hardware.h`    
-    KernelContext *kctxt;   // Needed for KernelCopy? See Page 45 
-
-    pte_t *ks_frames;
-    pte_t *pt;              // Defined in `hardware.h`
-} pcb_t;
-
 typedef struct pipe {
     int   id;
     int   plen;
@@ -55,9 +38,6 @@ typedef struct pipe {
 extern int e_cvars_len;
 extern int e_locks_len;
 extern int e_pipes_len;
-extern int e_ready_len;
-extern int e_blocked_len;
-extern int e_terminated_len;
 
 // Used by TTY traps to indicate when Receive/Write hardware operations complete.
 // Initialize to hold NUM_TERMINALS ints (i.e., a flag for each tty device)
@@ -72,10 +52,7 @@ extern pipe_t *e_pipes;
 
 extern pte_t *e_kernel_pt; // Kernel Page Table
 
-extern pcb_t *e_current;
-extern pcb_t *e_ready;
-extern pcb_t *e_blocked;
-extern pcb_t *e_terminated;
+extern proc_list_t *e_proc_list;
 
 // Used to determine if the original brk has changed - initialized to og brk value
 extern void *e_kernel_curr_brk;
