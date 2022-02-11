@@ -27,7 +27,7 @@ proc_list_t *ProcListCreate() {
     // 1. Allocate space for our process struct. Print message and return NULL upon error
     proc_list_t *proc_list = (proc_list_t *) malloc(sizeof(proc_list_t));
     if (!proc_list) {
-        fprintf(stderr, "[process_create] Error mallocing space for process struct\n");
+        TracePrintf(1, "[ProcListCreate] Error mallocing space for process struct\n");
         return NULL;
     }
 
@@ -179,7 +179,7 @@ int ProcListBlockedPrint(proc_list_t *_proc_list) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list) {
         TracePrintf(1, "[ProcListBlockedPrint] Invalid list pointer\n");
-        return NULL;
+        return ERROR;
     }
 
     // 2.
@@ -225,10 +225,10 @@ int ProcListBlockedRemove(proc_list_t *_proc_list, int _pid) {
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
     pcb_t *proc = _proc_list->blocked_start;
     if (proc->pid == _pid) {
-        proc_list->blocked_start               = proc->blocked_next;
-        proc_list->blocked_start->blocked_prev = NULL;
-        proc->blocked_next                     = NULL;
-        proc->blocked_prev                     = NULL;
+        _proc_list->blocked_start               = proc->blocked_next;
+        _proc_list->blocked_start->blocked_prev = NULL;
+        proc->blocked_next                      = NULL;
+        proc->blocked_prev                      = NULL;
         return 0;
     }
 
@@ -238,10 +238,10 @@ int ProcListBlockedRemove(proc_list_t *_proc_list, int _pid) {
     //    in the list. Clear the next and prev pointers in "proc" for good measure.
     proc = _proc_list->blocked_end;
     if (proc->pid == _pid) {
-        proc_list->blocked_end               = proc->blocked_prev;
-        proc_list->blocked_end->blocked_next = NULL;
-        proc->blocked_next                   = NULL;
-        proc->blocked_prev                   = NULL;
+        _proc_list->blocked_end               = proc->blocked_prev;
+        _proc_list->blocked_end->blocked_next = NULL;
+        proc->blocked_next                    = NULL;
+        proc->blocked_prev                    = NULL;
         return 0;
     }
 
@@ -339,7 +339,7 @@ int ProcListProcessPrint(proc_list_t *_proc_list) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list) {
         TracePrintf(1, "[ProcListProcessPrint] Invalid list pointer\n");
-        return NULL;
+        return ERROR;
     }
 
     // 2.
@@ -385,10 +385,10 @@ int ProcListProcessRemove(proc_list_t *_proc_list, int _pid) {
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
     pcb_t *proc = _proc_list->processes_start;
     if (proc->pid == _pid) {
-        proc_list->processes_start                 = proc->processes_next;
-        proc_list->processes_start->processes_prev = NULL;
-        proc->processes_next                       = NULL;
-        proc->processes_prev                       = NULL;
+        _proc_list->processes_start                 = proc->processes_next;
+        _proc_list->processes_start->processes_prev = NULL;
+        proc->processes_next                        = NULL;
+        proc->processes_prev                        = NULL;
         return 0;
     }
 
@@ -398,10 +398,10 @@ int ProcListProcessRemove(proc_list_t *_proc_list, int _pid) {
     //    in the list. Clear the next and prev pointers in "proc" for good measure.
     proc = _proc_list->processes_end;
     if (proc->pid == _pid) {
-        proc_list->processes_end                 = proc->processes_prev;
-        proc_list->processes_end->processes_next = NULL;
-        proc->processes_next                     = NULL;
-        proc->processes_prev                     = NULL;
+        _proc_list->processes_end                 = proc->processes_prev;
+        _proc_list->processes_end->processes_next = NULL;
+        proc->processes_next                      = NULL;
+        proc->processes_prev                      = NULL;
         return 0;
     }
 
@@ -538,7 +538,7 @@ int ProcListReadyPrint(proc_list_t *_proc_list) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list) {
         TracePrintf(1, "[ProcListReadyPrint] Invalid list pointer\n");
-        return NULL;
+        return ERROR;
     }
 
     // 2.
@@ -584,10 +584,10 @@ int ProcListReadyRemove(proc_list_t *_proc_list, int _pid) {
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
     pcb_t *proc = _proc_list->ready_start;
     if (proc->pid == _pid) {
-        proc_list->ready_start             = proc->ready_next;
-        proc_list->ready_start->ready_prev = NULL;
-        proc->ready_next                   = NULL;
-        proc->ready_prev                   = NULL;
+        _proc_list->ready_start             = proc->ready_next;
+        _proc_list->ready_start->ready_prev = NULL;
+        proc->ready_next                    = NULL;
+        proc->ready_prev                    = NULL;
         return 0;
     }
 
@@ -597,10 +597,10 @@ int ProcListReadyRemove(proc_list_t *_proc_list, int _pid) {
     //    in the list. Clear the next and prev pointers in "proc" for good measure.
     proc = _proc_list->ready_end;
     if (proc->pid == _pid) {
-        proc_list->ready_end             = proc->ready_prev;
-        proc_list->ready_end->ready_next = NULL;
-        proc->ready_next                 = NULL;
-        proc->ready_prev                 = NULL;
+        _proc_list->ready_end             = proc->ready_prev;
+        _proc_list->ready_end->ready_next = NULL;
+        proc->ready_next                  = NULL;
+        proc->ready_prev                  = NULL;
         return 0;
     }
 
@@ -784,7 +784,7 @@ int ProcListTerminatedPrint(proc_list_t *_proc_list) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list) {
         TracePrintf(1, "[ProcListTerminatedPrint] Invalid list pointer\n");
-        return NULL;
+        return ERROR;
     }
 
     // 2.
