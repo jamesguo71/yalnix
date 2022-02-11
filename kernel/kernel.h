@@ -53,8 +53,9 @@ extern cvar_t *e_cvars;
 extern lock_t *e_locks;
 extern pipe_t *e_pipes;
 
+extern char *e_frames;
+extern int   e_num_frames;
 extern pte_t *e_kernel_pt; // Kernel Page Table
-
 extern proc_list_t *e_proc_list;
 
 // Used to determine if the original brk has changed - initialized to og brk value
