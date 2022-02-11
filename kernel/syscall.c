@@ -81,7 +81,6 @@ int SyscallBrk (void *_brk) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is NULL\n");
         return ERROR;
     }
-    TracePrintf(1, "[SyscallBrk] _brk: %p\n", _brk);
 
     // 2. Get the PCB for the current running process. If our process list thinks that there is
     //    no current running process, print a message and halt. Otherwise, make sure that the
