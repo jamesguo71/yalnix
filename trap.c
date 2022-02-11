@@ -5,6 +5,7 @@
 #include "yalnix.h"
 #include "ylib.h"
 
+
 /*!
  * \desc               Calls the appropriate internel syscall function based on the current process
  * 
@@ -140,7 +141,8 @@ int trap_kernel(UserContext *context) {
 }
 
 /*!
- * \desc               If there are other runnable processes on the ready queue, perform a context switch to the next runnable process. 
+ * \desc               If there are other runnable processes on the ready queue, perform a context
+ *                     switch to the next runnable process. 
  *                     
  * 
  * \param[in] context  The UserContext for the process associated with the TRAP
@@ -148,22 +150,29 @@ int trap_kernel(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_clock(UserContext *context) {    
-    // traceprints when there’s a clock trap.    
-    // (The Yalnix kernel should implement round-robin process scheduling with a CPU quantum per process of 1 clock tick.)
-    // Check if there're processes on the ready queue
-        // If so, KernelContextSwitch to it
-        // Otherwise, dispatch idle.
     // 1. Check arguments. Return error if invalid.
     if (!context) {
         return ERROR;
     }
-    TracePrintf(1, "[trap_clock] context->sp: %p\te_current->sp: %p\n", context->sp, e_current->uctxt->sp);
-//    TracePrintf(1, "[trap_clock] context->sp: %p\n", context->sp);
+    pcb_t *running = ProcListRunningGet(e_proc_list);
+    if (!running) {
+    TracePrintf(1, "[trap_clock] context->sp: %p\trunning = NULL\n", context->sp);
+    }
+    TracePrintf(1, "[trap_clock] context->sp: %p\trunning->sp: %p\n",
+                    context->sp, running->uctxt->sp);
+
+    // traceprints when there’s a clock trap.    
+    // (The Yalnix kernel should implement round-robin process scheduling with a CPU quantum per
+    // process of 1 clock tick.)
+    // Check if there're processes on the ready queue
+    // If so, KernelContextSwitch to it
+    // Otherwise, dispatch idle.
     return 0;
 }
 
 /*!
- * \desc               Abort the currently running Yalnix user process but continue running other processes. 
+ * \desc               Abort the currently running Yalnix user process but continue running other
+ *                     processes. 
  *                     
  * 
  * \param[in] context  The UserContext for the process associated with the TRAP
@@ -171,12 +180,15 @@ int trap_clock(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_illegal(UserContext *context) {
-    // TracePrintf a message at level 0, giving the process id of the process and some explanation of the problem. 
-    // The exit status reported to the parent process of the aborted process when the parent calls the Wait syscall (as described in Section 3.1) should be the value ERROR.    
+    // TracePrintf a message at level 0, giving the process id of the process and some explanation
+    // of the problem. 
+    // The exit status reported to the parent process of the aborted process when the parent calls
+    // the Wait syscall (as described in Section 3.1) should be the value ERROR.    
     // Wrap some of the functionalities below to a function `abort`?
     // Put the current process to `terminated`
     // Free its resources now or only when its parent calls Wait?
-    // KernelContextSwitch to a ready process (does KCS need special treatment with an aborted process?) 
+    // KernelContextSwitch to a ready process (does KCS need special treatment with an aborted
+    // process?) 
     // If there's no process in the ready queue, switch to `idle`
     // 1. Check arguments. Return error if invalid.
     if (!context) {
@@ -187,7 +199,8 @@ int trap_illegal(UserContext *context) {
 }
 
 /*!
- * \desc               This exception results from a disallowed memory access by the current user process.
+ * \desc               This exception results from a disallowed memory access by the current user
+ *                     process.
  *                     
  * 
  * \param[in] context  The UserContext for the process associated with the TRAP
@@ -195,21 +208,25 @@ int trap_illegal(UserContext *context) {
  * \return             0 on success, ERROR otherwise.
  */
 int trap_memory(UserContext *context) {
-    // Use the `code` field in `context` to check what caused this memory trap:
-        // YALNIX_MAPERR: Is it because the address is not mapped in the current page tables?
-        // YALNIX_ACCERR: or because the access violates the page protection specified in the corresponding page table entry?
-        // OTHERWISE: Is the address outside the virtual address range of the hardware (outside Region 0 and Region 1)?
     // 1. Check arguments. Return error if invalid.
     if (!context) {
         return ERROR;
     }
     TracePrintf(1, "[trap_memory] context->sp: %p\n", context->sp);
+
+    // Use the `code` field in `context` to check what caused this memory trap:
+        // YALNIX_MAPERR: Is it because the address is not mapped in the current page tables?
+        // YALNIX_ACCERR: or because the access violates the page protection specified in the
+        //                corresponding page table entry?
+        // OTHERWISE: Is the address outside the virtual address range of the hardware (outside
+        //            Region 0 and Region 1)?
     return 0;
 }
 
 /*!
- * \desc               This exception results from any arithmetic error from an instruction executed by the
- *                     current user process, such as division by zero or an arithmetic overflow.*                     
+ * \desc               This exception results from any arithmetic error from an instruction
+ *                     executed by the current user process, such as division by zero or an
+ *                     arithmetic overflow.*                     
  * 
  * \param[in] context  The UserContext for the process associated with the TRAP
  * 
@@ -217,7 +234,8 @@ int trap_memory(UserContext *context) {
  */
 int trap_math(UserContext *context) {
     // TracePrintf the error message identified with the `code` field in `context`
-    // Refer to `trap_illegal` above: `Abort` the process and switch to a process in the ready_queue
+    // Refer to `trap_illegal` above: `Abort` the process and switch to a process in the
+    // ready_queue
     // 1. Check arguments. Return error if invalid.
     if (!context) {
         return ERROR;
@@ -241,7 +259,7 @@ int trap_tty_receive(UserContext *context) {
         return ERROR;
     }
 
-    // // 2. Page 25. states that this gets called once there is input ready for a given tty device.
+    // // 2. Page 25. states that this gets called once there is input ready for a given tty device
     // //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
     // g_tty_read_ready[context->code] = 1;
     TracePrintf(1, "[trap_tty_receive] context->sp: %p\n", context->sp);
