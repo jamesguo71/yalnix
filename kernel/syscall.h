@@ -7,7 +7,7 @@
  * 
  * \return              0 on success, ERROR otherwise
  */
-int internal_Fork (void);
+int SyscallFork (void);
 
 
 /*!
@@ -21,17 +21,17 @@ int internal_Fork (void);
  * 
  * \return              0 on success, ERROR otherwise
  */
-int internal_Exec (char *filename, char **argvec);
+int SyscallExec (char *filename, char **argvec);
 
-void internal_Exit (int);
+void SyscallExit (int);
 
-int internal_Wait (int *);
+int SyscallWait (int *);
 
-int internal_GetPid (void);
+int SyscallGetPid (void);
 
-int internal_Brk (void *);
+int SyscallBrk (void *);
 
-int internal_Delay (int);
+int SyscallDelay (int);
 
 
 /*!
@@ -43,7 +43,7 @@ int internal_Delay (int);
  * 
  * \return             Number of bytes read on success, ERROR otherwise
  */
-int internal_TtyRead (int tty_id, void *buf, int len);
+int SyscallTtyRead (int tty_id, void *buf, int len);
 
 
 /*!
@@ -55,7 +55,7 @@ int internal_TtyRead (int tty_id, void *buf, int len);
  * 
  * \return            Number of bytes written on success, ERROR otherwise
  */
-int internal_TtyWrite (int tty_id, void *buf, int len);
+int SyscallTtyWrite (int tty_id, void *buf, int len);
 
 
 /*!
@@ -65,7 +65,7 @@ int internal_TtyWrite (int tty_id, void *buf, int len);
  * 
  * \return               0 on success, ERROR otherwise
  */
-int internal_PipeInit (int *pipe_idp);
+int SyscallPipeInit (int *pipe_idp);
 
 
 /*!
@@ -77,7 +77,7 @@ int internal_PipeInit (int *pipe_idp);
  * 
  * \return              Number of bytes read on success, ERROR otherwise
  */
-int internal_PipeRead (int pipe_id, void *buf, int len);
+int SyscallPipeRead (int pipe_id, void *buf, int len);
 
 
 /*!
@@ -89,7 +89,7 @@ int internal_PipeRead (int pipe_id, void *buf, int len);
  * 
  * \return             Number of bytes written on success, ERROR otherwise
  */
-int internal_PipeWrite (int pipe_id, void *buf, int len);
+int SyscallPipeWrite (int pipe_id, void *buf, int len);
 
 
 /*!
@@ -99,7 +99,7 @@ int internal_PipeWrite (int pipe_id, void *buf, int len);
  * 
  * \return               0 on success, ERROR otherwise
  */
-int internal_LockInit (int *lock_idp);
+int SyscallLockInit (int *lock_idp);
 
 
 /*!
@@ -109,7 +109,7 @@ int internal_LockInit (int *lock_idp);
  * 
  * \return             0 on success, ERROR otherwise
  */
-int internal_Acquire (int lock_id);
+int SyscallAcquire (int lock_id);
 
 
 /*!
@@ -119,7 +119,7 @@ int internal_Acquire (int lock_id);
  * 
  * \return             0 on success, ERROR otherwise
  */
-int internal_Release (int lock_id);
+int SyscallRelease (int lock_id);
 
 
 /*!
@@ -129,7 +129,7 @@ int internal_Release (int lock_id);
  * 
  * \return               0 on success, ERROR otherwise
  */
-int internal_CvarInit (int *cvar_idp);
+int SyscallCvarInit (int *cvar_idp);
 
 
 /*!
@@ -139,12 +139,12 @@ int internal_CvarInit (int *cvar_idp);
  * 
  * \return             0 on success, ERROR otherwise
  */
-int internal_CvarSignal (int cvar_id);
+int SyscallCvarSignal (int cvar_id);
 
-int internal_CvarBroadcast (int);
+int SyscallCvarBroadcast (int);
 
-int internal_CvarWait (int, int);
+int SyscallCvarWait (int, int);
 
-int internal_Reclaim (int);
+int SyscallReclaim (int);
 
 #endif
