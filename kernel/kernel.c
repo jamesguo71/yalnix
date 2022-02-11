@@ -1,12 +1,12 @@
 #include <hardware.h>
 #include <yalnix.h>
 #include <ykernel.h>
-#include <yuser.h>
 
 #include "frame.h"
 #include "kernel.h"
 #include "proc_list.h"
 #include "pte.h"
+#include "syscall.h"
 #include "trap.h"
 
 
@@ -460,7 +460,7 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
  */
 static void DoIdle(void) {
     while(1) {
-        int pid = GetPid();
+        int pid = SyscallGetPid();
         char *string = (char *) calloc(30000, sizeof(char));
         strcpy(string, "DoIdle");
         TracePrintf(1,"%s\n");
