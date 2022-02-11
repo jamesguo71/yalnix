@@ -183,7 +183,7 @@ int ProcListBlockedPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListBlockedPrint] Blocked List:");
+    TracePrintf(1, "[ProcListBlockedPrint] Blocked List:\n");
     pcb_t *proc = _proc_list->blocked_start;
     while (proc) {
         TracePrintf(1, "\tpid: %d\n", proc->pid);
@@ -339,7 +339,7 @@ int ProcListProcessPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListProcessPrint] Process List:");
+    TracePrintf(1, "[ProcListProcessPrint] Process List:\n");
     pcb_t *proc = _proc_list->processes_start;
     while (proc) {
         TracePrintf(1, "\tpid: %d\n", proc->pid);
@@ -534,7 +534,7 @@ int ProcListReadyPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListReadyPrint] Ready List:");
+    TracePrintf(1, "[ProcListReadyPrint] Ready List:\n");
     pcb_t *proc = _proc_list->ready_start;
     while (proc) {
         TracePrintf(1, "\tpid: %d\n", proc->pid);
@@ -776,7 +776,7 @@ int ProcListTerminatedPrint(proc_list_t *_proc_list) {
     }
 
     // 2.
-    TracePrintf(1, "[ProcListTerminatedPrint] Terminated List:");
+    TracePrintf(1, "[ProcListTerminatedPrint] Terminated List:\n");
     pcb_t *proc = _proc_list->terminated_start;
     while (proc) {
         TracePrintf(1, "\tpid: %d\n", proc->pid);
