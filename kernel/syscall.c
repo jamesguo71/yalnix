@@ -99,6 +99,10 @@ int internal_Delay (int clock_ticks) {
  * \return             Number of bytes read on success, ERROR otherwise
  */
 int internal_TtyRead (int tty_id, void *buf, int len) {
+    // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
+    //           else.... and have the receive trap handler wake up the blocker! and similar
+    //           comments for internal_TtyWrite
+
     // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
     // //    id is valid (2) that buffer is not NULL and (3) length is positive.
     // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
@@ -152,6 +156,9 @@ int internal_TtyRead (int tty_id, void *buf, int len) {
  * \return            Number of bytes written on success, ERROR otherwise
  */
 int internal_TtyWrite (int tty_id, void *buf, int len) {
+    // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
+    //           else.... and have the receive trap handler wake up the blocker! and similar
+    //           comments for internal_TtyWrite
     // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
     // //    id is valid (2) that buffer is not NULL and (3) length is positive.
     // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
@@ -285,6 +292,7 @@ int internal_PipeWrite (int pipe_id, void *buf, int len) {
     //     return ERROR;
     // }
 
+    // FEEDBACK: No need to block on an empty pipe! What if there is a blocked reader tho?
     // // 2. Check to see if pipe is empty. If so, block. TODO: How?
     // pipe_t *pipe = g_pipes[pipe_id];
     // if (pipe->plen == 0) {
@@ -377,6 +385,7 @@ int internal_Acquire (int lock_id) {
  * \return             0 on success, ERROR otherwise
  */
 int internal_Release (int lock_id) {
+    // FEEDBACK: What if someone was blocked waiting for this lock?
     // // 1. Check arguments. Return ERROR if invalid. The lock id should
     // //    be within 0 and the total number of initialized locks.
     // if (lock_id < 0 || lock_id > g_locks_len) {
