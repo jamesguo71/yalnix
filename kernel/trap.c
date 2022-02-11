@@ -155,19 +155,51 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
     }
-    pcb_t *running = ProcListRunningGet(e_proc_list);
-    if (!running) {
-    TracePrintf(1, "[TrapClock] _uctxt->sp: %p\trunning = NULL\n", _uctxt->sp);
-    }
-    TracePrintf(1, "[TrapClock] _uctxt->sp: %p\trunning->sp: %p\n",
-                    _uctxt->sp, running->uctxt->sp);
 
-    // traceprints when there’s a clock trap.    
-    // (The Yalnix kernel should implement round-robin process scheduling with a CPU quantum per
-    // process of 1 clock tick.)
-    // Check if there're processes on the ready queue
-    // If so, KernelContextSwitch to it
-    // Otherwise, dispatch idle.
+    // 2. Get the pcb for the current running process and save its user context.
+    pcb_t *running_old = ProcListRunningRemove(e_proc_list);
+    if (!running_old) {
+        TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
+        Halt();
+    }
+    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+
+    // 3. Add the old running process to our ready queue
+    ProcListReadyAdd(e_proc_list, running_old);
+    ProcListReadPrint(e_proc_list);
+
+    // 4. Get the next process from our ready queue and write its user context to the address
+    //    passed in by the yalnix system (this is where it looks to find the context for the
+    //    process that it should be executing).
+    //
+    //    TODO: Eventually, this should just run the DoIdle process if no other processes
+    //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
+    //          Instead, since you know it is always pid 0, you can just get it from the
+    //          master process list and run it if ready list returns empty.
+    pcb_t *running_new = ProcListReadyNext(e_proc_list);
+    if (!running_new) {
+        TracePrintf(1, "[TrapClock] e_proc_list returned no ready process\n");
+        Halt();
+    }
+    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+
+    // 5. Update the kernel's page table so that its stack pages map to
+    //    the correct frames for the new running process.
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],       // Copy the running_new page entries
+           running_new->ks_frames,                          // for its kernel stack into the master
+           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));     // kernel page table
+
+
+    // 6. Tell the CPU where to find the page table for our new running process
+    WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
+    WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
+
+    // 7. TODO: KCSwitch here???
+
+    //
+    TracePrintf(1, "[TrapClock] running_old->sp: %p\trunning_new->sp: %p\n",
+                    running_old->uctxt->sp, running_new->uctxt->sp);
     return 0;
 }
 
