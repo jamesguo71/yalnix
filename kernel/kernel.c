@@ -459,20 +459,11 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
  * \desc  A dummy userland process that the kernel runs when there are no other processes.
  */
 static void DoIdle(void) {
+    char *string = (char *) calloc(30000, sizeof(char));
+    strcpy(string, "DoIdle");
+    int pid = SyscallGetPid();
     while(1) {
-        int pid = SyscallGetPid();
-        char *string = (char *) calloc(30000, sizeof(char));
-        string[0] = 'D';
-        string[1] = 'o';
-        string[2] = 'I';
-        string[3] = 'd';
-        string[4] = 'l';
-        string[5] = 'e';
-        string[6] = '\0';
-        //strcpy(string, "DoIdle");
-        TracePrintf(1,"%s\n");
-        TracePrintf(1, "pid: %d", pid);
+        TracePrintf(1,"%s pid: %d\n", pid);
         Pause();
-        free(string);
     }
 }
