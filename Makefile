@@ -10,14 +10,14 @@
 K_SRC_DIR = ./kernel
 
 # What are the kernel c and include files?
-K_SRCS = kernel.c syscall.c trap.c proc_list.c
-K_INCS = kernel.h syscall.h trap.h proc_list.h
+K_SRCS = frame.c kernel.c proc_list.c pte.c syscall.c trap.c
+K_INCS = frame.h kernel.h proc_list.h pte.h syscall.h trap.h
 
 # Where's your user source?
-U_SRC_DIR = ./test
+U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = 
+U_SRCS = init.c
 U_INCS = 
 
 
