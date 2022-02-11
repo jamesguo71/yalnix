@@ -1,5 +1,7 @@
 #include "hardware.h"
+#include "frame.h"
 #include "kernel.h"
+#include "pte.h"
 #include "syscall.h"
 #include "yalnix.h"
 
