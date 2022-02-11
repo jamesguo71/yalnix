@@ -1,19 +1,17 @@
-#include "kernel.h"
 #include "hardware.h"
+#include "frame.h"
+#include "kernel.h"
 #include "proc_list.h"
 #include "trap.h"
 #include "yalnix.h"
 #include "ykernel.h"
 
-//Bit Manipulation: http://www.mathcs.emory.edu/~cheung/Courses/255/Syllabus/1-C-intro/Progs/bit-array2.c
-#define BitClear(A,k) ( A[(k/KERNEL_BYTE_SIZE)] &= ~(1 << (k%KERNEL_BYTE_SIZE)) )
-#define BitSet(A,k)   ( A[(k/KERNEL_BYTE_SIZE)] |=  (1 << (k%KERNEL_BYTE_SIZE)) )
-#define BitTest(A,k)  ( A[(k/KERNEL_BYTE_SIZE)] &   (1 << (k%KERNEL_BYTE_SIZE)) )
-
 
 /*
  * Extern Global Variable Definitions
  */
+char        *e_frames           = NULL;   // Bit vector to track frames (set in KernelStart)
+int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
 proc_list_t *e_proc_list        = NULL;
 pte_t       *e_kernel_pt        = NULL;
 void        *e_kernel_curr_brk  = NULL;
@@ -22,8 +20,6 @@ void        *e_kernel_curr_brk  = NULL;
 /*
  * Local Global Variable Definitions
  */
-static char *g_frames         = NULL;   // Bit vector to track frames (set in KernelStart)
-static int   g_num_frames     = 0;      // Number of frames           (set in KernelStart)
 static int   g_virtual_memory = 0;      // Flag for tracking whether virtual memory is enabled
 static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
     TrapKernel,
@@ -48,11 +44,6 @@ static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
 /*
  * Local Function Definitions
  */
-static int  FrameClear(int frame_num);
-static int  FrameFind(void);
-static int  FrameSet(int frame_num);
-static int  PTEClear(pte_t *pt, int page_num);
-static int  PTESet(pte_t *pt, int page_num, int prot, int pfn);
 static void DoIdle(void);
 
 
@@ -98,10 +89,6 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //    page table to reflect any pages/frames that have been added/removed as a result of
     //    the brk change. Start off by calculating the page numbers for our new proposed brk
     //    and our current brk.
-    //
-    //    Note that we have to do some casting magic here... First cast the void * addresses to
-    //    long ints so that we may perform bit operations on them, then we can cast the result
-    //    down to an integer as we do not need to top bytes.
     int new_brk_page_num = ((int) _kernel_new_brk)   >> PAGESHIFT;
     int cur_brk_page_num = ((int) e_kernel_curr_brk) >> PAGESHIFT;
 
@@ -135,7 +122,8 @@ int SetKernelBrk(void *_kernel_new_brk) {
                    PROT_READ | PROT_WRITE,  // page protection bits
                    frame_num);              // frame number
             FrameSet(frame_num);
-            TracePrintf(1, "[SetKernelBrk] Mapping page: %d to frame: %d\n", cur_brk_page_num + i, frame_num);
+            TracePrintf(1, "[SetKernelBrk] Mapping page: %d to frame: %d\n",
+                           cur_brk_page_num + i, frame_num);
         } else {
             // 6c. If we are shrinking the heap, then we need to unmap pages. Start by grabbing
             //     the number of the frame mapped to the current brk page. Free the frame.
@@ -144,7 +132,8 @@ int SetKernelBrk(void *_kernel_new_brk) {
 
             // 6d. Clear the page in the kernel's page table so it is no longer valid
             PTEClear(e_kernel_pt, cur_brk_page_num - i);
-            TracePrintf(1, "[SetKernelBrk] Unmapping page: %d from frame: %d\n", cur_brk_page_num - i, frame_num);
+            TracePrintf(1, "[SetKernelBrk] Unmapping page: %d from frame: %d\n",
+                           cur_brk_page_num - i, frame_num);
         }
     }
 
@@ -187,17 +176,17 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //
     //    Remember to check for a remainder---it may be that the number of frames is not divisible
     //    by 8, and C naturally rounds *down*, so we may need to increment our final byte count.
-    g_num_frames   = pmem_size    / PAGESIZE;
-    int frames_len = g_num_frames / KERNEL_BYTE_SIZE;
-    if (g_num_frames % KERNEL_BYTE_SIZE) {
+    e_num_frames   = pmem_size    / PAGESIZE;
+    int frames_len = e_num_frames / KERNEL_BYTE_SIZE;
+    if (e_num_frames % KERNEL_BYTE_SIZE) {
         frames_len++;
     }
 
     // 4. Allocate space for our frames bit vector. Use calloc to ensure that the memory is
     //    zero'd out (i.e., that every frame is currently marked as free). Halt upon error.
-    g_frames = (char *) calloc(frames_len, sizeof(char));
-    if (g_frames == NULL) {
-        TracePrintf(1, "Calloc for g_frames failed!\n");
+    e_frames = (char *) calloc(frames_len, sizeof(char));
+    if (e_frames == NULL) {
+        TracePrintf(1, "Calloc for e_frames failed!\n");
         Halt();
     }
 
@@ -381,9 +370,9 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     g_virtual_memory = 1;
 
     // 15. Print some debugging information for good measure.
-    TracePrintf(1, "[KernelStart] g_num_frames:                %d\n", g_num_frames);
+    TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
     TracePrintf(1, "[KernelStart] frames_len:                  %d\n", frames_len);
-    TracePrintf(1, "[KernelStart] g_frames:                    %p\n", g_frames);
+    TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
     TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
     TracePrintf(1, "[KernelStart] user_pt:                     %p\n", user_pt);
     TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
@@ -460,155 +449,6 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
     // Change kernel stack page table entries for next process
     // Flush TLB for kernel stack and Region 1
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-}
-
-
-/*!
- * \desc                 Marks the frame indicated by "frame_num" as free by clearing its bit
- *                       in our global frame bit vector.
- * 
- * \param[in] frame_num  The number of the frame to free
- * 
- * \return               0 on success, ERROR otherwise.
- */
-static int FrameClear(int frame_num) {
-    // 1. Check that our frame number is valid. If not, print message and return error.
-    if (frame_num < 0 || frame_num >= g_num_frames) {
-        TracePrintf(1, "[FrameClear] Invalid frame number: %d\n", frame_num);
-        return ERROR;
-    }
-
-    // 2. Check to see if the frame indicated by frame_num is already invalid.
-    //    If so, print a warning message but do not return ERROR.
-    if(!BitTest(g_frames, frame_num)) {
-        TracePrintf(1, "[FrameClear] Warning: frame %d is already invalid\n", frame_num);
-    }
-
-    // 3. "Free" the frame indicated by frame_num by clearing its bit in our frames bit vector.
-    BitClear(g_frames, frame_num);
-    return 0;
-}
-
-
-/*!
- * \desc    Find a free frame from the physical memory
- * 
- * \return  Frame number on success, ERROR otherwise.
- */
-static int FrameFind(void) {
-    for (int i = 0; i < g_num_frames; i++) {
-        if (BitTest(g_frames, i) == 0) {
-            return i;
-        }
-    }
-    return ERROR;
-}
-
-
-/*!
- * \desc                 Marks the frame indicated by "frame_num" as in use by setting its bit
- *                       in our global frame bit vector.
- * 
- * \param[in] frame_num  The number of the frame to mark as in use
- * 
- * \return               0 on success, ERROR otherwise.
- */
-static int FrameSet(int frame_num) {
-    // 1. Check that our frame number is valid. If not, print message and return error.
-    if (frame_num < 0 || frame_num >= g_num_frames) {
-        TracePrintf(1, "[FrameSet] Invalid frame number: %d\n", frame_num);
-        return ERROR;
-    }
-
-    // 2. Check to see if the frame indicated by frame_num is already valid.
-    //    If so, print a warning message but do not return ERROR.
-    if(BitTest(g_frames, frame_num)) {
-        TracePrintf(1, "[FrameSet] Warning: frame %d is already valid\n", frame_num);
-    }
-
-    // 3. Mark the frame indicated by frame_num as in use by
-    //    setting its bit in the frame bit vector.
-    BitSet(g_frames, frame_num);
-    return 0;
-}
-
-
-/*!
- * \desc             A
- * 
- * \param[in] pt     T
- * \param[in] index  T
- * 
- * \return  Frame index on success, ERROR otherwise.
- */
-static int PTEClear(pte_t *pt, int page_num) {
-    // 1. Check that our page table pointer is invalid. If not, print message and return error.
-    if (!pt) {
-        TracePrintf(1, "[PTEClear] Invalid page table pointer\n");
-        return ERROR;
-    }
-
-    // 2. Check that our page number is valid. If not, print message and return error.
-    if (page_num < 0 || page_num >= MAX_PT_LEN) {
-        TracePrintf(1, "[PTEClear] Invalid page number: %d\n", page_num);
-        return ERROR;
-    }
-
-    // 3. Check to see if the entry indicated by page_num is already invalid.
-    //    If so, print a warning message, but do not return ERROR. 
-    if (!pt[page_num].valid) {
-        TracePrintf(1, "[PTEClear] Warning: page %d is alread invalid\n", page_num);
-    }
-
-    // 4. Mark the page table entry indicated by page_num as invalid.
-    pt[page_num].valid = 0;
-    pt[page_num].prot  = 0;
-    pt[page_num].pfn   = 0;
-    return 0;
-}
-
-
-/*!
- * \desc                A
- * 
- * \param[in] pt        T
- * \param[in] page_num  T
- * \param[in] prot      T
- * \param[in] pfn       T
- * 
- * \return  Frame index on success, ERROR otherwise.
- */
-static int PTESet(pte_t *pt, int page_num, int prot, int pfn) {
-    // 1. Check that our page table pointer is invalid. If not, print message and return error.
-    if (!pt) {
-        TracePrintf(1, "[PTESet] Invalid page table pointer\n");
-        return ERROR;
-    }
-
-    // 2. Check that our page number is valid. If not, print message and return error.
-    if (page_num < 0 || page_num >= MAX_PT_LEN) {
-        TracePrintf(1, "[PTESet] Invalid page number: %d\n", page_num);
-        return ERROR;
-    }
-
-    // 3. Check that our frame number is valid. If not, print message and return error.
-    if (pfn < 0 || pfn >= g_num_frames) {
-        TracePrintf(1, "[PTESet] Invalid frame number: %d\n", page_num);
-        return ERROR;
-    }
-
-    // 4. Check to see if the entry indicated by page_num is already valid.
-    //    If so, print a warning message, but do not return ERROR. 
-    if (pt[page_num].valid) {
-        TracePrintf(1, "[PTESet] Warning: page %d is alread valid\n", page_num);
-    }
-
-    // 5. Make the page table entry indicated by page_num valid, set
-    //    its protections and map it to the frame indicated by pfn.
-    pt[page_num].valid = 1;
-    pt[page_num].prot  = prot;
-    pt[page_num].pfn   = pfn;
-    return 0;
 }
 
 
