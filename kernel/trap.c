@@ -48,13 +48,13 @@ int TrapKernel(UserContext *_uctxt) {
 
         case YALNIX_GETPID:
             TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
-            // ret = SyscallGetPid();
-            // _uctxt->regs[0] = ret;
+            ret = SyscallGetPid();
+            _uctxt->regs[0] = ret;
 
         case YALNIX_BRK:
             TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
-            // ret = SyscallBrk((void *) _uctxt->regs[0]);
-            // _uctxt->regs[0] = ret;
+            ret = SyscallBrk((void *) _uctxt->regs[0]);
+            _uctxt->regs[0] = ret;
 
         case YALNIX_DELAY:
             TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);

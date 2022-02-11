@@ -457,6 +457,8 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
  * \desc  A dummy userland process that the kernel runs when there are no other processes.
  */
 static void DoIdle(void) {
+    char *string = (char *) calloc(10000, sizeof(char));
+    strcpy(string, "DoIdle");
     while(1) {
         TracePrintf(1,"DoIdle\n");
         Pause();
