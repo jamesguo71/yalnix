@@ -48,6 +48,7 @@ static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
  * Local Function Definitions
  */
 static void DoIdle(void);
+static void DoIdle2(void);
 
 
 /*!
@@ -201,6 +202,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
     pte_t *user_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
+    pte_t *user_pt2 = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (user_pt == NULL) {
         TracePrintf(1, "Calloc for user_pt failed!\n");
         Halt();
@@ -208,11 +210,13 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
 
     // 6. Allocate space for the PCB and the kernel stack of our idle process. Halt upon error.
     pcb_t *idlePCB = (pcb_t *) malloc(sizeof(pcb_t));
+    pcb_t *idlePCB2 = (pcb_t *) malloc(sizeof(pcb_t));
     if (idlePCB == NULL) {
         TracePrintf(1, "[KernelStart] Malloc for idlePCB failed!\n");
         Halt();
     }
     idlePCB->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
+    idlePCB2->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
     if (!idlePCB->ks) {
         TracePrintf(1, "[KernelStart] Calloc for idlePCB kernel stack failed!\n");
         Halt();
@@ -298,9 +302,14 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //     TODO: I do not know how KernelContext comes into play yet, so for now just set to NULL.
     _uctxt->pc     = DoIdle;
     _uctxt->sp     = (void *) VMEM_1_LIMIT - sizeof(void *);
-    idlePCB->kctxt = NULL;
-    idlePCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
+    idlePCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    idlePCB->uctxt = (UserContext *)   malloc(sizeof(UserContext));
     memcpy(idlePCB->uctxt, _uctxt, sizeof(UserContext));
+
+    idlePCB2->kctxt = NULL;
+    idlePCB2->uctxt = (UserContext *) malloc(sizeof(UserContext));
+    idlePCB2->uctxt->pc = DoIdle2;
+    idlePCB2->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     
     // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
     //     assign our DoIdle process a pid with the build system helper function. Note that
@@ -313,6 +322,11 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     idlePCB->pid   = helper_new_pid(idlePCB->pt);
     ProcListProcessAdd(e_proc_list, idlePCB);
     ProcListRunningSet(e_proc_list, idlePCB);
+
+    idlePCB2->pt   = user_pt2;
+    idlePCB2->pid  = helper_new_pid(idlePCB2->pt);
+    ProcListProcessAdd(e_proc_list, idlePCB2);
+    ProcListReadyAdd(e_proc_list, idlePCB2)
 
     // 13. Initialize the kernel stack for the dummy idle process. Note that *every* process
     //     has a kernel stack, but that the kernel always looks for its kernel stack at the
@@ -340,6 +354,15 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
            idlePCB->ks,                                    // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        PTESet(idlePCB2->ks,                         // page table pointer
+               i,                                   // page number
+               PROT_READ | PROT_WRITE,              // page protection bits
+               i + kernel_stack_start_page_num);    // frame number
+
+        FrameSet(i + kernel_stack_start_page_num);
+    }
+
     // 14. Initialize the userland stack for the dummy idle process. Since DoIdle doesn't need
     //     a lot of stack space, lets just give it a single page for its stack. Calculate the
     //     number of the page that its sp is currently pointing to, but make sure to subtract
@@ -361,6 +384,18 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
            user_stack_frame_num);     // frame number
     FrameSet(user_stack_frame_num);
 
+    int user_stack_page_num2  = (((int ) idlePCB2->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
+    int user_stack_frame_num2 = FrameFind();
+    if (user_stack_frame_num2 == ERROR) {
+        TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
+        Halt();
+    }
+    PTESet(user_pt2,                   // page table pointer
+           user_stack_page_num2,       // page number
+           PROT_READ | PROT_WRITE,    // page protection bits
+           user_stack_frame_num2);     // frame number
+    FrameSet(user_stack_frame_num2);
+
     // 14. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
     //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
@@ -378,13 +413,17 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
     TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
     TracePrintf(1, "[KernelStart] user_pt:                     %p\n", user_pt);
+    TracePrintf(1, "[KernelStart] user_pt2:                    %p\n", user_pt2);
     TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
+    TracePrintf(1, "[KernelStart] user_stack_page_num2:        %d\n", user_stack_page_num2);
+    TracePrintf(1, "[KernelStart] user_stack_frame_num2:       %d\n", user_stack_frame_num2);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
+    TracePrintf(1, "[KernelStart] idlePCB2->uctxt->sp:         %p\n", idlePCB2->uctxt->sp);
     ProcListProcessPrint(e_proc_list);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
@@ -407,29 +446,87 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
  * 
  * \return               Returns the kc_in pointer
  */
-KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
-    // // 1. Check arguments. Return error if invalid.
-    // if (!kc_in || !new_pcb_p) {
-    //     return NULL;
-    // }
+KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) {
+    // 1. Check if arguments are valid. If not, print message and halt.
+    if (!_kctxt || !_new_pcb_p) {
+        TracePrintf(1, "[MyKCCopy] One or more invalid argument pointers\n");
+        Halt();
+    }
 
-    // // 2. Cast our new process pcb pointer so that we can reference the internal variables.
-    // pcb_t *pcb = (pcb_t *) new_pcb_p;
+    // 2. Cast our void arguments to our custom pcb struct. Allocate space for
+    //    a KernelContext then copy over the incoming context. Halt upon error.
+    pcb_t *running_new = (pcb_t *) _new_pcb_p;
+    running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    if (!running_new->kctxt) {
+        TracePrintf(1, "[MyKCCopy] Error allocating space for KernelContext\n");
+        Halt();
+    }
+    memcpy(running_new->kctxt, _kctxt, sizeof(KernelContext));
+    TracePrintf(1, "[MyKCCopy] running_new->sp:  %p\n", running_new->uctxt->sp);
+    TracePrintf(1, "[MyKCCopy] running_new->pid: %d\n", running_new->pid);
 
-    // // 3. Copy the incoming KernelContext into the new process' pcb. Can I use memcpy
-    // //    in the kernel or do I need to implement it myself (i.e., use void pointers
-    // //    and loop over copying byte-by-byte)? I bet I have to do it manually...
-    // memcpy(pcb->kctxt, kc_in, sizeof(KernelContext));
+    // 3. This is where things get tricky. We need to copy the contents of the stack for our
+    //    current process over to the stack for our new process. The reason this is tricky, is
+    //    that the frames for our new process are not mapped into the current process' address
+    //    space. In other words, our virtual addresses will always get translated and mapped to
+    //    stack frames for the current process, not the new one.
+    //
+    //    Thus, we need to temporarilly map the new process' stack frames into the current space.
+    //    Calculate the starting page number for the current process' stack, then subtract enough
+    //    pages to put our temporary copy beneath the current process' stack.
+    //
+    //    Update our kernel's page table by mapping the mapping our temporary pages to the
+    //    new process' stack frames.
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    int kernel_stack_temp_page_num  = kernel_stack_start_page_num - KERNEL_NUMBER_STACK_FRAMES;
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        TracePrint(1, "[MyKCCopy] Mapping page: %d to frame: %d\n",
+                      i + kernel_stack_temp_page_num,
+                      running_new->ks[i].pfn);
+        PTESet(e_kernel_pt,                     // page table pointer
+               i + kernel_stack_temp_page_num,  // page number
+               PROT_READ | PROT_WRITE,          // page protection bits
+               running_new->ks[i].pfn);         // frame number
+    }
 
-    // // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
-    // //    I do not understand how I access the current kernel stack frames with only kc_in. Is
-    // //    it something related to kstack_cs? What is that variable?
-    // for (int i = 0; i < numFrames; i++) {
-    //     // copy frames over somehow???
-    // }
+    // 4. Calculate the address for the starting byte of the current process stack and
+    //    for our temporary stack. Then, copy over the contents of our current process
+    //    stack to the temporary stack---remember, the temporary pages are mapped to
+    //    the new process' stack frames, so even though these pages are temporary for
+    //    the current process the new process still has a reference to the stack frames.
+    void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
+    void *kernel_stack_temp_addr = (void *) (kernel_stack_temp_page_num << PAGESHIFT);
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n");
+        memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE);
+        kernel_stack_start_addr += PAGESIZE;
+        kernel_stack_temp_addr += PAGESIZE;
+    }
 
-    // // x. Return the incoming KernelContext
-    // return kc_in
+    // 5. Unmap the temporary stack pages from the next processes stack frames.
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        PTEClear(e_kernel_pt, i + kernel_stack_temp_page_num);
+    }
+
+    // 6. Update the kernel's page table so that its stack pages map to
+    //    the correct frames for the new running process.
+    //
+    //    TODO: PTECopy function???
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the running_new page entries
+           running_new->ks,                                // for its kernel stack into the master
+           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
+
+    // 5. Tell the CPU where to find the page table for our new running process
+    WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
+    WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
+
+    // TODO: Flush the TLB so that we get a page fault and load our new page table
+    //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
+
+    // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
+    return running_new->kctxt;
 }
 
 
@@ -445,13 +542,40 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
  * \return                return a pointer to a kernel context it had earlier saved in the next
  *                        process’s PCB.
  */
-KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
-    // Check if parameters are null
-    // Copy the kernel context into the current process’s PCB
-    // Change Page Table Register  REG_PTBR0 for the new Region 1 address of the new process
-    // Change kernel stack page table entries for next process
-    // Flush TLB for kernel stack and Region 1
+KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p) {
+    // 1. Check if arguments are valid. If not, print message and halt.
+    if (!_kctxt || !_curr_pcb_p || !_next_pcb_p) {
+        TracePrintf(1, "[MyKCS] One or more invalid argument pointers\n");
+        Halt();
+    }
+
+    // 2. Cast our void arguments to our custom pcb struct. Check to see if our current
+    //    process has an initialized KernelContext. If not, allocate space. Then, copy
+    //    over the incoming KernelContext.
+    pcb_t *running_new = (pcb_t *) _next_pcb_p;
+    pcb_t *running_old = (pcb_t *) _curr_pcb_p;
+    memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
+
+    // 4. Update the kernel's page table so that its stack pages map to
+    //    the correct frames for the new running process.
+    //
+    //    TODO: PTECopy function???
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the running_new page entries
+           running_new->ks,                                // for its kernel stack into the master
+           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
+
+    // 5. Tell the CPU where to find the page table for our new running process
+    WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
+    WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
+
+    // TODO: Flush the TLB so that we get a page fault and load our new page table
+    //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
+
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
+    return running_new->kctxt;
 }
 
 
@@ -460,7 +584,17 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
  */
 static void DoIdle(void) {
     while(1) {
-        TracePrintf(1,"DoIdle\n");
+        TracePrintf(1,"DoIdle 1\n");
+        Pause();
+    }
+}
+
+/*!
+ * \desc  A dummy userland process that the kernel runs when there are no other processes.
+ */
+static void DoIdle2(void) {
+    while(1) {
+        TracePrintf(1,"DoIdle 2\n");
         Pause();
     }
 }
