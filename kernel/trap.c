@@ -185,30 +185,29 @@ int TrapClock(UserContext *_uctxt) {
     }
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     ProcListRunningSet(e_proc_list, running_new);
-
-    // 5. Update the kernel's page table so that its stack pages map to
-    //    the correct frames for the new running process.
-    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
-    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the running_new page entries
-           running_new->ks,                                // for its kernel stack into the master
-           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
-
-
-    // 6. Tell the CPU where to find the page table for our new running process
-    WriteRegister(REG_PTBR1,     (unsigned int) running_new->pt);    // pt address
-    WriteRegister(REG_PTLR1,     (unsigned int) MAX_PT_LEN);         // num entries
-
-    // TODO: Flush the TLB so that we get a page fault and load our new page table
-    //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
-    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
+    
+    //
+    TracePrintf(1, "[TrapClock] running_old->sp:  %p\trunning_new->sp:  %p\n",
+                    running_old->uctxt->sp, running_new->uctxt->sp);
+    TracePrintf(1, "[TrapClock] running_old->pid: %d\trunning_new->pid: %d\n",
+                    running_old->pid, running_new->pid);
 
     // 7. TODO: KCSwitch here???
+    int ret;
+    if (!running_new->kctxt) {
+        ret = KernelContextSwitch(MyKCCopy,
+                         (void *) running_old,
+                         (void *) running_new);
+    } else {
+        ret = KernelContextSwitch(MyKCS,
+                         (void *) running_old,
+                         (void *) running_new);
+    }
 
-    //
-    TracePrintf(1, "[TrapClock] running_old->sp: %p\trunning_new->sp: %p\n",
-                    running_old->uctxt->sp, running_new->uctxt->sp);
+    if (ret < 0) {
+        TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
+        Halt();
+    }
     return 0;
 }
 
