@@ -480,7 +480,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     int kernel_stack_temp_page_num  = kernel_stack_start_page_num - KERNEL_NUMBER_STACK_FRAMES;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        TracePrint(1, "[MyKCCopy] Mapping page: %d to frame: %d\n",
+        TracePrintf(1, "[MyKCCopy] Mapping page: %d to frame: %d\n",
                       i + kernel_stack_temp_page_num,
                       running_new->ks[i].pfn);
         PTESet(e_kernel_pt,                     // page table pointer
