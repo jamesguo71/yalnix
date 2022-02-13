@@ -1,7 +1,9 @@
 #ifndef __PROC_LIST_H
 #define __PROC_LIST_H
+
 #include "hardware.h"
 #include "kernel.h"
+
 
 
 typedef struct proc_list proc_list_t;
@@ -28,6 +30,7 @@ typedef struct pcb {
     UserContext   uctxt;   // Defined in `hardware.h`
 
     pte_t ks[KERNEL_NUMBER_STACK_FRAMES];
+    // TODO: We probably can also make this a member structure, just need to bzero its bytes after pcb created
     pte_t *pt;              // Defined in `hardware.h`
 
     void *brk;

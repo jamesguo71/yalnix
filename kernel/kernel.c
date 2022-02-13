@@ -6,8 +6,8 @@
 #include "kernel.h"
 #include "proc_list.h"
 #include "pte.h"
-#include "syscall.h"
 #include "trap.h"
+#include "load_program.h"
 
 
 /*
@@ -405,19 +405,22 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         TracePrintf(1, "Calloc for initPCB page table failed!\n");
         Halt();
     }
-    //// new frames for its kernel stack frames
-
+    //// new frames for its kernel stack frames -> alread done, since it's part of initPCB
     //// a UserContext (from the the uctxt argument to KernelStart))
-    //idlePCB->kctxt = NULL;
-
-    memcpy(&idlePCB->uctxt, _uctxt, sizeof(UserContext));
-    idlePCB->pt    = user_pt;
-    idlePCB->pid   = helper_new_pid(idlePCB->pt);
-
-
+    memcpy(&initPCB->uctxt, _uctxt, sizeof(UserContext));
+    initPCB->pid = helper_new_pid(initPCB->pt);
 
     // Then write KCCopy() to: copy the current KernelContext into initPCB and
     // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
+    KernelContextSwitch(KCCopy, initPCB, NULL);
+    // ToDo: Do we need to adjust reg_ptbr1 here?
+    WriteRegister(REG_PTBR1, (unsigned int) initPCB->pt);
+    if (LoadProgram(name, cmd_args, initPCB) == ERROR) {
+        TracePrintf(1, "KernelStart: LoadProgram failed.\n");
+        Halt();
+    }
+    // Todo: Change reg_ptbr1 register to idlePCB's page table addr
+    // Todo: Put init proc to waiting and let kernel run idle?
 
 }
 
@@ -450,6 +453,13 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
     // // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
     // //    I do not understand how I access the current kernel stack frames with only kc_in. Is
     // //    it something related to kstack_cs? What is that variable?
+
+    // From the manual: Page 73
+    // Copying a page into an unmapped frame? The second bullet above raises the question:
+    // “how can I copy the contents of a page into a frame not mapped into my address space—isn’t that impossible?”
+    // The answer is yes, it is impossible. In order to do it, you need to temporarily map the destination frame into some page.
+    // I like to use the page right below the kernel stack.
+
     // for (int i = 0; i < numFrames; i++) {
     //     // copy frames over somehow???
     // }
