@@ -355,12 +355,13 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        int frame = FrameFind();
         PTESet(idlePCB2->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
-               i + kernel_stack_start_page_num);    // frame number
+               frame);    // frame number
 
-        FrameSet(i + kernel_stack_start_page_num);
+        FrameSet(frame);
     }
 
     // 14. Initialize the userland stack for the dummy idle process. Since DoIdle doesn't need
