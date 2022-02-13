@@ -144,7 +144,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> (rewrite the line below to match your actual data structure)
      * ==>> proc->uc.sp = cp2;
      */
-    proc->uctxt->sp = cp2;
+    proc->uctxt.sp = cp2;
 
     /*
      * Now save the arguments in a separate buffer in region 0, since
@@ -301,7 +301,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> (rewrite the line below to match your actual data structure)
      * ==>> proc->uc.pc = (caddr_t) li.entry;
      */
-    proc->uctxt->pc = (caddr_t) li.entry;
+    proc->uctxt.pc = (caddr_t) li.entry;
 
 
     /*

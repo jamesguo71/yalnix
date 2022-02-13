@@ -23,8 +23,8 @@ typedef struct pcb {
     struct pcb *processes_next;
     struct pcb *processes_prev;
 
-    KernelContext *kctxt;   // Needed for KernelCopy? See Page 45 
-    UserContext   *uctxt;   // Defined in `hardware.h`    
+    KernelContext kctxt;   // Needed for KernelCopy? See Page 45
+    UserContext   uctxt;   // Defined in `hardware.h`
 
     pte_t *ks;
     pte_t *pt;              // Defined in `hardware.h`

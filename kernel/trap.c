@@ -164,7 +164,7 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
         Halt();
     }
-    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+    memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
 
     // 3. Add the old running process to our ready queue
     ProcListReadyAdd(e_proc_list, running_old);
@@ -183,7 +183,7 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no ready process\n");
         Halt();
     }
-    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+    memcpy(_uctxt, &running_new->uctxt, sizeof(UserContext));
     ProcListRunningSet(e_proc_list, running_new);
 
     // 5. Update the kernel's page table so that its stack pages map to
@@ -208,7 +208,7 @@ int TrapClock(UserContext *_uctxt) {
 
     //
     TracePrintf(1, "[TrapClock] running_old->sp: %p\trunning_new->sp: %p\n",
-                    running_old->uctxt->sp, running_new->uctxt->sp);
+                    running_old->uctxt.sp, running_new->uctxt.sp);
     return 0;
 }
 

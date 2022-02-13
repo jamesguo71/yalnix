@@ -298,9 +298,11 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //     TODO: I do not know how KernelContext comes into play yet, so for now just set to NULL.
     _uctxt->pc     = DoIdle;
     _uctxt->sp     = (void *) VMEM_1_LIMIT - sizeof(void *);
-    idlePCB->kctxt = NULL;
-    idlePCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
-    memcpy(idlePCB->uctxt, _uctxt, sizeof(UserContext));
+    // Todo: pcb_t now holds a kctxt, so it's not a pointer anymore.
+    // idlePCB->kctxt = NULL;
+    // Todo: pcb_t now holds a UserContext, so no need to malloc for it
+//    idlePCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
+    memcpy(&idlePCB->uctxt, _uctxt, sizeof(UserContext));
     
     // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
     //     assign our DoIdle process a pid with the build system helper function. Note that
@@ -349,7 +351,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     // 
     //     Then, find an available frame to map the userland stack page to; update its
     //     page table and the frame bit vector accordingly.
-    int user_stack_page_num  = (((int ) idlePCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
+    int user_stack_page_num  = (((int ) idlePCB->uctxt.sp) >> PAGESHIFT) - MAX_PT_LEN;
     int user_stack_frame_num = FrameFind();
     if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
@@ -384,15 +386,47 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
-    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt.sp);
     ProcListProcessPrint(e_proc_list);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
+    // TODO: assume cmd_args[0] is null if no args passed to ./yalnix
+    char *name = "init";
+    if (cmd_args[0] != NULL)
+        // cmd_args would be const, so I assume it's safe to point name to cmd_args[0]
+        name = cmd_args[0];
 
     // For Checkpoint 3, KernelStart needs to create an initPCB and Set up the identity for the new initPCB
+    pcb_t *initPCB = (pcb_t *) malloc(sizeof(pcb_t));
+    if (initPCB == NULL) {
+        TracePrintf(1, "[KernelStart] Malloc for initPCB failed!\n");
+        Halt();
+    }
+    //// Its region 1 page table (all invalid)
+    initPCB->pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
+    if (user_pt == NULL) {
+        TracePrintf(1, "Calloc for initPCB page table failed!\n");
+        Halt();
+    }
+    //// new frames for its kernel stack frames
+    initPCB->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
+    if (initPCB->ks == NULL) {
+        TracePrintf(1, "[KernelStart] Calloc for initPCB kernel stack failed!\n");
+        Halt();
+    }
+    //// a UserContext (from the the uctxt argument to KernelStart))
+    //idlePCB->kctxt = NULL;
+
+    memcpy(&idlePCB->uctxt, _uctxt, sizeof(UserContext));
+    idlePCB->pt    = user_pt;
+    idlePCB->pid   = helper_new_pid(idlePCB->pt);
+
+
+
     // Then write KCCopy() to: copy the current KernelContext into initPCB and
     // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
+
 }
 
 
@@ -455,7 +489,7 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
     // Copy the kernel context into the current process’s PCB
     pcb_t *curr_pcb = (pcb_t *) curr_pcb_p;
     pcb_t *next_pcb = (pcb_t *) next_pcb_p;
-    memcpy(curr_pcb->kctxt, kc_in,sizeof(KernelContext));
+    memcpy(&curr_pcb->kctxt, kc_in,sizeof(KernelContext));
 
     // Change Page Table Register  REG_PTBR1 for the new Region 1 address of the new process
     WriteRegister(REG_PTBR1, (unsigned int) next_pcb->pt);
@@ -473,7 +507,7 @@ KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-    return next_pcb->kctxt;
+    return &next_pcb->kctxt;
 }
 
 
