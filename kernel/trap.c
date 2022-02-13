@@ -196,8 +196,8 @@ int TrapClock(UserContext *_uctxt) {
     int ret;
     if (!running_new->kctxt) {
         ret = KernelContextSwitch(KCCopy,
-                         (void *) running_old,
-                         (void *) running_new);
+                         (void *) running_new,
+                                  NULL;
     } else {
         ret = KernelContextSwitch(MyKCS,
                          (void *) running_old,
