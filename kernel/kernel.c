@@ -349,6 +349,9 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
                i + kernel_stack_start_page_num);    // frame number
 
         FrameSet(i + kernel_stack_start_page_num);
+        TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n",
+                      i,
+                      i + kernel_stack_start_page_num);
     }
     memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the DoIdle proc's page entries
            idlePCB->ks,                                    // for its kernel stack into the master
@@ -362,6 +365,9 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
                frame);    // frame number
 
         FrameSet(frame);
+        TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n",
+                    i,
+                    frame);
     }
 
     // 14. Initialize the userland stack for the dummy idle process. Since DoIdle doesn't need
