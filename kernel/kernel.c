@@ -212,11 +212,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         TracePrintf(1, "[KernelStart] Malloc for idlePCB failed!\n");
         Halt();
     }
-    idlePCB->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
-    if (!idlePCB->ks) {
-        TracePrintf(1, "[KernelStart] Calloc for idlePCB kernel stack failed!\n");
-        Halt();
-    }
+
 
     // 7. Allocate space for the kernel list structures, which are used to track processes,
     //    locks, cvars, and pipes. Halt upon error if any of these initializations fail.
@@ -410,11 +406,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
     //// new frames for its kernel stack frames
-    initPCB->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
-    if (initPCB->ks == NULL) {
-        TracePrintf(1, "[KernelStart] Calloc for initPCB kernel stack failed!\n");
-        Halt();
-    }
+
     //// a UserContext (from the the uctxt argument to KernelStart))
     //idlePCB->kctxt = NULL;
 

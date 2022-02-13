@@ -1,6 +1,7 @@
 #ifndef __PROC_LIST_H
 #define __PROC_LIST_H
 #include "hardware.h"
+#include "kernel.h"
 
 
 typedef struct proc_list proc_list_t;
@@ -26,7 +27,7 @@ typedef struct pcb {
     KernelContext kctxt;   // Needed for KernelCopy? See Page 45
     UserContext   uctxt;   // Defined in `hardware.h`
 
-    pte_t *ks;
+    pte_t ks[KERNEL_NUMBER_STACK_FRAMES];
     pte_t *pt;              // Defined in `hardware.h`
 
     void *brk;
