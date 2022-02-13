@@ -447,11 +447,33 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
  */
 KernelContext *MyKCS(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
     // Check if parameters are null
+    if (kc_in == NULL || curr_pcb_p == NULL || next_pcb_p == NULL) {
+        TracePrintf(1, "MyKCS: invalid parameters.\n");
+        Halt();
+    }
+
     // Copy the kernel context into the current process’s PCB
-    // Change Page Table Register  REG_PTBR0 for the new Region 1 address of the new process
+    pcb_t *curr_pcb = (pcb_t *) curr_pcb_p;
+    pcb_t *next_pcb = (pcb_t *) next_pcb_p;
+    memcpy(curr_pcb->kctxt, kc_in,sizeof(KernelContext));
+
+    // Change Page Table Register  REG_PTBR1 for the new Region 1 address of the new process
+    WriteRegister(REG_PTBR1, (unsigned int) next_pcb->pt);
+    // Seems the value for REG_PTLR1 would never change
+    WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);
+
     // Change kernel stack page table entries for next process
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],
+           next_pcb->ks,
+           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));
+
     // Flush TLB for kernel stack and Region 1
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
+    return next_pcb->kctxt;
 }
 
 
