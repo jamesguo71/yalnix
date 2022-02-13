@@ -501,10 +501,10 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     //    stack to the temporary stack---remember, the temporary pages are mapped to
     //    the new process' stack frames, so even though these pages are temporary for
     //    the current process the new process still has a reference to the stack frames.
-    // void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
-    // void *kernel_stack_temp_addr  = (void *) (kernel_stack_temp_page_num  << PAGESHIFT);
-    void *kernel_stack_start_addr = (void *) (KERNEL_STACK_LIMIT - KERNEL_STACK_MAXSIZE);
-    void *kernel_stack_temp_addr = kernel_stack_start_addr - KERNEL_STACK_MAXSIZE;
+    void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
+    void *kernel_stack_temp_addr  = (void *) (kernel_stack_temp_page_num  << PAGESHIFT);
+    // void *kernel_stack_start_addr = (void *) (KERNEL_STACK_LIMIT - KERNEL_STACK_MAXSIZE);
+    // void *kernel_stack_temp_addr = kernel_stack_start_addr - KERNEL_STACK_MAXSIZE;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n",
                        kernel_stack_start_addr, kernel_stack_temp_addr);
@@ -536,7 +536,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-    return running_new->kctxt;
+    return _kctxt;
 }
 
 
