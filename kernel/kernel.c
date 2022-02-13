@@ -502,8 +502,8 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     //    the new process' stack frames, so even though these pages are temporary for
     //    the current process the new process still has a reference to the stack frames.
     // void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
-    void *kernel_stack_start_addr = (void *) (KERNEL_STACK_LIMIT - KERNEL_STACK_MAX_SIZE);
-    void *kernel_stack_temp_addr = kernel_stack_start_addr - KERNEL_STACK_MAX_SIZE;
+    void *kernel_stack_start_addr = (void *) (KERNEL_STACK_LIMIT - KERNEL_STACK_MAXSIZE);
+    void *kernel_stack_temp_addr = kernel_stack_start_addr - KERNEL_STACK_MAXSIZE;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n");
         memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE);
