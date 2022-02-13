@@ -326,7 +326,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     idlePCB2->pt   = user_pt2;
     idlePCB2->pid  = helper_new_pid(idlePCB2->pt);
     ProcListProcessAdd(e_proc_list, idlePCB2);
-    ProcListReadyAdd(e_proc_list, idlePCB2)
+    ProcListReadyAdd(e_proc_list, idlePCB2);
 
     // 13. Initialize the kernel stack for the dummy idle process. Note that *every* process
     //     has a kernel stack, but that the kernel always looks for its kernel stack at the
