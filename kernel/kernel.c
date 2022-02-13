@@ -508,6 +508,8 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n",
                        kernel_stack_start_addr, kernel_stack_temp_addr);
+        TracePrintf(1, "[MyKCCopy] stack_page: %d\ttemp_page: %d\n",
+                       DOWN_TO_PAGE(kernel_stack_start_addr), DOWN_TO_PAGE(kernel_stack_temp_addr));
         memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE);
         kernel_stack_start_addr += PAGESIZE;
         kernel_stack_temp_addr += PAGESIZE;
