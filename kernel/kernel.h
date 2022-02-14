@@ -87,6 +87,8 @@ int SetKernelBrk(void *_brk);
  */
 void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt);
 
+KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p);
+
 
 /*!
  * \desc                  TODO

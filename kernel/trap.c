@@ -209,6 +209,13 @@ int TrapClock(UserContext *_uctxt) {
     //
     TracePrintf(1, "[TrapClock] running_old->sp: %p\trunning_new->sp: %p\n",
                     running_old->uctxt.sp, running_new->uctxt.sp);
+    int ret = KernelContextSwitch(KCSwitch,
+                         (void *) running_old,
+                         (void *) running_new);
+    if (ret < 0) {
+        TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
+        Halt();
+    }
     return 0;
 }
 

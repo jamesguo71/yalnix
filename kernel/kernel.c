@@ -436,36 +436,66 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
  * 
  * \return               Returns the kc_in pointer
  */
-KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *not_used) {
-    // // 1. Check arguments. Return error if invalid.
-    // if (!kc_in || !new_pcb_p) {
-    //     return NULL;
-    // }
+KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) {
+    // 1. Check if arguments are valid. If not, print message and halt.
+    if (!_kctxt || !_new_pcb_p) {
+        TracePrintf(1, "[MyKCCopy] One or more invalid argument pointers\n");
+        Halt();
+    }
 
-    // // 2. Cast our new process pcb pointer so that we can reference the internal variables.
-    // pcb_t *pcb = (pcb_t *) new_pcb_p;
+    // 2. Cast our void arguments to our custom pcb struct. Allocate space for
+    //    a KernelContext then copy over the incoming context. Halt upon error.
+    pcb_t *running_new = (pcb_t *) _new_pcb_p;
+    running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    if (!running_new->kctxt) {
+        TracePrintf(1, "[MyKCCopy] Error allocating space for KernelContext\n");
+        Halt();
+    }
+    memcpy(running_new->kctxt, _kctxt, sizeof(KernelContext));
 
-    // // 3. Copy the incoming KernelContext into the new process' pcb. Can I use memcpy
-    // //    in the kernel or do I need to implement it myself (i.e., use void pointers
-    // //    and loop over copying byte-by-byte)? I bet I have to do it manually...
-    // memcpy(pcb->kctxt, kc_in, sizeof(KernelContext));
+    // 3. This is where things get tricky. We need to copy the contents of the stack for our
+    //    current process over to the stack for our new process. The reason this is tricky, is
+    //    that the frames for our new process are not mapped into the current process' address
+    //    space. In other words, our virtual addresses will always get translated and mapped to
+    //    stack frames for the current process, not the new one.
+    //
+    //    Thus, we need to temporarilly map the new process' stack frames into the current space.
+    //    Calculate the starting page number for the current process' stack, then subtract enough
+    //    pages to put our temporary copy beneath the current process' stack.
+    //
+    //    Update our kernel's page table by mapping the mapping our temporary pages to the
+    //    new process' stack frames.
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    // Todo by Fei: is this absolutely safe? what if heap is approaching kernel_stack? maybe add a sanity check
+    int kernel_stack_temp_page_num  = kernel_stack_start_page_num - KERNEL_NUMBER_STACK_FRAMES;
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        PTESet(e_kernel_pt,                     // page table pointer
+               i + kernel_stack_temp_page_num,  // page number
+               PROT_READ | PROT_WRITE,          // page protection bits
+               running_new->ks[i].pfn);         // frame number
+    }
 
-    // // 4. I'm supposed to copy the current kernel stack frames over to the new process' pcb, but
-    // //    I do not understand how I access the current kernel stack frames with only kc_in. Is
-    // //    it something related to kstack_cs? What is that variable?
+    // 4. Calculate the address for the starting byte of the current process stack and
+    //    for our temporary stack. Then, copy over the contents of our current process
+    //    stack to the temporary stack---remember, the temporary pages are mapped to
+    //    the new process' stack frames, so even though these pages are temporary for
+    //    the current process the new process still has a reference to the stack frames.
+    void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
+    void *kernel_stack_temp_addr  = (void *) (kernel_stack_temp_page_num  << PAGESHIFT);
+    // Todo by Fei: how about memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE * KERNEL_NUMBER_STACK_FRAMES);
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n",
+                       kernel_stack_start_addr, kernel_stack_temp_addr);
+        memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE);
+        kernel_stack_start_addr += PAGESIZE;
+        kernel_stack_temp_addr += PAGESIZE;
+    }
 
-    // From the manual: Page 73
-    // Copying a page into an unmapped frame? The second bullet above raises the question:
-    // “how can I copy the contents of a page into a frame not mapped into my address space—isn’t that impossible?”
-    // The answer is yes, it is impossible. In order to do it, you need to temporarily map the destination frame into some page.
-    // I like to use the page right below the kernel stack.
-
-    // for (int i = 0; i < numFrames; i++) {
-    //     // copy frames over somehow???
-    // }
-
-    // // x. Return the incoming KernelContext
-    // return kc_in
+    // 5. Unmap the temporary stack pages from the next processes stack frames.
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        PTEClear(e_kernel_pt, i + kernel_stack_temp_page_num);
+    }
+    return _kctxt;
 }
 
 
