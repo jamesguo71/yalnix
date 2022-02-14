@@ -200,11 +200,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
     }
-    pte_t *user_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
-    if (user_pt == NULL) {
-        TracePrintf(1, "Calloc for user_pt failed!\n");
-        Halt();
-    }
 
     // 6. Allocate space for the PCB and the kernel stack of our idle process. Halt upon error.
     pcb_t *idlePCB = (pcb_t *) malloc(sizeof(pcb_t));
@@ -307,7 +302,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //
     //     Finally, add our initialized DoIdle pcb to our process list structure, which keeps lists
     //     for tracking running, ready, blocked, terminated, and all processes.
-    idlePCB->pt    = user_pt;
+    bzero(idlePCB->pt, MAX_PT_LEN * sizeof(pte_t));
     idlePCB->pid   = helper_new_pid(idlePCB->pt);
     ProcListProcessAdd(e_proc_list, idlePCB);
     ProcListRunningSet(e_proc_list, idlePCB);
@@ -353,7 +348,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
         Halt();
     }
-    PTESet(user_pt,                   // page table pointer
+    PTESet(idlePCB->pt,                   // page table pointer
            user_stack_page_num,       // page number
            PROT_READ | PROT_WRITE,    // page protection bits
            user_stack_frame_num);     // frame number
@@ -364,7 +359,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
     WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
     WriteRegister(REG_PTLR0,       (unsigned int) MAX_PT_LEN);          // num entries
-    WriteRegister(REG_PTBR1,       (unsigned int) user_pt);             // DoIdle pt address
+    WriteRegister(REG_PTBR1,       (unsigned int) idlePCB->pt);             // DoIdle pt address
     WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
     WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);   // IV address
     WriteRegister(REG_VM_ENABLE, 1);
@@ -375,7 +370,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     TracePrintf(1, "[KernelStart] frames_len:                  %d\n", frames_len);
     TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
     TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
-    TracePrintf(1, "[KernelStart] user_pt:                     %p\n", user_pt);
+    TracePrintf(1, "[KernelStart] idlePCB->pt:                     %p\n", idlePCB->pt);
     TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
@@ -400,11 +395,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
     //// Its region 1 page table (all invalid)
-    initPCB->pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
-    if (user_pt == NULL) {
-        TracePrintf(1, "Calloc for initPCB page table failed!\n");
-        Halt();
-    }
+    bzero(initPCB->pt, MAX_PT_LEN * sizeof(pte_t));
+
     //// new frames for its kernel stack frames -> alread done, since it's part of initPCB
     //// a UserContext (from the the uctxt argument to KernelStart))
     memcpy(&initPCB->uctxt, _uctxt, sizeof(UserContext));
