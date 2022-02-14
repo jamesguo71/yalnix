@@ -601,9 +601,9 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-    // memcpy(_kctxt, running_new->kctxt, sizeof(KernelContext));
-    // return _kctxt;
-    return running_new->kctxt;
+    memcpy(_kctxt, running_new->kctxt, sizeof(KernelContext));
+    return _kctxt;
+    // return running_new->kctxt;
 }
 
 
