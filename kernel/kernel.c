@@ -308,7 +308,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
 
     idlePCB2->kctxt = NULL;
     idlePCB2->uctxt = (UserContext *) malloc(sizeof(UserContext));
-    idlePCB2->uctxt->pc = DoIdle2;
+    idlePCB2->uctxt->pc = DoIdle;
     idlePCB2->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     
     // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
