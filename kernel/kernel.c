@@ -601,9 +601,7 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
     // TODO: Flush the TLB so that we get a page fault and load our new page table
     //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
