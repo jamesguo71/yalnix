@@ -527,27 +527,7 @@ int ProcListReadyAdd(proc_list_t *_proc_list, pcb_t *_process) {
         return ERROR;
     }
 
-    // 2. First check for our base case: the ready list is currently empty. If so,
-    //    add the current process (both as the start and end) to the ready list.
-    //    Set the process' next and previous pointers to NULL. Return success.
-    if (!_proc_list->ready_start) {
-        _proc_list->ready_start = _process;
-        _proc_list->ready_end   = _process;
-        _process->ready_next    = NULL;
-        _process->ready_prev    = NULL;
-        return 0;
-    }
-
-    // 3. Our ready list is not empty. Our list is doubly linked, so we need to set the
-    //    current end to point to our new process as its "next" and our current process to
-    //    point to our current end as its "prev". Then, set the new process "next" to NULL
-    //    since it is the end of the list and update our end-of-list pointer in the list struct.
-    pcb_t *old_end        = _proc_list->ready_end;
-    old_end->ready_next   = _process;
-    _process->ready_prev  = old_end;
-    _process->ready_next  = NULL;
-    _proc_list->ready_end = _process;
-    return 0;
+    return ProcAdd(_proc_list->ready_list, _process);
 }
 //
 //
