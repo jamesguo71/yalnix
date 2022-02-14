@@ -576,7 +576,7 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
     TracePrintf(1, "[MyKCS] running_old->sp:  %p\trunning_new->sp:  %p\n",
                     running_old->uctxt->sp, running_new->uctxt->sp);
-    TracePrintf(1, "[MyKCS] running_old->pid: %d\trunning_new->pid: %d\n",
+    TracePrintf(1, "[MyKCS] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
 
     // 4. Update the kernel's page table so that its stack pages map to
@@ -600,7 +600,8 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-    return running_new->kctxt;
+    memcpy(_kctxt, running_new->kctxt, sizeof(KernelContext));
+    return _kctxt;
 }
 
 

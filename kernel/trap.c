@@ -189,7 +189,7 @@ int TrapClock(UserContext *_uctxt) {
     //
     TracePrintf(1, "[TrapClock] running_old->sp:  %p\trunning_new->sp:  %p\n",
                     running_old->uctxt->sp, running_new->uctxt->sp);
-    TracePrintf(1, "[TrapClock] running_old->pid: %d\trunning_new->pid: %d\n",
+    TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
 
     // 7. TODO: KCSwitch here???
