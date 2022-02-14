@@ -517,6 +517,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     //    Update our kernel's page table by mapping the mapping our temporary pages to the
     //    new process' stack frames.
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    // Todo by Fei: is this absolutely safe? what if heap is approaching kernel_stack? maybe add a sanity check
     int kernel_stack_temp_page_num  = kernel_stack_start_page_num - KERNEL_NUMBER_STACK_FRAMES;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         PTESet(e_kernel_pt,                     // page table pointer
@@ -532,6 +533,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     //    the current process the new process still has a reference to the stack frames.
     void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
     void *kernel_stack_temp_addr  = (void *) (kernel_stack_temp_page_num  << PAGESHIFT);
+    // Todo by Fei: how about memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE * KERNEL_NUMBER_STACK_FRAMES);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n",
                        kernel_stack_start_addr, kernel_stack_temp_addr);
@@ -573,6 +575,9 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
+
+    // ToDo by Fei: Should we change the reg_ptbr1 first before memcpy?
+    //  Other than this this function can be easily merged
 
     // 3. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
