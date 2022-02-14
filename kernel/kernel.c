@@ -377,7 +377,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
     TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
-    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt.sp);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt.sp:          %p\n", idlePCB->uctxt.sp);
     ProcListProcessPrint(e_proc_list);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
@@ -405,14 +405,17 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     // Then write KCCopy() to: copy the current KernelContext into initPCB and
     // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
     KernelContextSwitch(KCCopy, initPCB, NULL);
-    // ToDo: Do we need to adjust reg_ptbr1 here?
+    //  Change addr space to initPCB's
     WriteRegister(REG_PTBR1, (unsigned int) initPCB->pt);
     if (LoadProgram(name, cmd_args, initPCB) == ERROR) {
         TracePrintf(1, "KernelStart: LoadProgram failed.\n");
         Halt();
     }
-    // Todo: Change reg_ptbr1 register to idlePCB's page table addr
-    // Todo: Put init proc to waiting and let kernel run idle?
+    // Put init proc to waiting and let kernel run idle?
+    ProcListReadyAdd(e_proc_list, initPCB);
+
+    // Change reg_ptbr1 register to idlePCB's page table addr
+    WriteRegister(REG_PTBR1, (unsigned int) idlePCB->pt);
 
 }
 
@@ -438,12 +441,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     // 2. Cast our void arguments to our custom pcb struct. Allocate space for
     //    a KernelContext then copy over the incoming context. Halt upon error.
     pcb_t *running_new = (pcb_t *) _new_pcb_p;
-    running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
-    if (!running_new->kctxt) {
-        TracePrintf(1, "[MyKCCopy] Error allocating space for KernelContext\n");
-        Halt();
-    }
-    memcpy(running_new->kctxt, _kctxt, sizeof(KernelContext));
+    memcpy(&running_new->kctxt, _kctxt, sizeof(KernelContext));
 
     // 3. This is where things get tricky. We need to copy the contents of the stack for our
     //    current process over to the stack for our new process. The reason this is tricky, is
@@ -458,8 +456,11 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     //    Update our kernel's page table by mapping the mapping our temporary pages to the
     //    new process' stack frames.
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
-    // Todo by Fei: is this absolutely safe? what if heap is approaching kernel_stack? maybe add a sanity check
     int kernel_stack_temp_page_num  = kernel_stack_start_page_num - KERNEL_NUMBER_STACK_FRAMES;
+    if (kernel_stack_temp_page_num <= UP_TO_PAGE(e_kernel_curr_brk)) {
+        TracePrintf(1, "KernelStart: Not enough space for temporary kernel stack.\n");
+        Halt();
+    }
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         PTESet(e_kernel_pt,                     // page table pointer
                i + kernel_stack_temp_page_num,  // page number
@@ -474,14 +475,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     //    the current process the new process still has a reference to the stack frames.
     void *kernel_stack_start_addr = (void *) (kernel_stack_start_page_num << PAGESHIFT);
     void *kernel_stack_temp_addr  = (void *) (kernel_stack_temp_page_num  << PAGESHIFT);
-    // Todo by Fei: how about memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE * KERNEL_NUMBER_STACK_FRAMES);
-    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        TracePrintf(1, "[MyKCCopy] stack_start: %p\ttemp_start: %p\n",
-                       kernel_stack_start_addr, kernel_stack_temp_addr);
-        memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE);
-        kernel_stack_start_addr += PAGESIZE;
-        kernel_stack_temp_addr += PAGESIZE;
-    }
+    memcpy(kernel_stack_temp_addr, kernel_stack_start_addr, PAGESIZE * KERNEL_NUMBER_STACK_FRAMES);
 
     // 5. Unmap the temporary stack pages from the next processes stack frames.
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
