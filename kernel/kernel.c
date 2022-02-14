@@ -565,9 +565,8 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
         Halt();
     }
 
-    // 2. Cast our void arguments to our custom pcb struct. Check to see if our current
-    //    process has an initialized KernelContext. If not, allocate space. Then, copy
-    //    over the incoming KernelContext.
+    // 2. Cast our void arguments to our custom pcb struct. Save the incoming KernelContext
+    //    for the current running process that we are about to switch out.
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
