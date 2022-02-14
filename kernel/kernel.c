@@ -315,16 +315,19 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //     (each with their own user context). Thus, we have a field in our pcb for saving the
     //     user context for a process. Allocate space and copy over the contents of of memory
     //     at _uctxt into our DoIdle pcb.
-    //
-    //     TODO: I do not know how KernelContext comes into play yet, so for now just set to NULL.
-    _uctxt->pc     = DoIdle;
-    _uctxt->sp     = (void *) VMEM_1_LIMIT - sizeof(void *);
-    idlePCB->kctxt = NULL;
-    idlePCB->uctxt = (UserContext *)   malloc(sizeof(UserContext));
-    memcpy(idlePCB->uctxt, _uctxt, sizeof(UserContext));
+    // _uctxt->pc     = DoIdle;
+    // _uctxt->sp     = (void *) VMEM_1_LIMIT - sizeof(void *);
+    // idlePCB->kctxt = NULL;
+    // idlePCB->uctxt = (UserContext *)   malloc(sizeof(UserContext));
+    // memcpy(idlePCB->uctxt, _uctxt, sizeof(UserContext));
+    idlePCB->kctxt     = NULL;
+    idlePCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
+    idlePCB->uctxt->pc = DoIdle;
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
 
-    initPCB->kctxt = NULL;
-    initPCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
+    initPCB->kctxt     = NULL;
+    initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
     initPCB->uctxt->pc = DoIdle2;
     initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     
@@ -505,8 +508,6 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
         Halt();
     }
     memcpy(running_new->kctxt, _kctxt, sizeof(KernelContext));
-    TracePrintf(1, "[MyKCCopy] running_new->sp:  %p\n", running_new->uctxt->sp);
-    TracePrintf(1, "[MyKCCopy] running_new->pid: %d\n", running_new->pid);
 
     // 3. This is where things get tricky. We need to copy the contents of the stack for our
     //    current process over to the stack for our new process. The reason this is tricky, is
@@ -523,9 +524,6 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     int kernel_stack_temp_page_num  = kernel_stack_start_page_num - KERNEL_NUMBER_STACK_FRAMES;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        TracePrintf(1, "[MyKCCopy] Mapping page: %d to frame: %d\n",
-                      i + kernel_stack_temp_page_num,
-                      running_new->ks[i].pfn);
         PTESet(e_kernel_pt,                     // page table pointer
                i + kernel_stack_temp_page_num,  // page number
                PROT_READ | PROT_WRITE,          // page protection bits
@@ -581,12 +579,7 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
 
-    TracePrintf(1, "[MyKCS] running_old->sp:  %p\trunning_new->sp:  %p\n",
-                    running_old->uctxt->sp, running_new->uctxt->sp);
-    TracePrintf(1, "[MyKCS] running_old->pid: %d\t\trunning_new->pid: %d\n",
-                    running_old->pid, running_new->pid);
-
-    // 4. Update the kernel's page table so that its stack pages map to
+    // 3. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
     //
     //    TODO: PTECopy function???
@@ -595,16 +588,11 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
            running_new->ks,                                // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
-    // 5. Tell the CPU where to find the page table for our new running process
+    // 4. Tell the CPU where to find the page table for our new running process.
+    //    Remember to flush the TLB so we dont map to the previous process' frames!
     WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
     WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
-
-    // TODO: Flush the TLB so that we get a page fault and load our new page table
-    //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
-
-
-    // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
     return running_new->kctxt;
 }
 
