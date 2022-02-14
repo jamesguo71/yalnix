@@ -202,8 +202,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
 
-    // 6. Allocate space for Region 0 page table (i.e., the kernel's page table) and the
-    //    Region 1 page table (i.e., the dummy idle process). Halt upon error for either.
+    // 6. Allocate space for Region 0 page table (i.e., the kernel's page table). Halt upon error.
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (e_kernel_pt == NULL) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
@@ -247,39 +246,39 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
 
-    // 11. Configure the pcb for our dummy idle process. I *think* that the yalnix system allocates
-    //     space for a single UserContext---the address of which it gives to us in _uctxt---and we
-    //     need to modify this context to fit the current process we wish to run. Start by setting
-    //     the program counter to begin execution at the DoIdle function.
+    // 8. Configure the pcb for our idle process. Allocate space for its KernelContext (which will
+    //    be initialized later in MyKCS), and its UserContext. Set its program counter to point to
+    //    the DoIdle function and its stack pointer to point to the end of Region 1.
     // 
-    //     The stack grows downwards, so we want to set the stack pointer to the end of Region 1,
-    //     BUT be sure to leave enough room to store a pointer; DoIdle actually gets called by an
-    //     "init" function which places a return address on the DoIdle stack---if we set the sp to
-    //     point to the last valid byte of Region 1 then when the return address is placed on the
-    //     stack we will get a memory fault.
+    //    The stack grows downwards, so we want to set the stack pointer to the end of Region 1,
+    //    BUT be sure to leave enough room to store a pointer; DoIdle actually gets called by an
+    //    "init" function which places a return address on the DoIdle stack---if we set the sp to
+    //    point to the last valid byte of Region 1 then when the return address is placed on the
+    //    stack we will get a memory fault.
     //
-    //     While the system only has a single user context, we will want to run many processes
-    //     (each with their own user context). Thus, we have a field in our pcb for saving the
-    //     user context for a process. Allocate space and copy over the contents of of memory
-    //     at _uctxt into our DoIdle pcb.
+    //    Copy the context of our configured UserContext to the address indicated by _uctxt; this
+    //    address is where Yalnix will look for the UserContext of the current executing process.
     idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
     idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
 
+    // 9. Configure our init pcb the same way, except do NOT allocate space for KernelContext as
+    //    our KCSwitch function uses the presence of NULL to determine if KCCopy should be called.
+    //    More specifically, KCCopy will be used to initialize KernelContext the first time that
+    //    the init process gets to run.
     initPCB->kctxt     = NULL;
     initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
     initPCB->uctxt->pc = DoIdle2;
     initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
     
-    // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
-    //     assign our DoIdle process a pid with the build system helper function. Note that
-    //     the build system keeps a mapping of page table pointers to pids, so if we don't assign
-    //     pid via the helper function it complains about the PTBR1 not being assigned to a process
+    // 10. Assign our processes pids with the build system helper function. Note that the build
+    //     system keeps a mapping of page table pointers to pids, so if we don't assign pid via
+    //     the helper function it complains about the PTBR1 not being assigned to a process
     //
-    //     Finally, add our initialized DoIdle pcb to our process list structure, which keeps lists
-    //     for tracking running, ready, blocked, terminated, and all processes.
+    //     Add our pcbs to our process list structure for tracking. Note that we add idle as the
+    //     current runny process, whereas init gets put into the ready queue.
     idlePCB->pid = helper_new_pid(idlePCB->pt);
     initPCB->pid = helper_new_pid(initPCB->pt);
     ProcListProcessAdd(e_proc_list, idlePCB);
@@ -288,20 +287,20 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     ProcListReadyAdd(e_proc_list,   initPCB);
 
 
-    // 8. Now that we have finished all of our dynamic memory allocation, we can configure the
-    //    kernel's page table (previously, it may have changed due to malloc changing the brk).
+    // 11. Now that we have finished all of our dynamic memory allocation, we can configure the
+    //     kernel's page table (previously, it may have changed due to malloc changing the brk).
     //     
-    //    Calculate the number of pages being used to store the kernel text, which begins at the
-    //    start of physical memory and goes up to the beginning of the kernel data region. Since
-    //    the kernel text, data, and heap are laid out sequentially in *physical* memory, their
-    //    virtual addresses will be exactly the same (i.e., frame and page numbers are the same).
+    //     Calculate the number of pages being used to store the kernel text, which begins at the
+    //     start of physical memory and goes up to the beginning of the kernel data region. Since
+    //     the kernel text, data, and heap are laid out sequentially in *physical* memory, their
+    //     virtual addresses will be exactly the same (i.e., frame and page numbers are the same).
     //    
-    //    Figure out the page number of the last page in the text region by right-shifting the
-    //    last address in the text region by PAGESHIFT bits---this will remove the offset bits
-    //    and leave us with the page number for that address.
+    //     Figure out the page number of the last page in the text region by right-shifting the
+    //     last address in the text region by PAGESHIFT bits---this will remove the offset bits
+    //     and leave us with the page number for that address.
     //
-    //    Configure the page table entries for the text pages with read and execute permissions
-    //    (as text contains code), and mark the corresponding physical frames as in use.
+    //     Configure the page table entries for the text pages with read and execute permissions
+    //     (as text contains code), and mark the corresponding physical frames as in use.
     int kernel_text_end_page_num = ((int ) _kernel_data_start) >> PAGESHIFT;
     for(int i = 0; i < kernel_text_end_page_num; i++) {
         PTESet(e_kernel_pt,              // page table pointer
@@ -311,12 +310,12 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         FrameSet(i);
     }
 
-    // 9. Calculate the number of pages being used to store the kernel data. Again, since the
-    //    kernel is laid out sequentially in physical memory the page and frame numbers are equal.
+    // 12. Calculate the number of pages being used to store the kernel data. Again, since the
+    //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
     //
-    //    Configure the page table entries for the data pages with read and write permissions,
-    //    and mark the corresponding physical frames as taken. The data section is above text,
-    //    so offset the page/frame numbers by the last text page number.
+    //     Configure the page table entries for the data pages with read and write permissions,
+    //     and mark the corresponding physical frames as taken. The data section is above text,
+    //     so offset the page/frame numbers by the last text page number.
     int kernel_data_end_page_num = ((int ) _kernel_data_end) >> PAGESHIFT;
     for (int i = kernel_text_end_page_num; i < kernel_data_end_page_num; i++) {
         PTESet(e_kernel_pt,               // page table pointer
@@ -326,7 +325,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         FrameSet(i);
     }
 
-    // 10. Calculate the number of pages being used to store the kernel heap. Again, since the
+    // 13. Calculate the number of pages being used to store the kernel heap. Again, since the
     //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
     //
     //     Configure the page table entries for the heap pages with read and write permissions,
@@ -341,7 +340,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         FrameSet(i);
     }
 
-    // 13. Initialize the kernel stack for the dummy idle process. Note that *every* process
+    // 14. Initialize the kernel stack for the dummy idle process. Note that *every* process
     //     has a kernel stack, but that the kernel always looks for its kernel stack at the
     //     end of region 0. Thus, whenever we switch processes we need to remember to copy
     //     the process' kernel stack page table into the kernel's master page table. More
@@ -382,7 +381,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
                     frame);
     }
 
-    // 14. Initialize the userland stack for the dummy idle process. Since DoIdle doesn't need
+    // 15. Initialize the userland stack for the dummy idle process. Since DoIdle doesn't need
     //     a lot of stack space, lets just give it a single page for its stack. Calculate the
     //     number of the page that its sp is currently pointing to, but make sure to subtract
     //     MAX_PT_LEN from the result *before* using it to index into a page table. This is
@@ -415,7 +414,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
            user_stack_frame_num2);     // frame number
     FrameSet(user_stack_frame_num2);
 
-    // 14. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
+    // 16. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
     //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
     WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
@@ -426,13 +425,12 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     WriteRegister(REG_VM_ENABLE, 1);
     g_virtual_memory = 1;
 
-    // 15. Print some debugging information for good measure.
+    // 17. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
-    TracePrintf(1, "[KernelStart] frames_len:                  %d\n", frames_len);
     TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
     TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
-    TracePrintf(1, "[KernelStart] user_pt:                     %p\n", idlePCB->pt);
-    TracePrintf(1, "[KernelStart] user_pt2:                    %p\n", initPCB->pt);
+    TracePrintf(1, "[KernelStart] idlePCB->pt:                 %p\n", idlePCB->pt);
+    TracePrintf(1, "[KernelStart] initPCB->pt:                 %p\n", initPCB->pt);
     TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);

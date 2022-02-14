@@ -187,8 +187,6 @@ int TrapClock(UserContext *_uctxt) {
     ProcListRunningSet(e_proc_list, running_new);
     
     //
-    TracePrintf(1, "[TrapClock] running_old->sp:  %p\trunning_new->sp:  %p\n",
-                    running_old->uctxt->sp, running_new->uctxt->sp);
     TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
 
