@@ -551,28 +551,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         PTEClear(e_kernel_pt, i + kernel_stack_temp_page_num);
     }
-
-    // // 6. Update the kernel's page table so that its stack pages map to
-    // //    the correct frames for the new running process.
-    // //
-    // //    TODO: PTECopy function???
-    // memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the running_new page entries
-    //        running_new->ks,                                // for its kernel stack into the master
-    //        KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
-
-    // // 5. Tell the CPU where to find the page table for our new running process
-    // WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
-    // WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
-
-    // // TODO: Flush the TLB so that we get a page fault and load our new page table
-    // //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
-    // // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-    // // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
-
-    // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
     return _kctxt;
-    // return running_new->kctxt;
 }
 
 
@@ -622,14 +601,12 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
     // TODO: Flush the TLB so that we get a page fault and load our new page table
     //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
-    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
+    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-    // memcpy(_kctxt, running_new->kctxt, sizeof(KernelContext));
-    // return _kctxt;
     return running_new->kctxt;
 }
 
