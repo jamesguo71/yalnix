@@ -209,7 +209,7 @@ int TrapClock(UserContext *_uctxt) {
     //
     TracePrintf(1, "[TrapClock] running_old->sp: %p\trunning_new->sp: %p\n",
                     running_old->uctxt.sp, running_new->uctxt.sp);
-    int ret = KernelContextSwitch(KCSwitch,
+    int ret = KernelContextSwitch(MyKCS,
                                   (void *) running_old,
                                   (void *) running_new);
     if (ret < 0) {
