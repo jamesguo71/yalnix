@@ -247,6 +247,47 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
 
+    // 11. Configure the pcb for our dummy idle process. I *think* that the yalnix system allocates
+    //     space for a single UserContext---the address of which it gives to us in _uctxt---and we
+    //     need to modify this context to fit the current process we wish to run. Start by setting
+    //     the program counter to begin execution at the DoIdle function.
+    // 
+    //     The stack grows downwards, so we want to set the stack pointer to the end of Region 1,
+    //     BUT be sure to leave enough room to store a pointer; DoIdle actually gets called by an
+    //     "init" function which places a return address on the DoIdle stack---if we set the sp to
+    //     point to the last valid byte of Region 1 then when the return address is placed on the
+    //     stack we will get a memory fault.
+    //
+    //     While the system only has a single user context, we will want to run many processes
+    //     (each with their own user context). Thus, we have a field in our pcb for saving the
+    //     user context for a process. Allocate space and copy over the contents of of memory
+    //     at _uctxt into our DoIdle pcb.
+    idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
+    idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
+    idlePCB->uctxt->pc = DoIdle;
+    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
+
+    initPCB->kctxt     = NULL;
+    initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
+    initPCB->uctxt->pc = DoIdle2;
+    initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    
+    // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
+    //     assign our DoIdle process a pid with the build system helper function. Note that
+    //     the build system keeps a mapping of page table pointers to pids, so if we don't assign
+    //     pid via the helper function it complains about the PTBR1 not being assigned to a process
+    //
+    //     Finally, add our initialized DoIdle pcb to our process list structure, which keeps lists
+    //     for tracking running, ready, blocked, terminated, and all processes.
+    idlePCB->pid = helper_new_pid(idlePCB->pt);
+    initPCB->pid = helper_new_pid(initPCB->pt);
+    ProcListProcessAdd(e_proc_list, idlePCB);
+    ProcListProcessAdd(e_proc_list, initPCB);
+    ProcListRunningSet(e_proc_list, idlePCB);
+    ProcListReadyAdd(e_proc_list,   initPCB);
+
+
     // 8. Now that we have finished all of our dynamic memory allocation, we can configure the
     //    kernel's page table (previously, it may have changed due to malloc changing the brk).
     //     
@@ -300,46 +341,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         FrameSet(i);
     }
 
-    // 11. Configure the pcb for our dummy idle process. I *think* that the yalnix system allocates
-    //     space for a single UserContext---the address of which it gives to us in _uctxt---and we
-    //     need to modify this context to fit the current process we wish to run. Start by setting
-    //     the program counter to begin execution at the DoIdle function.
-    // 
-    //     The stack grows downwards, so we want to set the stack pointer to the end of Region 1,
-    //     BUT be sure to leave enough room to store a pointer; DoIdle actually gets called by an
-    //     "init" function which places a return address on the DoIdle stack---if we set the sp to
-    //     point to the last valid byte of Region 1 then when the return address is placed on the
-    //     stack we will get a memory fault.
-    //
-    //     While the system only has a single user context, we will want to run many processes
-    //     (each with their own user context). Thus, we have a field in our pcb for saving the
-    //     user context for a process. Allocate space and copy over the contents of of memory
-    //     at _uctxt into our DoIdle pcb.
-    idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
-    idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
-    idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
-
-    initPCB->kctxt     = NULL;
-    initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
-    initPCB->uctxt->pc = DoIdle2;
-    initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    
-    // 12. Next, save a pointer for the user page table we created earlier in our DoIdle pcb, and 
-    //     assign our DoIdle process a pid with the build system helper function. Note that
-    //     the build system keeps a mapping of page table pointers to pids, so if we don't assign
-    //     pid via the helper function it complains about the PTBR1 not being assigned to a process
-    //
-    //     Finally, add our initialized DoIdle pcb to our process list structure, which keeps lists
-    //     for tracking running, ready, blocked, terminated, and all processes.
-    idlePCB->pid = helper_new_pid(idlePCB->pt);
-    initPCB->pid = helper_new_pid(initPCB->pt);
-    ProcListProcessAdd(e_proc_list, idlePCB);
-    ProcListProcessAdd(e_proc_list, initPCB);
-    ProcListRunningSet(e_proc_list, idlePCB);
-    ProcListReadyAdd(e_proc_list,   initPCB);
-
     // 13. Initialize the kernel stack for the dummy idle process. Note that *every* process
     //     has a kernel stack, but that the kernel always looks for its kernel stack at the
     //     end of region 0. Thus, whenever we switch processes we need to remember to copy
@@ -359,7 +360,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                i + kernel_stack_start_page_num);    // frame number
-
         FrameSet(i + kernel_stack_start_page_num);
         TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n",
                       i,
@@ -437,10 +437,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
-    TracePrintf(1, "[KernelStart] user_stack_page_num:         %d\n", user_stack_page_num);
-    TracePrintf(1, "[KernelStart] user_stack_frame_num:        %d\n", user_stack_frame_num);
-    TracePrintf(1, "[KernelStart] user_stack_page_num2:        %d\n", user_stack_page_num2);
-    TracePrintf(1, "[KernelStart] user_stack_frame_num2:       %d\n", user_stack_frame_num2);
+    TracePrintf(1, "[KernelStart] idle_stack_frame_num:        %d\n", user_stack_frame_num);
+    TracePrintf(1, "[KernelStart] init_stack_frame_num2:       %d\n", user_stack_frame_num2);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
     TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
     ProcListProcessPrint(e_proc_list);
@@ -449,6 +447,17 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     // Otherwise, load `cmd_args[0]` as its initial process.
 }
 
+
+/*!
+ * \desc                 Small wrapper for Kernel Context Switching that will first call KCCopy if
+ *                       the new process does not yet have a KernelContext.
+ * 
+ * \param[in] kc_in       a pointer to a temporary copy of the current kernel context of the caller
+ * \param[in] curr_pcb_p  a void pointer to current process's pcb
+ * \param[in] next_pcb_p  a void pointer to the next process's pcb
+ * 
+ * \return               Returns the kc_in pointer
+ */
 KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p) {
     // 1. Check if arguments are valid. If not, print message and halt.
     if (!_kctxt || !_curr_pcb_p || !_next_pcb_p) {
@@ -456,22 +465,15 @@ KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pc
         Halt();
     }
 
-    // 2. Check to see if the current process has ever been switched before.
-    //    If not, allocate space and save the incoming context.
+    // 2. Check to see if the next process has ever been run before. If not, call KCCopy to copy
+    //    the current process' KernelContext along with the contents of its stack frames.
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
-    // if (!running_old->kctxt) {
-    //     running_old->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
-    //     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));   
-    // }
-
-    // 3. Check to see if the next process has ever been switched before. If not, call KCCopy to
-    //    not only copy over the KernelContext, but the current contents of the stack as well.
-    //    Otherwise, we can simply call the normal context switch.
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     if (!running_new->kctxt) {
         KCCopy(_kctxt, _next_pcb_p, NULL);
     }
 
+    // 3. Switch from the old process to the new
     return MyKCS(_kctxt, _curr_pcb_p, _next_pcb_p);
 }
 
