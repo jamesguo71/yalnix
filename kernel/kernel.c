@@ -302,7 +302,8 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //     TODO: I do not know how KernelContext comes into play yet, so for now just set to NULL.
     _uctxt->pc     = DoIdle;
     _uctxt->sp     = (void *) VMEM_1_LIMIT - sizeof(void *);
-    idlePCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    // idlePCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    idlePCB->kctxt = NULL;
     idlePCB->uctxt = (UserContext *)   malloc(sizeof(UserContext));
     memcpy(idlePCB->uctxt, _uctxt, sizeof(UserContext));
 
@@ -600,8 +601,9 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
 
     // return a pointer to a kernel context it had earlier saved in the next process’s PCB.
-    memcpy(_kctxt, running_new->kctxt, sizeof(KernelContext));
-    return _kctxt;
+    // memcpy(_kctxt, running_new->kctxt, sizeof(KernelContext));
+    // return _kctxt;
+    return running_new->kctxt;
 }
 
 
