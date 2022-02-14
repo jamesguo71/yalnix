@@ -441,6 +441,15 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     // copy the contents of the current kernel stack into the new kernel stack frames in initPCB
 }
 
+KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p) {
+    pcb_t *running_new = (pcb_t *) _next_pcb_p;
+    if (!running_new->kctxt) {
+        return KCCopy(_kctxt, _next_pcb_p, NULL);
+    else {
+        return MyKCS(_kctxt, _curr_pcb_p, _next_pcb_p);
+    }
+}
+
 
 /*!
  * \desc                 Copies the kernel context from kc_in into the new pcb, and copies the

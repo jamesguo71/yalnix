@@ -193,17 +193,9 @@ int TrapClock(UserContext *_uctxt) {
                     running_old->pid, running_new->pid);
 
     // 7. TODO: KCSwitch here???
-    int ret;
-    if (!running_new->kctxt) {
-        ret = KernelContextSwitch(KCCopy,
-                         (void *) running_new,
-                                  NULL);
-    } else {
-        ret = KernelContextSwitch(MyKCS,
+    int ret = KernelContextSwitch(KCSwitch,
                          (void *) running_old,
                          (void *) running_new);
-    }
-
     if (ret < 0) {
         TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
         Halt();
