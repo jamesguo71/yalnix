@@ -445,7 +445,7 @@ KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pc
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     if (!running_new->kctxt) {
         return KCCopy(_kctxt, _next_pcb_p, NULL);
-    else {
+    } else {
         return MyKCS(_kctxt, _curr_pcb_p, _next_pcb_p);
     }
 }
