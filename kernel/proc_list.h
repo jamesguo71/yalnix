@@ -14,6 +14,8 @@ typedef struct pcb {
 
     struct pcb *parent;     // For keeping track of parent process
     struct pcb *children;   // For keeping track of children processes
+    // Todo by Fei: Probably should not store the next / prev nodes inside pcb, instead we can make a specific
+    // structure for pcb and use that as a node in the doubly linked list
     struct pcb *ready_next;
     struct pcb *ready_prev;
     struct pcb *blocked_next;
