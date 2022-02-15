@@ -243,7 +243,22 @@ int TrapMemory(UserContext *_uctxt) {
     if (!_uctxt) {
         return ERROR;
     }
+    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    if (!running_old) {
+        TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
+        Halt();
+    }
+
+    if (_uctxt->code == YALNIX_MAPERR) {
+        TracePrintf(1, "[TrapMemory] Address not mapped: %p\n", _uctxt->addr);
+    }
+    if (_uctxt->code == YALNIX_ACCERR) {
+        TracePrintf(1, "[TrapMemory] Invalid permissions: %p\n", _uctxt->addr);
+    }
     TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\n", _uctxt->sp);
+    TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt->sp: %p\trunning->uctxt->pc: %p\n",
+                   running_old->pid, running_old->uctxt->sp, running_old->pc);
+    Halt();
 
     // Use the `code` field in `_uctxt` to check what caused this memory trap:
         // YALNIX_MAPERR: Is it because the address is not mapped in the current page tables?
