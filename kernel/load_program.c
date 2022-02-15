@@ -296,7 +296,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
 
     for (int k = 0; k < li.t_npg; k++) {
-        proc->pt[text_pg1 + k]->prot = PROT_READ | PROT_EXEC;
+        proc->pt[text_pg1 + k].prot = PROT_READ | PROT_EXEC;
     }
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 
