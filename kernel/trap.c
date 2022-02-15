@@ -211,7 +211,7 @@ int TrapClock(UserContext *_uctxt) {
     //    kernel stack contents of the old process.
     TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
-    if (!running_old == running_new) {
+    if (running_old != running_new) {
         int ret = KernelContextSwitch(KCSwitch,
                              (void *) running_old,
                              (void *) running_new);
