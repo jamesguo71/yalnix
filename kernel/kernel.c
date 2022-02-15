@@ -573,7 +573,7 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
-    TracePrintf(1, "[MyKCS] Switching from pid: to pid: \n", running_old->pid, running_new->pid);
+    TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n", running_old->pid, running_new->pid);
 
     // 3. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
