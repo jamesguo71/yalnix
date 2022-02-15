@@ -78,7 +78,6 @@ int SyscallGetPid (void) {
 
 int SyscallBrk (void *_brk) {
     // 1. Make sure the incoming address is not NULL. If so, return ERROR.
-    TracePrintf(1, "[SyscallBrk] SyscallBrk with brk: %p\n", _brk);
     if (!_brk) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is NULL\n");
         return ERROR;
@@ -92,8 +91,8 @@ int SyscallBrk (void *_brk) {
         TracePrintf(1, "[SyscallBrk] e_proc_list returned no running process\n");
         Halt();
     }
-    TracePrintf(1, "[SyscallBrk] Current process: %d\n", running->pid);
-    
+    TracePrintf(1, "[SyscallBrk] running->brk: %p\t_brk: %p\n", running->brk, _brk);
+
     if (_brk <= running->data_end) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
         return ERROR;
@@ -168,6 +167,7 @@ int SyscallBrk (void *_brk) {
     TracePrintf(1, "[SyscallBrk] _brk:              %p\n", _brk);
     TracePrintf(1, "[SyscallBrk] running->brk:      %p\n", running->brk);
     running->brk = _brk;
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return 0;
 }
 
