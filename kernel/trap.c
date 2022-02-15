@@ -171,26 +171,30 @@ int TrapKernel(UserContext *_uctxt) {
  * 
  * \return             0 on success, ERROR otherwise.
  */
-int TrapClock(UserContext *_uctxt) {    
+int TrapClock(UserContext *_uctxt) {
     // 1. Check arguments. Return error if invalid.
+    TracePrintf(1, "[TrapClock] &_uctxt: %p\t_uctxt: %p", &_uctxt, _uctxt);
     if (!_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
     }
 
-    //
+    // 2. Update any processes that are currently blocked due to a delay call. This will
+    //    loop over blocked list and decrement the clock_count for any processes delaying.
+    //    If their count hits zero, they get added to the ready queue.
     ProcListBlockedDelay(e_proc_list);
     ProcListReadyPrint(e_proc_list);
     ProcListBlockedPrint(e_proc_list);
 
-    // 2. Get the pcb for the current running process and save its user context.
+    // 3. Get the pcb for the current running process
     pcb_t *running_old = ProcListRunningGet(e_proc_list);
     if (!running_old) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
         Halt();
     }
 
-    // 3. Get the next process from our ready queue and mark it as the current running process.
+    // 4. Get the next process from our ready queue. If there is none, then simply return
+    //    and don't bother with context switching or updating the current running proc.
     //
     //    TODO: Eventually, this should just run the DoIdle process if no other processes
     //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
@@ -202,12 +206,13 @@ int TrapClock(UserContext *_uctxt) {
         return 0;
     }
 
-    // 4. Add the old running process to our ready queue
+    // 5. Save the old process' UserContext, add it to the ready queue,
+    //    then set the new process as the current running process.
     memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
     ProcListReadyAdd(e_proc_list,   running_old);
     ProcListRunningSet(e_proc_list, running_new);
 
-    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    // 6. Switch to the new process. If the new process has never been run before, KCSwitch will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
     //    kernel stack contents of the old process.
     TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
@@ -220,7 +225,7 @@ int TrapClock(UserContext *_uctxt) {
         Halt();
     }
 
-    // 6. At this point, this code is being run by the *new* process, which means that its
+    // 7. At this point, this code is being run by the *new* process, which means that its
     //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
     //    process that this new process previously gave up the CPU for). Thus, get the
     //    current running process (i.e., "this" process) and set the outgoing _uctxt.
