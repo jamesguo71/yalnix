@@ -259,11 +259,12 @@ int ProcListBlockedRemove(proc_list_t *_proc_list, int _pid) {
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
     pcb_t *proc = _proc_list->blocked_start;
     if (proc->pid == _pid) {
-        TracePrintf(1, "[ProcListBlockedRemove] proc is start\n");
-        _proc_list->blocked_start               = proc->blocked_next;
-        _proc_list->blocked_start->blocked_prev = NULL;
-        proc->blocked_next                      = NULL;
-        proc->blocked_prev                      = NULL;
+        _proc_list->blocked_start = proc->blocked_next;
+        if (proc->blocked_next) {
+            _proc_list->blocked_start->blocked_prev = NULL;
+        }
+        proc->blocked_next = NULL;
+        proc->blocked_prev = NULL;
         return 0;
     }
 
@@ -273,7 +274,6 @@ int ProcListBlockedRemove(proc_list_t *_proc_list, int _pid) {
     //    in the list. Clear the next and prev pointers in "proc" for good measure.
     proc = _proc_list->blocked_end;
     if (proc->pid == _pid) {
-        TracePrintf(1, "[ProcListBlockedRemove] proc is end\n");
         _proc_list->blocked_end               = proc->blocked_prev;
         _proc_list->blocked_end->blocked_next = NULL;
         proc->blocked_next                    = NULL;
