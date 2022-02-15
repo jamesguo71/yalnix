@@ -197,6 +197,7 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
         Halt();
     }
+    running_new = ProcListRunningGet(e_proc_list);
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }
