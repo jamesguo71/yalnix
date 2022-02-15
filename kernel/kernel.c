@@ -430,7 +430,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
     ProcListProcessPrint(e_proc_list);
 
-    ret = LoadProgram(_cmd_args[0], _cmd_args, initPCB);
+    int ret = LoadProgram(_cmd_args[0], _cmd_args, initPCB);
     if (ret < 0) {
         TracePrintf(1, "Error loading init program\n");
         Halt();
