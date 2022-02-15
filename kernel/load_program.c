@@ -47,6 +47,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     long segment_size;
     char *argbuf;
 
+    TracePrintf(1, "[LoadProgram] idlePCB->uctxt->sp: %p\tidlePCB->uctxt->pc: %p\n",
+                    idlePCB->uctxt->sp, idlePCB->uctxt->pc);
 
     /*
      * Open the executable file
@@ -88,7 +90,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
         size += strlen(args[i]) + 1;
     }
     argcount = i;
-
     TracePrintf(1, "LoadProgram: argsize %d, argcount %d\n", size, argcount);
 
     /*
@@ -101,7 +102,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      *  and then rounding the value *down* to a double-word boundary.
      */
     cp = ((char *) VMEM_1_LIMIT) - size;
-
     cpp = (char **)
             (((int) cp -
               ((argcount + 3 + POST_ARGV_NULL_SPACE) * sizeof(void *)))
@@ -112,8 +112,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * reserved above the stack pointer, before the arguments.
      */
     cp2 = (caddr_t) cpp - INITIAL_STACK_FRAME_SIZE;
-
-
     TracePrintf(1, "prog_size %d, text %d data %d bss %d pages\n",
                 li.t_npg + data_npg, li.t_npg, li.id_npg, li.ud_npg);
 
@@ -121,7 +119,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     /*
      * Compute how many pages we need for the stack */
     stack_npg = (VMEM_1_LIMIT - DOWN_TO_PAGE(cp2)) >> PAGESHIFT;
-
     TracePrintf(1, "LoadProgram: heap_size %d, stack_size %d\n",
                 li.t_npg + data_npg, stack_npg);
 

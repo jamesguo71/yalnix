@@ -270,9 +270,9 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    the init process gets to run.
     initPCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
     initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
-    initPCB->uctxt->pc = DoIdle2;
-    initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
+    // initPCB->uctxt->pc = DoIdle2;
+    // initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    // memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
     
     // 10. Assign our processes pids with the build system helper function. Note that the build
     //     system keeps a mapping of page table pointers to pids, so if we don't assign pid via
@@ -397,23 +397,11 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
         Halt();
     }
-    PTESet(idlePCB->pt,                   // page table pointer
+    PTESet(idlePCB->pt,               // page table pointer
            user_stack_page_num,       // page number
            PROT_READ | PROT_WRITE,    // page protection bits
            user_stack_frame_num);     // frame number
     FrameSet(user_stack_frame_num);
-
-    // int user_stack_page_num2  = (((int ) initPCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
-    // int user_stack_frame_num2 = FrameFind();
-    // if (user_stack_frame_num2 == ERROR) {
-    //     TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
-    //     Halt();
-    // }
-    // PTESet(initPCB->pt,                   // page table pointer
-    //        user_stack_page_num2,       // page number
-    //        PROT_READ | PROT_WRITE,    // page protection bits
-    //        user_stack_frame_num2);     // frame number
-    // FrameSet(user_stack_frame_num2);
 
     // 16. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
@@ -425,6 +413,22 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);   // IV address
     WriteRegister(REG_VM_ENABLE, 1);
     g_virtual_memory = 1;
+
+    // 17. Print some debugging information for good measure.
+    TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
+    TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
+    TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
+    TracePrintf(1, "[KernelStart] idlePCB->pt:                 %p\n", idlePCB->pt);
+    TracePrintf(1, "[KernelStart] initPCB->pt:                 %p\n", initPCB->pt);
+    TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
+    TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
+    TracePrintf(1, "[KernelStart] idle_stack_frame_num:        %d\n", user_stack_frame_num);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
+    TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
+    ProcListProcessPrint(e_proc_list);
+
 
     // . Initialize the kernel context for the idle PCB. Note that we don't have to do this for
     //   init because init will run first and thus have its KernelContext saved when it is
@@ -441,22 +445,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
     memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
-
-    // 17. Print some debugging information for good measure.
-    TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
-    TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
-    TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
-    TracePrintf(1, "[KernelStart] idlePCB->pt:                 %p\n", idlePCB->pt);
-    TracePrintf(1, "[KernelStart] initPCB->pt:                 %p\n", initPCB->pt);
-    TracePrintf(1, "[KernelStart] kernel_text_end_page_num:    %d\n", kernel_text_end_page_num);
-    TracePrintf(1, "[KernelStart] kernel_data_end_page_num:    %d\n", kernel_data_end_page_num);
-    TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
-    TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
-    TracePrintf(1, "[KernelStart] idle_stack_frame_num:        %d\n", user_stack_frame_num);
-    // TracePrintf(1, "[KernelStart] init_stack_frame_num2:       %d\n", user_stack_frame_num2);
-    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
-    TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
-    ProcListProcessPrint(e_proc_list);
 
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
