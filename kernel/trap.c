@@ -183,7 +183,6 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no ready process\n");
         Halt();
     }
-    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     ProcListRunningSet(e_proc_list, running_new);
     
     //
@@ -198,6 +197,7 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
         Halt();
     }
+    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }
 
