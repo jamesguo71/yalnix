@@ -126,6 +126,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
 
 
     /* leave at least one page between heap and stack */
+    int tempvar = stack_npg + data_pg1 + data_npg;
+    TracePrintf(1, "[LoadProgram] total num of pages: %d\n", tempvar);
     if (stack_npg + data_pg1 + data_npg >= MAX_PT_LEN) {
         TracePrintf(1, "[LoadProgram] Not enough room between heap and stack\n");
         close(fd);
