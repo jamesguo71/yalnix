@@ -314,7 +314,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
         proc->pt[text_pg1 + k].prot = PROT_READ | PROT_EXEC;
         TracePrintf(1, "[LoadProgram] Changing text page: %d to rx prot\n", text_pg1 + k);
     }
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 
 
     /*
