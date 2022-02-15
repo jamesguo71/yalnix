@@ -75,6 +75,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     text_pg1 = (li.t_vaddr - VMEM_1_BASE) >> PAGESHIFT;
     data_pg1 = (li.id_vaddr - VMEM_1_BASE) >> PAGESHIFT;
     data_npg = li.id_npg + li.ud_npg;
+    TracePrintf(1, "text_pg1: %d\tdata_pg1: %d\tdata_npg: %d\n", text_pg1, data_pg1, data_npg);
 
     /*
      *  Figure out how many bytes are needed to hold the arguments on
