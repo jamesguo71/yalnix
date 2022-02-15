@@ -52,18 +52,18 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * Open the executable file
      */
     if ((fd = open(name, O_RDONLY)) < 0) {
-        TracePrintf(0, "LoadProgram: can't open file '%s'\n", name);
+        TracePrintf(1, "LoadProgram: can't open file '%s'\n", name);
         return ERROR;
     }
 
     if (LoadInfo(fd, &li) != LI_NO_ERROR) {
-        TracePrintf(0, "LoadProgram: '%s' not in Yalnix format\n", name);
+        TracePrintf(1, "LoadProgram: '%s' not in Yalnix format\n", name);
         close(fd);
         return (-1);
     }
 
     if (li.entry < VMEM_1_BASE) {
-        TracePrintf(0, "LoadProgram: '%s' not linked for Yalnix\n", name);
+        TracePrintf(1, "LoadProgram: '%s' not linked for Yalnix\n", name);
         close(fd);
         return ERROR;
     }
@@ -88,7 +88,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     }
     argcount = i;
 
-    TracePrintf(2, "LoadProgram: argsize %d, argcount %d\n", size, argcount);
+    TracePrintf(1, "LoadProgram: argsize %d, argcount %d\n", size, argcount);
 
     /*
      *  The arguments will get copied starting at "cp", and the argv
@@ -146,6 +146,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> proc->uc.sp = cp2;
      */
     proc->uctxt->sp = cp2;
+    TracePrintf(1, "[LoadProgram] proc->uctxt->sp: %p\n", proc->uctxt->sp);
 
     /*
      * Now save the arguments in a separate buffer in region 0, since
@@ -162,7 +163,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     }
 
     for (i = 0; args[i] != NULL; i++) {
-        TracePrintf(3, "saving arg %d = '%s'\n", i, args[i]);
+        TracePrintf(1, "saving arg %d = '%s'\n", i, args[i]);
         strcpy(cp2, args[i]);
         cp2 += strlen(cp2) + 1;
     }
@@ -183,6 +184,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
         if (pte.valid) {
             pte.valid = 0;
             FrameClear((int)pte.pfn);
+            TracePrintf(1, "[LoadProgram] Clearing frame: %d\n", pte.pfn);
         }
     }
 
@@ -198,6 +200,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> These pages should be marked valid, with a protection of
      * ==>> (PROT_READ | PROT_WRITE).
      */
+    TracePrintf(1, "[LoadProgram] Mapping pages for text\n");
     for (int k = 0; k < li.t_npg; k++) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
@@ -210,6 +213,9 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
                PROT_READ | PROT_WRITE,
                pfn);
         FrameSet(pfn);
+        TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
+                    text_pg1 + k,
+                    pfn);
     }
 
     /*
@@ -218,6 +224,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> These pages should be marked valid, with a protection of
      * ==>> (PROT_READ | PROT_WRITE).
      */
+    TracePrintf(1, "[LoadProgram] Mapping pages for data\n");
     for (int k = 0; k < data_npg; k++) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
@@ -230,6 +237,9 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
                PROT_READ | PROT_WRITE,
                pfn);
         FrameSet(pfn);
+        TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
+                    data_pg1 + k,
+                    pfn);
     }
     /*
      * ==>> Then, stack. Allocate "stack_npg" physical pages and map them to the top
@@ -237,6 +247,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> These pages should be marked valid, with a
      * ==>> protection of (PROT_READ | PROT_WRITE).
      */
+    TracePrintf(1, "[LoadProgram] Mapping pages for stack\n");
     for (int k = stack_npg; k > 0; k--) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
@@ -248,6 +259,9 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
                MAX_PT_LEN - k,
                PROT_READ | PROT_WRITE,
                pfn);
+        TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
+                    MAX_PT_LEN - k,
+                    pfn);
     }
     /*
      * ==>> (Finally, make sure that there are no stale region1 mappings left in the TLB!)
@@ -297,6 +311,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
 
     for (int k = 0; k < li.t_npg; k++) {
         proc->pt[text_pg1 + k].prot = PROT_READ | PROT_EXEC;
+        TracePrintf(1, "[LoadProgram] Changing text page: %d to rx prot\n", text_pg1 + k);
     }
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 
@@ -315,7 +330,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> proc->uc.pc = (caddr_t) li.entry;
      */
     proc->uctxt->pc = (caddr_t) li.entry;
-
+    TracePrintf(1, "[LoadProgram] proc->uctxt->pc: %p\n", proc->uctxt->pc);
 
     /*
      * Now, finally, build the argument list on the new stack.
