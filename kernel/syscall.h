@@ -31,7 +31,7 @@ int SyscallGetPid (void);
 
 int SyscallBrk (void *);
 
-int SyscallDelay (int);
+int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
 
 
 /*!

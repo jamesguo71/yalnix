@@ -108,6 +108,37 @@ int ProcListBlockedAdd(proc_list_t *_proc_list, pcb_t *_process) {
  * 
  * \return                0 on success, NULL otherwise.
  */
+int ProcListBlockedDelay(proc_list_t *_proc_list) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_proc_list) {
+        TracePrintf(1, "[ProcListBlockedDelay] Invalid list pointer\n");
+        return ERROR;
+    }
+
+    // 2. Loop over the blocked list to check if any of the processes are blocked due to a delay
+    //    call. If so, decrement their clock_ticks value then check to see if it has reached 0.
+    //    If so, remove them from the blocked queue and add them to the ready queue.
+    for (pcb_t *proc = _proc_list->blocked_start; proc != NULL; proc = proc->blocked_next) {
+        if (proc->clock_ticks) {
+            proc->clock_ticks--;
+            if (proc->clock_ticks == 0) {
+                ProcListBlockedRemove(_proc_list, proc->pid);
+                ProcListReadyAdd(_proc_list, proc);
+                TracePrintf(1, "[ProcListBlockedDelay] Added proc: %d to ready\n", proc->pid);
+            }
+        }
+    }
+    return 0;
+}
+
+
+/*!
+ * \desc                  F
+ *
+ * \param[in] _proc_list  A
+ * 
+ * \return                0 on success, NULL otherwise.
+ */
 pcb_t *ProcListBlockedGet(proc_list_t *_proc_list, int _pid) {
     // 1. Check arguments. Return error if invalid.
     if (!_proc_list || _pid < 0) {

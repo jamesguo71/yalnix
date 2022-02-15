@@ -7,7 +7,7 @@ typedef struct proc_list proc_list_t;
 
 typedef struct pcb {
     int  pid;
-    int  user_brk;
+    int  clock_ticks;
     int  exit_status;       // for saving the process's exit status, See Page 32
     int  exited;            // if the process has exited?  
     int *held_locks;        // locks held by the current process, used by sync syscalls
@@ -51,6 +51,7 @@ proc_list_t *ProcListCreate();
 int ProcListDelete(proc_list_t *_proc_list);
 
 int    ProcListBlockedAdd(proc_list_t *_proc_list, pcb_t *_process);
+int    ProcListBlockedDelay(proc_list_t *_proc_list);
 pcb_t *ProcListBlockedGet(proc_list_t *_proc_list, int _pid);
 pcb_t *ProcListBlockedNext(proc_list_t *_proc_list);
 int    ProcListBlockedPrint(proc_list_t *_proc_list);

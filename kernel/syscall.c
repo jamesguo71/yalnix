@@ -168,14 +168,69 @@ int SyscallBrk (void *_brk) {
     return 0;
 }
 
-int SyscallDelay (int clock_ticks) {
-    // If clock ticks is 0, return is immediate.
-    // If clock ticks is less than 0, return ERROR
-    // Block current process until clock_ticks clock interrupts have occurred after the call
-        // Set up a new variable (e.g, start_clock_ticks) to mark the start time by storing the cur_clock_ticks into it
-        // Suspend the caller process
-        // Whenever the process gets switched back, check the delta of cur_clock_ticks and check if it's reached `clock_ticks`
-    // Upon completion of the delay, the value 0 is returned
+
+/*!
+ * \desc                    A
+ *
+ * \param[in] _clock_ticks  a
+ *
+ * \return                  0 on success, ERROR otherwise.
+ */
+int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
+    // 1. If delay is 0 return immediately and if delay is invalid return ERROR.
+    if (!_uctxt || _clock_ticks < 0) {
+        TracePrintf(1, "[SyscallDelay] Invalid uctxt pointer or clock_ticks value: %d\n", _clock_ticks);
+        return ERROR;
+    }
+    if (_clock_ticks == 0) {
+        return 0;
+    }
+
+    // 2. Get the pcb for the current running process and save its user context.
+    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    if (!running_old) {
+        TracePrintf(1, "[SyscallDelay] e_proc_list returned no running process\n");
+        Halt();
+    }
+    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+
+    // 3. Set the current process' delay value in its pcb then add it to the blocked list
+    running_old->clock_ticks = _clock_ticks;
+    ProcListBlockedAdd(e_proc_list, running_old);
+    ProcListBlockedPrint(e_proc_list); 
+
+    // 4. Get the next process from our ready queue and mark it as the current running process.
+    //
+    //    TODO: Eventually, this should just run the DoIdle process if no other processes
+    //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
+    //          Instead, since you know it is always pid 0, you can just get it from the
+    //          master process list and run it if ready list returns empty.
+    pcb_t *running_new = ProcListReadyNext(e_proc_list);
+    if (!running_new) {
+        TracePrintf(1, "[SyscallDelay] e_proc_list returned no ready process\n");
+        Halt();
+    }
+    ProcListRunningSet(e_proc_list, running_new);
+
+    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    //    kernel stack contents of the old process.
+    TracePrintf(1, "[SyscallDelay] running_old->pid: %d\t\trunning_new->pid: %d\n",
+                    running_old->pid, running_new->pid);
+    int ret = KernelContextSwitch(KCSwitch,
+                         (void *) running_old,
+                         (void *) running_new);
+    if (ret < 0) {
+        TracePrintf(1, "[SyscallDelay] Failed to switch to the next process\n");
+        Halt();
+    }
+
+    // 6. At this point, this code is being run by the *new* process, which means that its
+    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    //    process that this new process previously gave up the CPU for). Thus, get the
+    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
+    running_new = ProcListRunningGet(e_proc_list);
+    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }
 

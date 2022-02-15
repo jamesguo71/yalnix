@@ -60,8 +60,8 @@ int TrapKernel(UserContext *_uctxt) {
 
         case YALNIX_DELAY:
             TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
-            // ret = SyscallDelay((int ) _uctxt->regs[0]);
-            // _uctxt->regs[0] = ret;
+            ret = SyscallDelay(_uctxt, (int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = ret;
 
         case YALNIX_TTY_READ:
             TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
@@ -157,6 +157,9 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
     }
+
+    //
+    ProcListBlockedDelay(e_proc_list);
 
     // 2. Get the pcb for the current running process and save its user context.
     pcb_t *running_old = ProcListRunningGet(e_proc_list);
