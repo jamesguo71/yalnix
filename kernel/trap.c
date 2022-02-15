@@ -257,7 +257,7 @@ int TrapMemory(UserContext *_uctxt) {
     }
     TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\n", _uctxt->sp);
     TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt->sp: %p\trunning->uctxt->pc: %p\n",
-                   running_old->pid, running_old->uctxt->sp, running_old->pc);
+                   running_old->pid, running_old->uctxt->sp, running_old->uctxt->pc);
     Halt();
 
     // Use the `code` field in `_uctxt` to check what caused this memory trap:
