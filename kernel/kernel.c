@@ -4,6 +4,7 @@
 
 #include "frame.h"
 #include "kernel.h"
+#include "load_program.h"
 #include "proc_list.h"
 #include "pte.h"
 #include "syscall.h"
@@ -161,10 +162,10 @@ int SetKernelBrk(void *_kernel_new_brk) {
  * \param[in] pmem_size  The size of the physical memory availabe to our system (in bytes)
  * \param[in] uctxt      An initialized usercontext struct for the DoIdle process
  */
-void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
+void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt) {
     // 1. Make sure our user context struct is not NULL and that we
     //    have enough physical memory. If not, halt the machine.
-    if (!_uctxt || pmem_size < PAGESIZE) {
+    if (!_uctxt || _pmem_size < PAGESIZE) {
         Halt();
     }
 
@@ -180,7 +181,7 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     //
     //    Remember to check for a remainder---it may be that the number of frames is not divisible
     //    by 8, and C naturally rounds *down*, so we may need to increment our final byte count.
-    e_num_frames   = pmem_size    / PAGESIZE;
+    e_num_frames   = _pmem_size   / PAGESIZE;
     int frames_len = e_num_frames / KERNEL_BYTE_SIZE;
     if (e_num_frames % KERNEL_BYTE_SIZE) {
         frames_len++;
@@ -262,7 +263,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    // memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
 
     // 9. Configure our init pcb the same way, except do NOT allocate space for KernelContext as
     //    our KCSwitch function uses the presence of NULL to determine if KCCopy should be called.
@@ -403,17 +403,17 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
            user_stack_frame_num);     // frame number
     FrameSet(user_stack_frame_num);
 
-    int user_stack_page_num2  = (((int ) initPCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
-    int user_stack_frame_num2 = FrameFind();
-    if (user_stack_frame_num2 == ERROR) {
-        TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
-        Halt();
-    }
-    PTESet(initPCB->pt,                   // page table pointer
-           user_stack_page_num2,       // page number
-           PROT_READ | PROT_WRITE,    // page protection bits
-           user_stack_frame_num2);     // frame number
-    FrameSet(user_stack_frame_num2);
+    // int user_stack_page_num2  = (((int ) initPCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
+    // int user_stack_frame_num2 = FrameFind();
+    // if (user_stack_frame_num2 == ERROR) {
+    //     TracePrintf(1, "Unable to find free frame for DoIdle userstack!\n");
+    //     Halt();
+    // }
+    // PTESet(initPCB->pt,                   // page table pointer
+    //        user_stack_page_num2,       // page number
+    //        PROT_READ | PROT_WRITE,    // page protection bits
+    //        user_stack_frame_num2);     // frame number
+    // FrameSet(user_stack_frame_num2);
 
     // 16. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
@@ -426,18 +426,21 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
     WriteRegister(REG_VM_ENABLE, 1);
     g_virtual_memory = 1;
 
-    // . Initialize the kernel context for init and idle pcbs
-    // int ret = KernelContextSwitch(KCCopy, initPCB, NULL);
-    // if (ret < 0) {
-    //     TracePrintf(1, "Error copying kernel context for initPCB\n");
-    //     Halt();
-    // }
+    // . Initialize the kernel context for the idle PCB. Note that we don't have to do this for
+    //   init because init will run first and thus have its KernelContext saved when it is
+    //   switched out in MyKCS.
     int ret = KernelContextSwitch(KCCopy, idlePCB, NULL);
     if (ret < 0) {
         TracePrintf(1, "Error copying kernel context for idlePCB\n");
         Halt();
     }
 
+    ret = LoadProgram(_cmd_args[0], _cmd_args, initPCB);
+    if (ret < 0) {
+        TracePrintf(1, "Error loading init program\n");
+        Halt();
+    }
+    memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
 
     // 17. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
