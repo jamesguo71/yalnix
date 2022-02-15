@@ -91,10 +91,11 @@ int SyscallBrk (void *_brk) {
         TracePrintf(1, "[SyscallBrk] e_proc_list returned no running process\n");
         Halt();
     }
-    if (_brk <= running->data_end) {
-        TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
-        return ERROR;
-    }
+    // TODO: Set this in load_program!!!
+    // if (_brk <= running->data_end) {
+    //     TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
+    //     return ERROR;
+    // }
 
     // 3. Round our new brk value *up* to the nearest page.
     // 
