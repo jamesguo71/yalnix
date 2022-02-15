@@ -415,6 +415,17 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
            user_stack_frame_num2);     // frame number
     FrameSet(user_stack_frame_num2);
 
+    // 16. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
+    //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
+    //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
+    WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
+    WriteRegister(REG_PTLR0,       (unsigned int) MAX_PT_LEN);          // num entries
+    WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // DoIdle pt address
+    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
+    WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);   // IV address
+    WriteRegister(REG_VM_ENABLE, 1);
+    g_virtual_memory = 1;
+
     // . Initialize the kernel context for init and idle pcbs
     // int ret = KernelContextSwitch(KCCopy, initPCB, NULL);
     // if (ret < 0) {
@@ -427,16 +438,6 @@ void KernelStart(char **cmd_args, unsigned int pmem_size, UserContext *_uctxt) {
         Halt();
     }
 
-    // 16. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
-    //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
-    //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
-    WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
-    WriteRegister(REG_PTLR0,       (unsigned int) MAX_PT_LEN);          // num entries
-    WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // DoIdle pt address
-    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
-    WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);   // IV address
-    WriteRegister(REG_VM_ENABLE, 1);
-    g_virtual_memory = 1;
 
     // 17. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
