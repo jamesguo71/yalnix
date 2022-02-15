@@ -48,7 +48,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     char *argbuf;
 
     TracePrintf(1, "[LoadProgram] initPCB->uctxt->sp: %p\tinitPCB->uctxt->pc: %p\n",
-                    pcb->uctxt->sp, pcb->uctxt->pc);
+                    proc->uctxt->sp, proc->uctxt->pc);
 
     /*
      * Open the executable file
