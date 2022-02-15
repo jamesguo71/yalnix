@@ -177,11 +177,11 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
     }
-    ProcListReadyPrint(e_proc_list);
-    ProcListBlockedPrint(e_proc_list);
 
     //
     ProcListBlockedDelay(e_proc_list);
+    ProcListReadyPrint(e_proc_list);
+    ProcListBlockedPrint(e_proc_list);
 
     // 2. Get the pcb for the current running process and save its user context.
     pcb_t *running_old = ProcListRunningGet(e_proc_list);
@@ -189,12 +189,8 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
         Halt();
     }
-    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
 
-    // 3. Add the old running process to our ready queue
-    ProcListReadyAdd(e_proc_list, running_old);
-
-    // 4. Get the next process from our ready queue and mark it as the current running process.
+    // 3. Get the next process from our ready queue and mark it as the current running process.
     //
     //    TODO: Eventually, this should just run the DoIdle process if no other processes
     //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
@@ -202,9 +198,13 @@ int TrapClock(UserContext *_uctxt) {
     //          master process list and run it if ready list returns empty.
     pcb_t *running_new = ProcListReadyNext(e_proc_list);
     if (!running_new) {
-        TracePrintf(1, "[TrapClock] e_proc_list returned no ready process\n");
-        Halt();
+        TracePrintf(1, "[TrapClock] No ready process. Continuing with the current process\n");
+        return 0;
     }
+
+    // 4. Add the old running process to our ready queue
+    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+    ProcListReadyAdd(e_proc_list,   running_old);
     ProcListRunningSet(e_proc_list, running_new);
 
     // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
@@ -212,14 +212,12 @@ int TrapClock(UserContext *_uctxt) {
     //    kernel stack contents of the old process.
     TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
-    if (running_old != running_new) {
-        int ret = KernelContextSwitch(KCSwitch,
-                             (void *) running_old,
-                             (void *) running_new);
-        if (ret < 0) {
-            TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
-            Halt();
-        }
+    int ret = KernelContextSwitch(KCSwitch,
+                         (void *) running_old,
+                         (void *) running_new);
+    if (ret < 0) {
+        TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
+        Halt();
     }
 
     // 6. At this point, this code is being run by the *new* process, which means that its
