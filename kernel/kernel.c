@@ -259,7 +259,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //
     //    Copy the context of our configured UserContext to the address indicated by _uctxt; this
     //    address is where Yalnix will look for the UserContext of the current executing process.
-    idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
+    // idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
+    idlePCB->kctxt     = NULL;
     idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
@@ -437,16 +438,11 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] idle_stack_frame_num:        %d\n", user_stack_frame_num);
     TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
     TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
+    TracePrintf(1, "[KernelStart] idlePCB->pid:                %d\n", idlePCB->pid);
+    TracePrintf(1, "[KernelStart] initPCB->pid:                %d\n", initPCB->pid);
     ProcListProcessPrint(e_proc_list);
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
-
-    ret = KernelContextSwitch(KCCopy, idlePCB, NULL);
-    if (ret < 0) {
-        TracePrintf(1, "[KernelStart] Error copying kc for idle\n");
-        Halt();
-    }
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 }
 
 
@@ -502,12 +498,13 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     // 2. Cast our void arguments to our custom pcb struct. Allocate space for
     //    a KernelContext then copy over the incoming context. Halt upon error.
     pcb_t *running_new = (pcb_t *) _new_pcb_p;
-    // running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
     if (!running_new->kctxt) {
         TracePrintf(1, "[MyKCCopy] Error allocating space for KernelContext\n");
         Halt();
     }
     memcpy(running_new->kctxt, _kctxt, sizeof(KernelContext));
+    TracePrintf(1, "[KCCopy] Copying KernelContext for pid: %d\n", running_new->pid);
 
     // 3. This is where things get tricky. We need to copy the contents of the stack for our
     //    current process over to the stack for our new process. The reason this is tricky, is
@@ -547,6 +544,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         PTEClear(e_kernel_pt, i + kernel_stack_temp_page_num);
     }
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return _kctxt;
 }
 
