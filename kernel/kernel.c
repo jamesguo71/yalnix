@@ -371,7 +371,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
            initPCB->ks,                                    // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
-    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init\n");
+    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle\n");
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFind();
         PTESet(idlePCB->ks,                         // page table pointer
@@ -446,6 +446,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         TracePrintf(1, "[KernelStart] Error copying kc for idle\n");
         Halt();
     }
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 }
 
 
