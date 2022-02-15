@@ -119,14 +119,21 @@ int ProcListBlockedDelay(proc_list_t *_proc_list) {
     //    call. If so, decrement their clock_ticks value then check to see if it has reached 0.
     //    If so, remove them from the blocked queue and add them to the ready queue.
     for (pcb_t *proc = _proc_list->blocked_start; proc != NULL; proc = proc->blocked_next) {
+        TracePrintf(1, "[ProcListBlockedDelay] proc->pid: %d\t&proc: %p\tproc: %p\n", proc->pid, &proc, proc);
+        TracePrintf(1, "[ProcListBlockedDelay] proc->clock_ticks: %d\n", proc->clock_ticks);
         if (proc->clock_ticks) {
             proc->clock_ticks--;
+            TracePrintf(1, "[ProcListBlockedDelay] proc->clock_ticks: %d\n", proc->clock_ticks);
             if (proc->clock_ticks == 0) {
+                TracePrintf(1, "[ProcListBlockedDelay] Calling blocked remove\n");
                 ProcListBlockedRemove(_proc_list, proc->pid);
+
+                TracePrintf(1, "[ProcListBlockedDelay] Calling ready add\n");
                 ProcListReadyAdd(_proc_list, proc);
                 TracePrintf(1, "[ProcListBlockedDelay] Added proc: %d to ready\n", proc->pid);
             }
         }
+        TracePrintf(1, "[ProcListBlockedDelay] proc: %p\tproc->blocked_next: %p\n", proc, proc->blocked_next);
     }
     return 0;
 }
