@@ -47,8 +47,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     long segment_size;
     char *argbuf;
 
-    TracePrintf(1, "[LoadProgram] idlePCB->uctxt->sp: %p\tidlePCB->uctxt->pc: %p\n",
-                    idlePCB->uctxt->sp, idlePCB->uctxt->pc);
+    TracePrintf(1, "[LoadProgram] initPCB->uctxt->sp: %p\tinitPCB->uctxt->pc: %p\n",
+                    pcb->uctxt->sp, pcb->uctxt->pc);
 
     /*
      * Open the executable file
