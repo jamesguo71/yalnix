@@ -54,18 +54,18 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * Open the executable file
      */
     if ((fd = open(name, O_RDONLY)) < 0) {
-        TracePrintf(1, "LoadProgram: can't open file '%s'\n", name);
+        TracePrintf(1, "[LoadProgram] can't open file '%s'\n", name);
         return ERROR;
     }
 
     if (LoadInfo(fd, &li) != LI_NO_ERROR) {
-        TracePrintf(1, "LoadProgram: '%s' not in Yalnix format\n", name);
+        TracePrintf(1, "[LoadProgram] '%s' not in Yalnix format\n", name);
         close(fd);
         return (-1);
     }
 
     if (li.entry < VMEM_1_BASE) {
-        TracePrintf(1, "LoadProgram: '%s' not linked for Yalnix\n", name);
+        TracePrintf(1, "[LoadProgram] '%s' not linked for Yalnix\n", name);
         close(fd);
         return ERROR;
     }
@@ -77,7 +77,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     text_pg1 = (li.t_vaddr - VMEM_1_BASE) >> PAGESHIFT;
     data_pg1 = (li.id_vaddr - VMEM_1_BASE) >> PAGESHIFT;
     data_npg = li.id_npg + li.ud_npg;
-    TracePrintf(1, "text_pg1: %d\tdata_pg1: %d\tdata_npg: %d\n", text_pg1, data_pg1, data_npg);
+    TracePrintf(1, "[LoadProgram] text_pg1: %d\tdata_pg1: %d\tdata_npg: %d\n", text_pg1, data_pg1, data_npg);
 
     /*
      *  Figure out how many bytes are needed to hold the arguments on
@@ -86,11 +86,11 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
     size = 0;
     for (i = 0; args[i] != NULL; i++) {
-        TracePrintf(1, "counting arg %d = '%s'\n", i, args[i]);
+        TracePrintf(1, "[LoadProgram] counting arg %d = '%s'\n", i, args[i]);
         size += strlen(args[i]) + 1;
     }
     argcount = i;
-    TracePrintf(1, "LoadProgram: argsize %d, argcount %d\n", size, argcount);
+    TracePrintf(1, "[LoadProgram] argsize %d, argcount %d\n", size, argcount);
 
     /*
      *  The arguments will get copied starting at "cp", and the argv
@@ -112,14 +112,14 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * reserved above the stack pointer, before the arguments.
      */
     cp2 = (caddr_t) cpp - INITIAL_STACK_FRAME_SIZE;
-    TracePrintf(1, "prog_size %d, text %d data %d bss %d pages\n",
+    TracePrintf(1, "[LoadProgram] prog_size %d, text %d data %d bss %d pages\n",
                 li.t_npg + data_npg, li.t_npg, li.id_npg, li.ud_npg);
 
 
     /*
      * Compute how many pages we need for the stack */
     stack_npg = (VMEM_1_LIMIT - DOWN_TO_PAGE(cp2)) >> PAGESHIFT;
-    TracePrintf(1, "LoadProgram: heap_size %d, stack_size %d\n",
+    TracePrintf(1, "[LoadProgram] heap_size %d, stack_size %d\n",
                 li.t_npg + data_npg, stack_npg);
 
 
@@ -159,12 +159,12 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> You should perhaps check that malloc returned valid space
      */
     if (cp2 == NULL || cp2 >= (char *)KERNEL_STACK_BASE) {
-        TracePrintf(1, "load_program Failed: Malloc returned an invalid address!\n");
+        TracePrintf(1, "[LoadProgram] Failed: Malloc returned an invalid address!\n");
         Halt();
     }
 
     for (i = 0; args[i] != NULL; i++) {
-        TracePrintf(1, "saving arg %d = '%s'\n", i, args[i]);
+        TracePrintf(1, "[LoadProgram]saving arg %d = '%s'\n", i, args[i]);
         strcpy(cp2, args[i]);
         cp2 += strlen(cp2) + 1;
     }
@@ -205,7 +205,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     for (int k = 0; k < li.t_npg; k++) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
-            TracePrintf(1, "load_program failed: can't find a free frame.\n");
+            TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
             return KILL;
         }
@@ -229,7 +229,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     for (int k = 0; k < data_npg; k++) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
-            TracePrintf(1, "load_program failed: can't find a free frame.\n");
+            TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
             return KILL;
         }
@@ -252,7 +252,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     for (int k = stack_npg; k > 0; k--) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
-            TracePrintf(1, "load_program failed: can't find a free frame.\n");
+            TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
             return KILL;
         }
