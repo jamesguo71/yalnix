@@ -211,12 +211,14 @@ int TrapClock(UserContext *_uctxt) {
     //    kernel stack contents of the old process.
     TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
-    int ret = KernelContextSwitch(KCSwitch,
-                         (void *) running_old,
-                         (void *) running_new);
-    if (ret < 0) {
-        TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
-        Halt();
+    if (!running_old == running_new) {
+        int ret = KernelContextSwitch(KCSwitch,
+                             (void *) running_old,
+                             (void *) running_new);
+        if (ret < 0) {
+            TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
+            Halt();
+        }
     }
 
     // 6. At this point, this code is being run by the *new* process, which means that its

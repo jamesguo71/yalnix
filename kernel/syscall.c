@@ -198,6 +198,8 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
         Halt();
     }
     memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+    TracePrintf(1, "[SyscallDelay] Blocking process %d for %d clock cycles\n",
+                   running_old->pid, _clock_ticks);
 
     // 3. Set the current process' delay value in its pcb then add it to the blocked list
     running_old->clock_ticks = _clock_ticks;
