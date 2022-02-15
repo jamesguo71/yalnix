@@ -80,6 +80,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     TracePrintf(1, "[LoadProgram] text_pg1: %d\tdata_pg1: %d\tdata_npg: %d\n", text_pg1, data_pg1, data_npg);
 
     proc->data_end = (void *) ((data_pg1 + data_npg) << PAGESHIFT);
+    proc->data_end += VMEM_1_BASE;
     proc->brk      = proc->data_end;
     TracePrintf(1, "[LoadProgram] proc->data_end: %p\n", proc->data_end);
 
