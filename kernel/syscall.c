@@ -190,6 +190,8 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     if (_clock_ticks == 0) {
         return 0;
     }
+    ProcListReadyPrint(e_proc_list);
+    ProcListBlockedPrint(e_proc_list);
 
     // 2. Get the pcb for the current running process and save its user context.
     pcb_t *running_old = ProcListRunningGet(e_proc_list);

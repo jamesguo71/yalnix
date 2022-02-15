@@ -177,6 +177,8 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
     }
+    ProcListReadyPrint(e_proc_list);
+    ProcListBlockedPrint(e_proc_list);
 
     //
     ProcListBlockedDelay(e_proc_list);
@@ -191,7 +193,6 @@ int TrapClock(UserContext *_uctxt) {
 
     // 3. Add the old running process to our ready queue
     ProcListReadyAdd(e_proc_list, running_old);
-    ProcListReadyPrint(e_proc_list);
 
     // 4. Get the next process from our ready queue and mark it as the current running process.
     //
