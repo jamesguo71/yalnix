@@ -191,7 +191,7 @@ int TrapClock(UserContext *_uctxt) {
                     running_old->pid, running_new->pid);
 
     // 7. TODO: KCSwitch here???
-    int ret = KernelContextSwitch(KCSwitch,
+    int ret = KernelContextSwitch(MyKCS,
                          (void *) running_old,
                          (void *) running_new);
     if (ret < 0) {
