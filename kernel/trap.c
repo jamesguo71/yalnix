@@ -173,7 +173,6 @@ int TrapKernel(UserContext *_uctxt) {
  */
 int TrapClock(UserContext *_uctxt) {
     // 1. Check arguments. Return error if invalid.
-    TracePrintf(1, "[TrapClock] &_uctxt: %p\t_uctxt: %p\n", &_uctxt, _uctxt);
     if (!_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
@@ -182,20 +181,12 @@ int TrapClock(UserContext *_uctxt) {
     // 2. Update any processes that are currently blocked due to a delay call. This will
     //    loop over blocked list and decrement the clock_count for any processes delaying.
     //    If their count hits zero, they get added to the ready queue.
-    TracePrintf(1, "[TrapClock] Calling blocked delay\n");
     ProcListBlockedDelay(e_proc_list);
-
-    TracePrintf(1, "[TrapClock] Calling ready print\n");
     ProcListReadyPrint(e_proc_list);
-
-    TracePrintf(1, "[TrapClock] Calling blocked print\n");
     ProcListBlockedPrint(e_proc_list);
 
     // 3. Get the pcb for the current running process
-    TracePrintf(1, "[TrapClock] Calling running get\n");
     pcb_t *running_old = ProcListRunningGet(e_proc_list);
-
-    TracePrintf(1, "[TrapClock] &running_old: %p\trunning_old: %p\n", &running_old, running_old);
     if (!running_old) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
         Halt();
@@ -208,10 +199,7 @@ int TrapClock(UserContext *_uctxt) {
     //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
     //          Instead, since you know it is always pid 0, you can just get it from the
     //          master process list and run it if ready list returns empty.
-    TracePrintf(1, "[TrapClock] Calling ready next\n");
     pcb_t *running_new = ProcListReadyNext(e_proc_list);
-
-    TracePrintf(1, "[TrapClock] &running_new: %p\trunning_new: %p\n", &running_new, running_new);
     if (!running_new) {
         TracePrintf(1, "[TrapClock] No ready process. Continuing with the current process\n");
         return 0;
