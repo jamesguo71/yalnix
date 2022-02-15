@@ -190,8 +190,6 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     if (_clock_ticks == 0) {
         return 0;
     }
-    ProcListReadyPrint(e_proc_list);
-    ProcListBlockedPrint(e_proc_list);
 
     // 2. Get the pcb for the current running process and save its user context.
     pcb_t *running_old = ProcListRunningGet(e_proc_list);
@@ -200,20 +198,20 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
         Halt();
     }
     memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
-    TracePrintf(1, "[SyscallDelay] Blocking process %d for %d clock cycles\n",
-                   running_old->pid, _clock_ticks);
 
     // 3. Set the current process' delay value in its pcb then add it to the blocked list
     running_old->clock_ticks = _clock_ticks;
     ProcListBlockedAdd(e_proc_list, running_old);
-    ProcListBlockedPrint(e_proc_list); 
+    ProcListBlockedPrint(e_proc_list);
+    TracePrintf(1, "[SyscallDelay] Blocking process %d for %d clock cycles\n",
+                   running_old->pid, _clock_ticks);
 
     // 4. Get the next process from our ready queue and mark it as the current running process.
     //
-    //    TODO: Eventually, this should just run the DoIdle process if no other processes
-    //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
-    //          Instead, since you know it is always pid 0, you can just get it from the
-    //          master process list and run it if ready list returns empty.
+    //    NOTE: We should *always* get a process back from the ready queue because at the
+    //          very least it will contain the idleProc. We know this because idleProc
+    //          never calls "delay" (or any other syscalls), thus if we are in delay we
+    //          must be a different process and idleProc must be on the ready queue.
     pcb_t *running_new = ProcListReadyNext(e_proc_list);
     if (!running_new) {
         TracePrintf(1, "[SyscallDelay] e_proc_list returned no ready process\n");
