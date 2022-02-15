@@ -573,6 +573,7 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
+    TracePrintf(1, "[MyKCS] Switching from pid: to pid: \n", running_old->pid, running_new->pid);
 
     // 3. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
@@ -586,7 +587,6 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     // 4. Tell the CPU where to find the page table for our new running process.
     //    Remember to flush the TLB so we dont map to the previous process' frames!
     WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
-    WriteRegister(REG_PTLR1, (unsigned int) MAX_PT_LEN);         // num entries
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return running_new->kctxt;
 }
