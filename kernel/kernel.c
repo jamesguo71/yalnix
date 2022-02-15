@@ -259,7 +259,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //
     //    Copy the context of our configured UserContext to the address indicated by _uctxt; this
     //    address is where Yalnix will look for the UserContext of the current executing process.
-    idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
+    // idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
+    idlePCB->kctxt     = NULL;
     idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
@@ -429,16 +430,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
     ProcListProcessPrint(e_proc_list);
 
-
-    // . Initialize the kernel context for the idle PCB. Note that we don't have to do this for
-    //   init because init will run first and thus have its KernelContext saved when it is
-    //   switched out in MyKCS.
-    int ret = KernelContextSwitch(KCCopy, idlePCB, NULL);
-    if (ret < 0) {
-        TracePrintf(1, "Error copying kernel context for idlePCB\n");
-        Halt();
-    }
-
     ret = LoadProgram(_cmd_args[0], _cmd_args, initPCB);
     if (ret < 0) {
         TracePrintf(1, "Error loading init program\n");
@@ -502,6 +493,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     // 2. Cast our void arguments to our custom pcb struct. Allocate space for
     //    a KernelContext then copy over the incoming context. Halt upon error.
     pcb_t *running_new = (pcb_t *) _new_pcb_p;
+    running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
     if (!running_new->kctxt) {
         TracePrintf(1, "[MyKCCopy] Error allocating space for KernelContext\n");
         Halt();
