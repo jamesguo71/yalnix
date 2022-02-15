@@ -170,9 +170,7 @@ int TrapClock(UserContext *_uctxt) {
     ProcListReadyAdd(e_proc_list, running_old);
     ProcListReadyPrint(e_proc_list);
 
-    // 4. Get the next process from our ready queue and write its user context to the address
-    //    passed in by the yalnix system (this is where it looks to find the context for the
-    //    process that it should be executing).
+    // 4. Get the next process from our ready queue and mark it as the current running process.
     //
     //    TODO: Eventually, this should just run the DoIdle process if no other processes
     //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
@@ -184,12 +182,12 @@ int TrapClock(UserContext *_uctxt) {
         Halt();
     }
     ProcListRunningSet(e_proc_list, running_new);
-    
-    //
+
+    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    //    kernel stack contents of the old process.
     TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
-
-    // 7. TODO: KCSwitch here???
     int ret = KernelContextSwitch(KCSwitch,
                          (void *) running_old,
                          (void *) running_new);
@@ -197,6 +195,11 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
         Halt();
     }
+
+    // 6. At this point, this code is being run by the *new* process, which means that its
+    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    //    process that this new process previously gave up the CPU for). Thus, get the
+    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
     running_new = ProcListRunningGet(e_proc_list);
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
@@ -260,13 +263,6 @@ int TrapMemory(UserContext *_uctxt) {
     TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt->sp: %p\trunning->uctxt->pc: %p\n",
                    running_old->pid, running_old->uctxt->sp, running_old->uctxt->pc);
     Halt();
-
-    // Use the `code` field in `_uctxt` to check what caused this memory trap:
-        // YALNIX_MAPERR: Is it because the address is not mapped in the current page tables?
-        // YALNIX_ACCERR: or because the access violates the page protection specified in the
-        //                corresponding page table entry?
-        // OTHERWISE: Is the address outside the virtual address range of the hardware (outside
-        //            Region 0 and Region 1)?
     return 0;
 }
 
