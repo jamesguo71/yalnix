@@ -148,6 +148,7 @@ int SetKernelBrk(void *_kernel_new_brk) {
     TracePrintf(1, "[SetKernelBrk] _kernel_new_brk:   %p\n", _kernel_new_brk);
     TracePrintf(1, "[SetKernelBrk] e_kernel_curr_brk: %p\n", e_kernel_curr_brk);
     e_kernel_curr_brk = _kernel_new_brk;
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return 0;
 }
 
