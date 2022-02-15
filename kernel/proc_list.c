@@ -119,21 +119,14 @@ int ProcListBlockedDelay(proc_list_t *_proc_list) {
     //    call. If so, decrement their clock_ticks value then check to see if it has reached 0.
     //    If so, remove them from the blocked queue and add them to the ready queue.
     for (pcb_t *proc = _proc_list->blocked_start; proc != NULL; proc = proc->blocked_next) {
-        TracePrintf(1, "[ProcListBlockedDelay] proc->pid: %d\t&proc: %p\tproc: %p\n", proc->pid, &proc, proc);
-        TracePrintf(1, "[ProcListBlockedDelay] proc->clock_ticks: %d\n", proc->clock_ticks);
         if (proc->clock_ticks) {
             proc->clock_ticks--;
-            TracePrintf(1, "[ProcListBlockedDelay] proc->clock_ticks: %d\n", proc->clock_ticks);
             if (proc->clock_ticks == 0) {
-                TracePrintf(1, "[ProcListBlockedDelay] Calling blocked remove\n");
                 ProcListBlockedRemove(_proc_list, proc->pid);
-
-                TracePrintf(1, "[ProcListBlockedDelay] Calling ready add\n");
                 ProcListReadyAdd(_proc_list, proc);
                 TracePrintf(1, "[ProcListBlockedDelay] Added proc: %d to ready\n", proc->pid);
             }
         }
-        TracePrintf(1, "[ProcListBlockedDelay] proc: %p\tproc->blocked_next: %p\n", proc, proc->blocked_next);
     }
     return 0;
 }
@@ -257,6 +250,7 @@ int ProcListBlockedRemove(proc_list_t *_proc_list, int _pid) {
     //    Set the new head of the list to the next blocked process pointed to by "proc".
     //    Remove the next blocked processes previous reference to "proc" as it is no
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
+    //    NOTE: Make sure you check if next is NULL so you don't try to dereference it.
     pcb_t *proc = _proc_list->blocked_start;
     if (proc->pid == _pid) {
         _proc_list->blocked_start = proc->blocked_next;
@@ -415,12 +409,15 @@ int ProcListProcessRemove(proc_list_t *_proc_list, int _pid) {
     //    Set the new head of the list to the next process process pointed to by "proc".
     //    Remove the next process processes previous reference to "proc" as it is no
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
+    //    NOTE: Make sure you check if next is NULL so you don't try to dereference it.
     pcb_t *proc = _proc_list->processes_start;
     if (proc->pid == _pid) {
-        _proc_list->processes_start                 = proc->processes_next;
-        _proc_list->processes_start->processes_prev = NULL;
-        proc->processes_next                        = NULL;
-        proc->processes_prev                        = NULL;
+        _proc_list->processes_start = proc->processes_next;
+        if (proc->processes_next) {
+            _proc_list->processes_start->processes_prev = NULL;
+        }
+        proc->processes_next = NULL;
+        proc->processes_prev = NULL;
         return 0;
     }
 
@@ -610,12 +607,15 @@ int ProcListReadyRemove(proc_list_t *_proc_list, int _pid) {
     //    Set the new head of the list to the next ready process pointed to by "proc".
     //    Remove the next ready processes previous reference to "proc" as it is no
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
+    //    NOTE: Make sure you check if next is NULL so you don't try to dereference it.
     pcb_t *proc = _proc_list->ready_start;
     if (proc->pid == _pid) {
-        _proc_list->ready_start             = proc->ready_next;
-        _proc_list->ready_start->ready_prev = NULL;
-        proc->ready_next                    = NULL;
-        proc->ready_prev                    = NULL;
+        _proc_list->ready_start = proc->ready_next;
+        if (proc->ready_next) {
+            _proc_list->ready_start->ready_prev = NULL;
+        }
+        proc->ready_next = NULL;
+        proc->ready_prev = NULL;
         return 0;
     }
 
@@ -839,7 +839,7 @@ int ProcListTerminatedRemove(proc_list_t *_proc_list, int _pid) {
     // 2. First check for our base case: the terminated list is currently empty. If so,
     //    add the current process (both as the start and end) to the terminated list.
     //    Set the process' next and previous pointers to NULL. Return success.
-    if (!_proc_list->blocked_start) {
+    if (!_proc_list->terminated_start) {
         TracePrintf(1, "[ProcListTerminatedRemove] Blocked list empty\n");
         return ERROR;
     }
@@ -848,12 +848,15 @@ int ProcListTerminatedRemove(proc_list_t *_proc_list, int _pid) {
     //    Set the new head of the list to the next terminated process pointed to by "proc".
     //    Remove the next terminated processes previous reference to "proc" as it is no
     //    longer in the list. Clear the next and prev pointers in "proc" for good measure.
+    //    NOTE: Make sure you check if next is NULL so you don't try to dereference it.
     pcb_t *proc = _proc_list->terminated_start;
     if (proc->pid == _pid) {
-        _proc_list->terminated_start               = proc->terminated_next;
-        _proc_list->terminated_start->blocked_prev = NULL;
-        proc->terminated_next                      = NULL;
-        proc->terminated_prev                      = NULL;
+        _proc_list->terminated_start = proc->terminated_next;
+        if (proc->terminated_next) {
+            _proc_list->terminated_start->terminated_prev = NULL;
+        }
+        proc->terminated_next = NULL;
+        proc->terminated_prev = NULL;
         return 0;
     }
 
