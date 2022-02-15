@@ -260,18 +260,16 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    Copy the context of our configured UserContext to the address indicated by _uctxt; this
     //    address is where Yalnix will look for the UserContext of the current executing process.
     idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
-    // idlePCB->kctxt     = NULL;
     idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
+    // memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
 
     // 9. Configure our init pcb the same way, except do NOT allocate space for KernelContext as
     //    our KCSwitch function uses the presence of NULL to determine if KCCopy should be called.
     //    More specifically, KCCopy will be used to initialize KernelContext the first time that
     //    the init process gets to run.
-    // initPCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
-    initPCB->kctxt     = NULL;
+    initPCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
     initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
     // initPCB->uctxt->pc = DoIdle2;
     // initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
@@ -283,12 +281,12 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //
     //     Add our pcbs to our process list structure for tracking. Note that we add idle as the
     //     current runny process, whereas init gets put into the ready queue.
-    idlePCB->pid = helper_new_pid(idlePCB->pt);
     initPCB->pid = helper_new_pid(initPCB->pt);
-    ProcListProcessAdd(e_proc_list, idlePCB);
+    idlePCB->pid = helper_new_pid(idlePCB->pt);
     ProcListProcessAdd(e_proc_list, initPCB);
-    ProcListRunningSet(e_proc_list, idlePCB);
-    ProcListReadyAdd(e_proc_list,   initPCB);
+    ProcListProcessAdd(e_proc_list, idlePCB);
+    ProcListRunningSet(e_proc_list, initPCB);
+    ProcListReadyAdd(e_proc_list,   idlePCB);
 
 
     // 11. Now that we have finished all of our dynamic memory allocation, we can configure the
@@ -357,10 +355,10 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     region 0 to pages of the same number since we know those frames have not been
     //     used yet (i.e., for DoIdle, its kernel stack page number is the same as the
     //     actual frame that it maps to).
-    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle\n");
+    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init\n");
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        PTESet(idlePCB->ks,                         // page table pointer
+        PTESet(initPCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                i + kernel_stack_start_page_num);    // frame number
@@ -370,13 +368,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
                       i + kernel_stack_start_page_num);
     }
     memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the DoIdle proc's page entries
-           idlePCB->ks,                                    // for its kernel stack into the master
+           initPCB->ks,                                    // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init\n");
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFind();
-        PTESet(initPCB->ks,                         // page table pointer
+        PTESet(idlePCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                frame);    // frame number
@@ -424,9 +422,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         TracePrintf(1, "Error loading init program\n");
         Halt();
     }
-
-    WriteRegister(REG_PTBR1, (unsigned int) idlePCB->pt);         // DoIdle pt address
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
+    memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
 
     // 17. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
@@ -444,6 +440,12 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     ProcListProcessPrint(e_proc_list);
     // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
     // Otherwise, load `cmd_args[0]` as its initial process.
+
+    ret = KernelContextSwitch(KCCopy, idlePCB, NULL);
+    if (ret < 0) {
+        TracePrintf(1, "[KernelStart] Error copying kc for idle\n");
+        Halt();
+    }
 }
 
 
@@ -499,7 +501,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
     // 2. Cast our void arguments to our custom pcb struct. Allocate space for
     //    a KernelContext then copy over the incoming context. Halt upon error.
     pcb_t *running_new = (pcb_t *) _new_pcb_p;
-    running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    // running_new->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
     if (!running_new->kctxt) {
         TracePrintf(1, "[MyKCCopy] Error allocating space for KernelContext\n");
         Halt();
