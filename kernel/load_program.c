@@ -83,7 +83,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
     size = 0;
     for (i = 0; args[i] != NULL; i++) {
-        TracePrintf(3, "counting arg %d = '%s'\n", i, args[i]);
+        TracePrintf(1, "counting arg %d = '%s'\n", i, args[i]);
         size += strlen(args[i]) + 1;
     }
     argcount = i;
@@ -127,6 +127,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
 
     /* leave at least one page between heap and stack */
     if (stack_npg + data_pg1 + data_npg >= MAX_PT_LEN) {
+        TracePrintf(1, "[LoadProgram] Not enough room between heap and stack\n");
         close(fd);
         return ERROR;
     }
