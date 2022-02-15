@@ -115,6 +115,8 @@ int SyscallBrk (void *_brk) {
     //    and our current brk.
     int new_brk_page_num = ((int) _brk)         >> PAGESHIFT;
     int cur_brk_page_num = ((int) running->brk) >> PAGESHIFT;
+    new_brk_page_num -= MAX_PT_LEN;
+    cur_brk_page_num -= MAX_PT_LEN;
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.
