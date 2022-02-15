@@ -469,6 +469,7 @@ KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pc
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     if (!running_new->kctxt) {
+        TracePrintf(1, "[KCSwitch] Calling KCCopy for pid: %d\n", running_new->pid);
         KCCopy(_kctxt, _next_pcb_p, NULL);
     }
 
