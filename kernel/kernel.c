@@ -264,7 +264,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    // memcpy(_uctxt, idlePCB->uctxt, sizeof(UserContext));
 
     // 9. Configure our init pcb the same way, except do NOT allocate space for KernelContext as
     //    our KCSwitch function uses the presence of NULL to determine if KCCopy should be called.
@@ -272,10 +271,10 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    the init process gets to run.
     initPCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
     initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
-    // initPCB->uctxt->pc = DoIdle2;
-    // initPCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
-    // memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
-    
+    initPCB->brk       = NULL;
+    initPCB->data_end  = NULL;
+    initPCB->text_end  = NULL;
+
     // 10. Assign our processes pids with the build system helper function. Note that the build
     //     system keeps a mapping of page table pointers to pids, so if we don't assign pid via
     //     the helper function it complains about the PTBR1 not being assigned to a process

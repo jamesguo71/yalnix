@@ -79,6 +79,10 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     data_npg = li.id_npg + li.ud_npg;
     TracePrintf(1, "[LoadProgram] text_pg1: %d\tdata_pg1: %d\tdata_npg: %d\n", text_pg1, data_pg1, data_npg);
 
+    proc->data_end = (void *) ((data_pg1 + data_npg) << PAGESHIFT);
+    proc->brk      = proc->data_end;
+    TracePrintf(1, "[LoadProgram] proc->data_end: %p\n", proc->data_end);
+
     /*
      *  Figure out how many bytes are needed to hold the arguments on
      *  the new stack that we are building.  Also count the number of

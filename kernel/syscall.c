@@ -78,6 +78,7 @@ int SyscallGetPid (void) {
 
 int SyscallBrk (void *_brk) {
     // 1. Make sure the incoming address is not NULL. If so, return ERROR.
+    TracePrintf(1, "[SyscallBrk] SyscallBrk with brk: %p\n", _brk);
     if (!_brk) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is NULL\n");
         return ERROR;
@@ -91,11 +92,12 @@ int SyscallBrk (void *_brk) {
         TracePrintf(1, "[SyscallBrk] e_proc_list returned no running process\n");
         Halt();
     }
-    // TODO: Set this in load_program!!!
-    // if (_brk <= running->data_end) {
-    //     TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
-    //     return ERROR;
-    // }
+    TracePrintf(1, "[SyscallBrk] Current process: %d\n", running->pid);
+    
+    if (_brk <= running->data_end) {
+        TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
+        return ERROR;
+    }
 
     // 3. Round our new brk value *up* to the nearest page.
     // 
