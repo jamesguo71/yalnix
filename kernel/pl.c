@@ -13,7 +13,7 @@ typedef struct plnode {
 
 
 typedef struct proc_list {
-    plnode *lists[PROC_LIST_NUM_LISTS];
+    plnode_t *lists[PROC_LIST_NUM_LISTS];
 } proc_list_t;
 
 
