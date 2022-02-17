@@ -2,8 +2,9 @@
 
 int main(int argc, char **argv) {
     while(1) {
-        TracePrintf(1, "Init\n");
-        Pause();
+        int pid = GetPid();
+        TracePrintf(1, "Init pid: %d. Delaying for 2 clock cycles\n", pid);
+        Delay(2);
     }
     return 0;
 }

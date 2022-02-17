@@ -29,113 +29,133 @@ int TrapKernel(UserContext *_uctxt) {
     u_long ret = 0;
     switch(_uctxt->code) {
         case YALNIX_FORK:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_Fork] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallFork();
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_EXEC:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_Exec] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallExec((char *)  _uctxt->regs[0],
             //                     (char **) _uctxt->regs[1]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_EXIT:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_Exit] _uctxt->code: %x\n", _uctxt->code);
             // SyscallExit((int ) _uctxt->regs[0]);
+            break;
 
         case YALNIX_WAIT:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_Wait] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallWait((int *) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_GETPID:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_GetPid] _uctxt->code: %x\n", _uctxt->code);
             ret = SyscallGetPid();
             _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_BRK:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_Brk] _uctxt->code: %x\n", _uctxt->code);
             ret = SyscallBrk((void *) _uctxt->regs[0]);
             _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_DELAY:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
-            // ret = SyscallDelay((int ) _uctxt->regs[0]);
-            // _uctxt->regs[0] = ret;
+            TracePrintf(1, "[TrapKernel_Delay] _uctxt->code: %x\n", _uctxt->code);
+            ret = SyscallDelay(_uctxt, (int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_TTY_READ:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_TTYRead] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallTtyRead((int )   _uctxt->regs[0],
             //                        (void *) _uctxt->regs[1],
             //                        (int)    _uctxt->regs[2]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_TTY_WRITE:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_TTYWrite] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallTtyWrite((int)    _uctxt->regs[0],
             //                         (void *) _uctxt->regs[1],
             //                         (int )   _uctxt->regs[2]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_PIPE_INIT:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_PipeInit] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallPipeInit((int *) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_PIPE_READ:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_PipeRead] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallPipeRead((int)    _uctxt->regs[0],
             //                         (void *) _uctxt->regs[1],
             //                         (int)    _uctxt->regs[2]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_PIPE_WRITE:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_PipeWrite] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallPipeWrite((int)    _uctxt->regs[0],
             //                          (void *) _uctxt->regs[1],
             //                          (int)    _uctxt->regs[2]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_LOCK_INIT:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_LockInit] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallLockInit((int *) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_LOCK_ACQUIRE:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_LockAquire] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallAcquire((int ) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_LOCK_RELEASE:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_LockRelease] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallRelease((int) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_CVAR_INIT:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_CvarInit] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallCvarInit((int *) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_CVAR_SIGNAL:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_CvarSignal] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallCvarSignal((int ) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_CVAR_BROADCAST:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_CvarBroadcast] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallCvarBroadcast((int ) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_CVAR_WAIT:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_CVarWait] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallCvarWait((int ) _uctxt->regs[0],
             //                         _uctxt->regs[1]);
             // _uctxt->regs[0] = ret;
+            break;
 
         case YALNIX_RECLAIM:
-            TracePrintf(1, "[TrapKernel] _uctxt->code: %x\n", _uctxt->code);
+            TracePrintf(1, "[TrapKernel_Reclaim] _uctxt->code: %x\n", _uctxt->code);
             // ret = SyscallReclaim((int ) _uctxt->regs[0]);
             // _uctxt->regs[0] = ret;
+            break;
 
         default: break;
     }
@@ -151,71 +171,59 @@ int TrapKernel(UserContext *_uctxt) {
  * 
  * \return             0 on success, ERROR otherwise.
  */
-int TrapClock(UserContext *_uctxt) {    
+int TrapClock(UserContext *_uctxt) {
     // 1. Check arguments. Return error if invalid.
     if (!_uctxt) {
         TracePrintf(1, "[TrapClock] Invalid UserContext pointer\n");
         return ERROR;
     }
 
-    // 2. Get the pcb for the current running process and save its user context.
+    // 2. Update any processes that are currently blocked due to a delay call. This will
+    //    loop over blocked list and decrement the clock_count for any processes delaying.
+    //    If their count hits zero, they get added to the ready queue.
+    //    TODO: Better name?
+    ProcListBlockedDelay(e_proc_list);
+    ProcListReadyPrint(e_proc_list);
+    ProcListBlockedPrint(e_proc_list);
+
+    // 3. Get the pcb for the current running process and the next process to run. If there is
+    //    not process in the ready queue, simply return and don't bother context switching.
     pcb_t *running_old = ProcListRunningGet(e_proc_list);
     if (!running_old) {
         TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
         Halt();
     }
-    memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
-
-    // 3. Add the old running process to our ready queue
-    ProcListReadyAdd(e_proc_list, running_old);
-    ProcListReadyPrint(e_proc_list);
-
-    // 4. Get the next process from our ready queue and write its user context to the address
-    //    passed in by the yalnix system (this is where it looks to find the context for the
-    //    process that it should be executing).
-    //
-    //    TODO: Eventually, this should just run the DoIdle process if no other processes
-    //          are ready. Thus, you may consider *not* adding DoIdle to the ready list.
-    //          Instead, since you know it is always pid 0, you can just get it from the
-    //          master process list and run it if ready list returns empty.
     pcb_t *running_new = ProcListReadyNext(e_proc_list);
     if (!running_new) {
-        TracePrintf(1, "[TrapClock] e_proc_list returned no ready process\n");
-        Halt();
+        TracePrintf(1, "[TrapClock] No ready process. Continuing with the current process\n");
+        return 0;
     }
-    memcpy(_uctxt, &running_new->uctxt, sizeof(UserContext));
+
+    // 4. If there is a process waiting to run, save the old process' UserContext and add it to
+    //    the ready queue. Then set the new process as the current running process.
+    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+    ProcListReadyAdd(e_proc_list,   running_old);
     ProcListRunningSet(e_proc_list, running_new);
 
-    // 5. Update the kernel's page table so that its stack pages map to
-    //    the correct frames for the new running process.
-    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
-    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the running_new page entries
-           running_new->ks,                                // for its kernel stack into the master
-           KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
-
-
-    // 6. Tell the CPU where to find the page table for our new running process
-    WriteRegister(REG_PTBR1,     (unsigned int) running_new->pt);    // pt address
-    WriteRegister(REG_PTLR1,     (unsigned int) MAX_PT_LEN);         // num entries
-
-    // TODO: Flush the TLB so that we get a page fault and load our new page table
-    //       entries into the TLB. NOTE: Do we flush 1, kstack, or all?
-    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-    //WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
-
-    // 7. TODO: KCSwitch here???
-
-    //
-    TracePrintf(1, "[TrapClock] running_old->sp: %p\trunning_new->sp: %p\n",
-                    running_old->uctxt.sp, running_new->uctxt.sp);
-    int ret = KernelContextSwitch(MyKCS,
-                                  (void *) running_old,
-                                  (void *) running_new);
+    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    //    kernel stack contents of the old process.
+    TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
+                    running_old->pid, running_new->pid);
+    int ret = KernelContextSwitch(KCSwitch,
+                         (void *) running_old,
+                         (void *) running_new);
     if (ret < 0) {
         TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
         Halt();
     }
+
+    // 6. At this point, this code is being run by the *new* process, which means that its
+    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    //    process that this new process previously gave up the CPU for). Thus, get the
+    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
+    running_new = ProcListRunningGet(e_proc_list);
+    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }
 
@@ -261,14 +269,22 @@ int TrapMemory(UserContext *_uctxt) {
     if (!_uctxt) {
         return ERROR;
     }
-    TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\n", _uctxt->sp);
+    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    if (!running_old) {
+        TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
+        Halt();
+    }
 
-    // Use the `code` field in `_uctxt` to check what caused this memory trap:
-        // YALNIX_MAPERR: Is it because the address is not mapped in the current page tables?
-        // YALNIX_ACCERR: or because the access violates the page protection specified in the
-        //                corresponding page table entry?
-        // OTHERWISE: Is the address outside the virtual address range of the hardware (outside
-        //            Region 0 and Region 1)?
+    if (_uctxt->code == YALNIX_MAPERR) {
+        TracePrintf(1, "[TrapMemory] Address not mapped: %p\n", _uctxt->addr);
+    }
+    if (_uctxt->code == YALNIX_ACCERR) {
+        TracePrintf(1, "[TrapMemory] Invalid permissions: %p\n", _uctxt->addr);
+    }
+    TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\n", _uctxt->sp);
+    TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt->sp: %p\trunning->uctxt->pc: %p\n",
+                   running_old->pid, running_old->uctxt->sp, running_old->uctxt->pc);
+    Halt();
     return 0;
 }
 

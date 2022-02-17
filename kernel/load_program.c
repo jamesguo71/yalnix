@@ -47,23 +47,25 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     long segment_size;
     char *argbuf;
 
+    TracePrintf(1, "[LoadProgram] initPCB->uctxt->sp: %p\tinitPCB->uctxt->pc: %p\tinitPCB->pt: %p\n",
+                    proc->uctxt->sp, proc->uctxt->pc, proc->pt);
 
     /*
      * Open the executable file
      */
     if ((fd = open(name, O_RDONLY)) < 0) {
-        TracePrintf(0, "LoadProgram: can't open file '%s'\n", name);
+        TracePrintf(1, "[LoadProgram] can't open file '%s'\n", name);
         return ERROR;
     }
 
     if (LoadInfo(fd, &li) != LI_NO_ERROR) {
-        TracePrintf(0, "LoadProgram: '%s' not in Yalnix format\n", name);
+        TracePrintf(1, "[LoadProgram] '%s' not in Yalnix format\n", name);
         close(fd);
         return (-1);
     }
 
     if (li.entry < VMEM_1_BASE) {
-        TracePrintf(0, "LoadProgram: '%s' not linked for Yalnix\n", name);
+        TracePrintf(1, "[LoadProgram] '%s' not linked for Yalnix\n", name);
         close(fd);
         return ERROR;
     }
@@ -75,6 +77,13 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     text_pg1 = (li.t_vaddr - VMEM_1_BASE) >> PAGESHIFT;
     data_pg1 = (li.id_vaddr - VMEM_1_BASE) >> PAGESHIFT;
     data_npg = li.id_npg + li.ud_npg;
+    TracePrintf(1, "[LoadProgram] text_pg1: %d\tdata_pg1: %d\tdata_npg: %d\n", text_pg1, data_pg1, data_npg);
+
+    proc->data_end = (void *) ((data_pg1 + data_npg) << PAGESHIFT);
+    proc->data_end += VMEM_1_BASE;
+    proc->brk      = proc->data_end;
+    TracePrintf(1, "[LoadProgram] proc->data_end: %p\n", proc->data_end);
+
     /*
      *  Figure out how many bytes are needed to hold the arguments on
      *  the new stack that we are building.  Also count the number of
@@ -82,12 +91,11 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
     size = 0;
     for (i = 0; args[i] != NULL; i++) {
-        TracePrintf(3, "counting arg %d = '%s'\n", i, args[i]);
+        TracePrintf(1, "[LoadProgram] counting arg %d = '%s'\n", i, args[i]);
         size += strlen(args[i]) + 1;
     }
     argcount = i;
-
-    TracePrintf(2, "LoadProgram: argsize %d, argcount %d\n", size, argcount);
+    TracePrintf(1, "[LoadProgram] argsize %d, argcount %d\n", size, argcount);
 
     /*
      *  The arguments will get copied starting at "cp", and the argv
@@ -99,7 +107,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      *  and then rounding the value *down* to a double-word boundary.
      */
     cp = ((char *) VMEM_1_LIMIT) - size;
-
     cpp = (char **)
             (((int) cp -
               ((argcount + 3 + POST_ARGV_NULL_SPACE) * sizeof(void *)))
@@ -110,22 +117,22 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * reserved above the stack pointer, before the arguments.
      */
     cp2 = (caddr_t) cpp - INITIAL_STACK_FRAME_SIZE;
-
-
-    TracePrintf(1, "prog_size %d, text %d data %d bss %d pages\n",
+    TracePrintf(1, "[LoadProgram] prog_size %d, text %d data %d bss %d pages\n",
                 li.t_npg + data_npg, li.t_npg, li.id_npg, li.ud_npg);
 
 
     /*
      * Compute how many pages we need for the stack */
     stack_npg = (VMEM_1_LIMIT - DOWN_TO_PAGE(cp2)) >> PAGESHIFT;
-
-    TracePrintf(1, "LoadProgram: heap_size %d, stack_size %d\n",
+    TracePrintf(1, "[LoadProgram] heap_size %d, stack_size %d\n",
                 li.t_npg + data_npg, stack_npg);
 
 
     /* leave at least one page between heap and stack */
+    int tempvar = stack_npg + data_pg1 + data_npg;
+    TracePrintf(1, "[LoadProgram] total num of pages: %d\n", tempvar);
     if (stack_npg + data_pg1 + data_npg >= MAX_PT_LEN) {
+        TracePrintf(1, "[LoadProgram] Not enough room between heap and stack\n");
         close(fd);
         return ERROR;
     }
@@ -144,7 +151,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> (rewrite the line below to match your actual data structure)
      * ==>> proc->uc.sp = cp2;
      */
-    proc->uctxt.sp = cp2;
+    proc->uctxt->sp = cp2;
+    TracePrintf(1, "[LoadProgram] proc->uctxt->sp: %p\n", proc->uctxt->sp);
 
     /*
      * Now save the arguments in a separate buffer in region 0, since
@@ -156,12 +164,12 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> You should perhaps check that malloc returned valid space
      */
     if (cp2 == NULL || cp2 >= (char *)KERNEL_STACK_BASE) {
-        TracePrintf(1, "load_program Failed: Malloc returned an invalid address!\n");
+        TracePrintf(1, "[LoadProgram] Failed: Malloc returned an invalid address!\n");
         Halt();
     }
 
     for (i = 0; args[i] != NULL; i++) {
-        TracePrintf(3, "saving arg %d = '%s'\n", i, args[i]);
+        TracePrintf(1, "[LoadProgram]saving arg %d = '%s'\n", i, args[i]);
         strcpy(cp2, args[i]);
         cp2 += strlen(cp2) + 1;
     }
@@ -178,10 +186,10 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> for every valid page, free the pfn and mark the page invalid.
      */
     for (int k = 0; k < MAX_PT_LEN; k++) {
-        pte_t pte = proc->pt[k];
-        if (pte.valid) {
-            pte.valid = 0;
-            FrameClear((int)pte.pfn);
+        if (proc->pt[k].valid) {
+            proc->pt[k].valid = 0;
+            FrameClear((int) proc->pt[k].pfn);
+            TracePrintf(1, "[LoadProgram] Clearing frame: %d\n", proc->pt[k].pfn);
         }
     }
 
@@ -197,14 +205,21 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> These pages should be marked valid, with a protection of
      * ==>> (PROT_READ | PROT_WRITE).
      */
+    TracePrintf(1, "[LoadProgram] Mapping pages for text\n");
     for (int k = 0; k < li.t_npg; k++) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
-            TracePrintf(1, "load_program failed: can't find a free frame.\n");
+            TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
             return KILL;
         }
-        PTESet(proc->pt, text_pg1 + k, PROT_READ|PROT_WRITE, pfn);
+        PTESet(proc->pt,
+               text_pg1 + k,
+               PROT_READ | PROT_WRITE,
+               pfn);
+        TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
+                    text_pg1 + k,
+                    pfn);
     }
 
     /*
@@ -213,14 +228,21 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> These pages should be marked valid, with a protection of
      * ==>> (PROT_READ | PROT_WRITE).
      */
+    TracePrintf(1, "[LoadProgram] Mapping pages for data\n");
     for (int k = 0; k < data_npg; k++) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
-            TracePrintf(1, "load_program failed: can't find a free frame.\n");
+            TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
             return KILL;
         }
-        PTESet(proc->pt, data_pg1 + k, PROT_READ|PROT_WRITE, pfn);
+        PTESet(proc->pt,
+               data_pg1 + k,
+               PROT_READ | PROT_WRITE,
+               pfn);
+        TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
+                    data_pg1 + k,
+                    pfn);
     }
     /*
      * ==>> Then, stack. Allocate "stack_npg" physical pages and map them to the top
@@ -228,19 +250,27 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> These pages should be marked valid, with a
      * ==>> protection of (PROT_READ | PROT_WRITE).
      */
+    TracePrintf(1, "[LoadProgram] Mapping pages for stack\n");
     for (int k = stack_npg; k > 0; k--) {
         int pfn = FrameFind();
         if (pfn == ERROR) {
-            TracePrintf(1, "load_program failed: can't find a free frame.\n");
+            TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
             return KILL;
         }
-        PTESet(proc->pt, MAX_PT_LEN - k, PROT_READ|PROT_WRITE, pfn);
+        PTESet(proc->pt,
+               MAX_PT_LEN - k,
+               PROT_READ | PROT_WRITE,
+               pfn);
+        TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
+                    MAX_PT_LEN - k,
+                    pfn);
     }
     /*
      * ==>> (Finally, make sure that there are no stale region1 mappings left in the TLB!)
      */
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+
     /*
      * All pages for the new address space are now in the page table.
      */
@@ -283,9 +313,11 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
 
     for (int k = 0; k < li.t_npg; k++) {
-        proc->pt[text_pg1 + k].prot = PROT_READ|PROT_EXEC;
+        proc->pt[text_pg1 + k].prot = PROT_READ | PROT_EXEC;
+        TracePrintf(1, "[LoadProgram] Changing text page: %d to rx prot\n", text_pg1 + k);
     }
-    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    // WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
 
 
     /*
@@ -301,8 +333,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> (rewrite the line below to match your actual data structure)
      * ==>> proc->uc.pc = (caddr_t) li.entry;
      */
-    proc->uctxt.pc = (caddr_t) li.entry;
-
+    proc->uctxt->pc = (caddr_t) li.entry;
+    TracePrintf(1, "[LoadProgram] proc->uctxt->pc: %p\n", proc->uctxt->pc);
 
     /*
      * Now, finally, build the argument list on the new stack.
@@ -323,6 +355,5 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     *cpp++ = NULL;            /* the last argv is a NULL pointer */
     *cpp++ = NULL;            /* a NULL pointer for an empty envp */
 
-    return SUCCESS;
+    return 0;
 }
-

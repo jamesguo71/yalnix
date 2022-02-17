@@ -10,14 +10,14 @@
 K_SRC_DIR = ./kernel
 
 # What are the kernel c and include files?
-K_SRCS = kernel.c frame.c proc_list.c pte.c syscall.c trap.c load_program.c
-K_INCS = kernel.h frame.h proc_list.h pte.h syscall.h trap.h load_program.h
+K_SRCS = kernel.c frame.c load_program.c proc_list.c pte.c syscall.c trap.c
+K_INCS = kernel.h frame.h load_program.h proc_list.h pte.h syscall.h trap.h
 
 # Where's your user source?
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c
+U_SRCS = init.c chpt3_test.c
 U_INCS = 
 
 
@@ -73,7 +73,9 @@ LINK_KERNEL = $(LINK.c)
 
 USER_LIBS = $(LIBDIR)/libuser.a
 ASFLAGS = -D__ASM__
-CPPFLAGS= -m32 -fno-builtin -I. -I$(INCDIR) -g -DLINUX 
+# CPPFLAGS= -m32 -fno-builtin -I. -I$(INCDIR) -g -DLINUX
+CPPFLAGS = -D_FILE_OFFSET_BITS=64 -m32 -fno-builtin -I. -I$(INCDIR) -g -DLINUX
+
 
 
 ##########################
@@ -110,7 +112,6 @@ $(KERNEL_ALL): $(KERNEL_OBJS) $(KERNEL_LIBS) $(KERNEL_INCS)
 
 $(USER_APPS): $(USER_OBJS) $(USER_INCS)
 	$(ETCDIR)/yuserbuild.sh $@ $(DDIR58) $@.o
-
 
 
 

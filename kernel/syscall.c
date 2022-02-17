@@ -4,6 +4,7 @@
 
 #include "frame.h"
 #include "kernel.h"
+#include "proc_list.h"
 #include "pte.h"
 #include "syscall.h"
 
@@ -91,6 +92,8 @@ int SyscallBrk (void *_brk) {
         TracePrintf(1, "[SyscallBrk] e_proc_list returned no running process\n");
         Halt();
     }
+    TracePrintf(1, "[SyscallBrk] running->brk: %p\t_brk: %p\n", running->brk, _brk);
+
     if (_brk <= running->data_end) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is below heap base\n");
         return ERROR;
@@ -113,6 +116,8 @@ int SyscallBrk (void *_brk) {
     //    and our current brk.
     int new_brk_page_num = ((int) _brk)         >> PAGESHIFT;
     int cur_brk_page_num = ((int) running->brk) >> PAGESHIFT;
+    new_brk_page_num -= MAX_PT_LEN;
+    cur_brk_page_num -= MAX_PT_LEN;
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.
@@ -143,7 +148,6 @@ int SyscallBrk (void *_brk) {
                    cur_brk_page_num + i,    // page number
                    PROT_READ | PROT_WRITE,  // page protection bits
                    frame_num);              // frame number
-            FrameSet(frame_num);
             TracePrintf(1, "[SyscallBrk] Mapping page: %d to frame: %d\n",
                            cur_brk_page_num + i, frame_num);
         } else {
@@ -165,17 +169,75 @@ int SyscallBrk (void *_brk) {
     TracePrintf(1, "[SyscallBrk] _brk:              %p\n", _brk);
     TracePrintf(1, "[SyscallBrk] running->brk:      %p\n", running->brk);
     running->brk = _brk;
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return 0;
 }
 
-int SyscallDelay (int clock_ticks) {
-    // If clock ticks is 0, return is immediate.
-    // If clock ticks is less than 0, return ERROR
-    // Block current process until clock_ticks clock interrupts have occurred after the call
-        // Set up a new variable (e.g, start_clock_ticks) to mark the start time by storing the cur_clock_ticks into it
-        // Suspend the caller process
-        // Whenever the process gets switched back, check the delta of cur_clock_ticks and check if it's reached `clock_ticks`
-    // Upon completion of the delay, the value 0 is returned
+
+/*!
+ * \desc                    A
+ *
+ * \param[in] _clock_ticks  a
+ *
+ * \return                  0 on success, ERROR otherwise.
+ */
+int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
+    // 1. If delay is 0 return immediately and if delay is invalid return ERROR.
+    if (!_uctxt || _clock_ticks < 0) {
+        TracePrintf(1, "[SyscallDelay] Invalid uctxt pointer or clock_ticks value: %d\n", _clock_ticks);
+        return ERROR;
+    }
+    if (_clock_ticks == 0) {
+        return 0;
+    }
+
+    // 2. Get the pcb for the current running process and save its user context.
+    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    if (!running_old) {
+        TracePrintf(1, "[SyscallDelay] e_proc_list returned no running process\n");
+        Halt();
+    }
+    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+
+    // 3. Set the current process' delay value in its pcb then add it to the blocked list
+    running_old->clock_ticks = _clock_ticks;
+    ProcListBlockedAdd(e_proc_list, running_old);
+    ProcListBlockedPrint(e_proc_list);
+    TracePrintf(1, "[SyscallDelay] Blocking process %d for %d clock cycles\n",
+                   running_old->pid, _clock_ticks);
+
+    // 4. Get the next process from our ready queue and mark it as the current running process.
+    //
+    //    NOTE: We should *always* get a process back from the ready queue because at the
+    //          very least it will contain the idleProc. We know this because idleProc
+    //          never calls "delay" (or any other syscalls), thus if we are in delay we
+    //          must be a different process and idleProc must be on the ready queue.
+    pcb_t *running_new = ProcListReadyNext(e_proc_list);
+    if (!running_new) {
+        TracePrintf(1, "[SyscallDelay] e_proc_list returned no ready process\n");
+        Halt();
+    }
+    ProcListRunningSet(e_proc_list, running_new);
+
+    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    //    kernel stack contents of the old process.
+    TracePrintf(1, "[SyscallDelay] running_old->pid: %d\t\trunning_new->pid: %d\n",
+                    running_old->pid, running_new->pid);
+    int ret = KernelContextSwitch(KCSwitch,
+                         (void *) running_old,
+                         (void *) running_new);
+    if (ret < 0) {
+        TracePrintf(1, "[SyscallDelay] Failed to switch to the next process\n");
+        Halt();
+    }
+
+    // 6. At this point, this code is being run by the *new* process, which means that its
+    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    //    process that this new process previously gave up the CPU for). Thus, get the
+    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
+    running_new = ProcListRunningGet(e_proc_list);
+    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }
 

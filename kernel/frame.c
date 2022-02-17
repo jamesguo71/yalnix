@@ -57,6 +57,7 @@ int FrameFind() {
     //    we find. If we make it through the loop, there must not be any free frames.
     for (int i = 0; i < e_num_frames; i++) {
         if (BitTest(e_frames, i) == 0) {
+            BitSet(e_frames, i);
             return i;
         }
     }
