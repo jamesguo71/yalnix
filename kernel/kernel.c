@@ -254,8 +254,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     KC is NULL and call KCCopy to copy the KernelContext of the current running process.
     idlePCB->kctxt = NULL;
     initPCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
-    if (!idlePCB->kctxt) {
-        TracePrintf(1, "[KernelStart] Malloc for idlePCB kctxt failed\n");
+    if (!initPCB->kctxt) {
+        TracePrintf(1, "[KernelStart] Malloc for initPCB kctxt failed\n");
         Halt();
     }
 
