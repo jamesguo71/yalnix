@@ -44,7 +44,8 @@ proc_list_t *ProcListCreate() {
         proc_list->lists[i] = NULL;
     }
 
-    //
+    // 3. Go ahead and initialize a node for the running process since we will only ever need one
+    //    and we never delete the node. Set its internel pointers to NULL though.
     plnode_t *running = (plnode_t *) malloc(sizeof(plnode_t));
     if (!running) {
         TracePrintf(1, "[ProcListCreate] Error mallocing space for running plnode\n");
