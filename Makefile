@@ -10,8 +10,8 @@
 K_SRC_DIR = ./kernel
 
 # What are the kernel c and include files?
-K_SRCS = kernel.c frame.c load_program.c pl.c pte.c syscall.c trap.c
-K_INCS = kernel.h frame.h load_program.h pl.h pte.h syscall.h trap.h
+K_SRCS = kernel.c frame.c load_program.c proc_list.c pte.c syscall.c trap.c
+K_INCS = kernel.h frame.h load_program.h proc_list.h pte.h syscall.h trap.h
 
 # Where's your user source?
 U_SRC_DIR = ./user
