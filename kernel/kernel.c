@@ -285,9 +285,9 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    our KCSwitch function uses the presence of NULL to determine if KCCopy should be called.
     //    More specifically, KCCopy will be used to initialize KernelContext the first time that
     //    the init process gets to run.
-    initPCB->brk       = NULL;
-    initPCB->data_end  = NULL;
-    initPCB->text_end  = NULL;
+    // initPCB->brk       = NULL;
+    // initPCB->data_end  = NULL;
+    // initPCB->text_end  = NULL;
 
     // 10. Assign our processes pids with the build system helper function. Note that the build
     //     system keeps a mapping of page table pointers to pids, so if we don't assign pid via
