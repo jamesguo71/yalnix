@@ -24,6 +24,9 @@
 
 typedef struct scheduler scheduler_t;
 
+
+// TODO: Move this struct back to Kernel.h?
+// TODO: Add a char *name field for debugging/readability?
 typedef struct pcb {
     int  pid;
     int  clock_ticks;
