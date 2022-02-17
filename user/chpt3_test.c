@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
     // 2. Now let's trying delaying for several cycles
     int delay = 3;
     TracePrintf(1, "Checkpoint 3 test program delaying for %d cycles\n", delay);
+    Delay(delay);
 
     // 3. Now let's test out BRK by mallocing and using memory.
     TracePrintf(1, "Checkpoint 3 testing BRK by mallocing memory...\n");
