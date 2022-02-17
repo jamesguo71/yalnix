@@ -1,7 +1,7 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include <hardware.h>
-#include "proc_list.h"
+#include "pl.h"
 
 #define KERNEL_BYTE_SIZE           8
 #define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE
