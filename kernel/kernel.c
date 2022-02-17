@@ -616,13 +616,3 @@ static void DoIdle(void) {
         Pause();
     }
 }
-
-/*!
- * \desc  A dummy userland process that the kernel runs when there are no other processes.
- */
-static void DoIdle2(void) {
-    while(1) {
-        TracePrintf(1,"DoIdle 2\n");
-        Pause();
-    }
-}
