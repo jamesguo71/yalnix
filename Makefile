@@ -17,7 +17,7 @@ K_INCS = kernel.h frame.h load_program.h proc_list.h pte.h syscall.h trap.h
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c
+U_SRCS = init.c chpt3_test.c
 U_INCS = 
 
 
