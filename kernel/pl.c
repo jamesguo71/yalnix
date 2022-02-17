@@ -400,7 +400,7 @@ pcb_t *ProcListRunningGet(proc_list_t *_proc_list) {
         TracePrintf(1, "[ProcListRunningGet] Invalid list pointer\n");
         return NULL;
     }
-    return _proc_list->lists[PROC_LIST_RUNNING];
+    return _proc_list->lists[PROC_LIST_RUNNING]->process;
 }
 
 
@@ -420,7 +420,7 @@ int ProcListTerminatedAdd(proc_list_t *_proc_list, pcb_t *_process) {
     return ProcListAdd(_proc_list,
                        _process,
                        PROC_LIST_TERMINATED_START,
-                       PROC_LIST_TERMIANTED_END);
+                       PROC_LIST_TERMINATED_END);
 }
 
 
@@ -478,7 +478,7 @@ int ProcListTerminatedRemove(proc_list_t *_proc_list, int _pid) {
     return ProcListRemove(_proc_list,
                           _pid,
                           PROC_LIST_TERMINATED_START,
-                          PROC_LIST_TERMIANTED_END);
+                          PROC_LIST_TERMINATED_END);
 }
 
 
@@ -520,10 +520,12 @@ static int ProcListAdd(proc_list_t *_proc_list, pcb_t *_process, int _start, int
 static pcb_t *ProcListGet(proc_list_t *_proc_list, int _pid, int _start, int _end) {
     // 1. Loop over the terminated list in search of the process specified by _pid.
     //    If found, return the pointer to the processes pcb_t struct.
-    for (plnode_t *node = _proc_list->lists[_start]; node != NULL; node = node->next) {
+    plnode_t *node = _proc_list->lists[_start];
+    while (node) {
         if (node->process->pid == _pid) {
             return node->process;
         }
+        node = node->next;
     }
 
     // 2. If we made it this far, then the process specified by _pid was not found. Return NULL.
@@ -533,7 +535,7 @@ static pcb_t *ProcListGet(proc_list_t *_proc_list, int _pid, int _start, int _en
 
 
 
-static int ProcListPrint(proc_list_t *_proc_list, int _start, int _end) {
+static int ProcListPrint(proc_list_t *_proc_list, int _start) {
     plnode_t *node = _proc_list->lists[_start];
     while (node) {
         TracePrintf(1, "\tpid: %d\n", node->process->pid);
@@ -572,7 +574,7 @@ static int ProcListRemove(proc_list_t *_proc_list, int _pid, int _start, int _en
     //    Set the new end of the list to the prev terminated process pointed to by "proc".
     //    Remove the prev terminated processes next reference to "proc" as it is no longer
     //    in the list. Clear the next and prev pointers in "proc" for good measure.
-    node = _proc_list->terminated_end;
+    node = _proc_list->lists[_end];
     if (node->process->pid == _pid) {
         _proc_list->lists[_end]       = node->prev;
         _proc_list->lists[_end]->next = NULL;
@@ -583,13 +585,15 @@ static int ProcListRemove(proc_list_t *_proc_list, int _pid, int _start, int _en
     // 5. If the process to remove is neither the first or last item in our terminated list, then
     //    loop through the processes inbetween to locate it (starting from the second process
     //    in the list). If you find the process, remove it from the list and return success.
-    for (node = _proc_list->lists[_start]->next; node != NULL; node = node->next) {
+    node = _proc_list->lists[_start]->next;
+    while (node) {
         if (node->process->pid == _pid) {
             node->prev->next = node->next;
             node->next->prev = node->prev;
             free(node);
             return 0;
         }
+        node = node->next;
     }
 
     // 6. If we made it this far, then the process specified by _pid was not found. Return ERROR.
