@@ -71,15 +71,10 @@ int    SchedulerAddTerminated(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddTTYRead(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddTTYWrite(scheduler_t *_scheduler, pcb_t *_process);
 
-pcb_t *SchedulerGetDelay(scheduler_t *_scheduler, int _pid);
-pcb_t *SchedulerGetLock(scheduler_t *_scheduler, int _pid);
-pcb_t *SchedulerGetPipe(scheduler_t *_scheduler, int _pid);
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid);
 pcb_t *SchedulerGetReady(scheduler_t *_scheduler);
 pcb_t *SchedulerGetRunning(scheduler_t *_scheduler);
 pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid);
-pcb_t *SchedulerGetTTYRead(scheduler_t *_scheduler, int _pid);
-pcb_t *SchedulerGetTTYWrite(scheduler_t *_scheduler, int _pid);
 
 int    SchedulerPrintDelay(scheduler_t *_scheduler);
 int    SchedulerPrintLock(scheduler_t *_scheduler);
