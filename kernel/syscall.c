@@ -148,7 +148,6 @@ int SyscallBrk (void *_brk) {
                    cur_brk_page_num + i,    // page number
                    PROT_READ | PROT_WRITE,  // page protection bits
                    frame_num);              // frame number
-            FrameSet(frame_num);
             TracePrintf(1, "[SyscallBrk] Mapping page: %d to frame: %d\n",
                            cur_brk_page_num + i, frame_num);
         } else {
