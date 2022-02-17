@@ -14,7 +14,7 @@
  * ==>> #include anything you need for your kernel here
  */
 #include <hardware.h>
-#include "proc_list.h"
+#include "pl.h"
 #include "frame.h"
 #include "pte.h"
 /*
