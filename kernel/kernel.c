@@ -126,7 +126,6 @@ int SetKernelBrk(void *_kernel_new_brk) {
                    cur_brk_page_num + i,    // page number
                    PROT_READ | PROT_WRITE,  // page protection bits
                    frame_num);              // frame number
-            FrameSet(frame_num);
             TracePrintf(1, "[SetKernelBrk] Mapping page: %d to frame: %d\n",
                            cur_brk_page_num + i, frame_num);
         } else {
@@ -224,7 +223,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // Region 1 tables - need entries for the full address space
+    // 8. Allocate space for the idle and init Region 1 page tables
     idlePCB->pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (!idlePCB->pt) {
         TracePrintf(1, "Calloc for idlePCB->pt failed!\n");
@@ -236,7 +235,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // Region 0 stack tables - only need space to hold enough entries for the stack
+    // 9. Allocate space for the idle and init Region 0 kernel stack tables. Note that we only
+    //    need enough space to hold pages for the stack (not for the entire address space).
     idlePCB->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
     if (!idlePCB->ks) {
         TracePrintf(1, "[KernelStart] Calloc for idlePCB kernel stack failed!\n");
@@ -248,21 +248,36 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // 8. Configure the pcb for our idle process. Allocate space for its KernelContext (which will
-    //    be initialized later in MyKCS), and its UserContext. Set its program counter to point to
-    //    the DoIdle function and its stack pointer to point to the end of Region 1.
-    // 
-    //    The stack grows downwards, so we want to set the stack pointer to the end of Region 1,
-    //    BUT be sure to leave enough room to store a pointer; DoIdle actually gets called by an
-    //    "init" function which places a return address on the DoIdle stack---if we set the sp to
-    //    point to the last valid byte of Region 1 then when the return address is placed on the
-    //    stack we will get a memory fault.
-    //
-    //    Copy the context of our configured UserContext to the address indicated by _uctxt; this
-    //    address is where Yalnix will look for the UserContext of the current executing process.
-    // idlePCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
-    idlePCB->kctxt     = NULL;
-    idlePCB->uctxt     = (UserContext   *) malloc(sizeof(UserContext));
+    // 10. Allocate space for init's KernelContext, but set idle's to NULL. This is because we
+    //     plan to run the init program first and have idle clone into init later during a
+    //     context switch. More specifically, our context switching code will see that idle's
+    //     KC is NULL and call KCCopy to copy the KernelContext of the current running process.
+    idlePCB->kctxt = NULL;
+    initPCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    if (!idlePCB->kctxt) {
+        TracePrintf(1, "[KernelStart] Malloc for idlePCB kctxt failed\n");
+        Halt();
+    }
+
+    // 11. Allocate space for idle and init's UserContext.
+    idlePCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
+    if (!idlePCB->uctxt) {
+        TracePrintf(1, "[KernelStart] Malloc for idlePCB uctxt failed\n");
+        Halt();
+    }
+    initPCB->uctxt = (UserContext *) malloc(sizeof(UserContext));
+    if (!initPCB->uctxt) {
+        TracePrintf(1, "[KernelStart] Malloc for initPCB uctxt failed\n");
+        Halt();
+    }
+
+    // 12. Configure the UserContext for our idle process. Set its program counter to point to the
+    //     DoIdle function and its stack pointer to point to the end of Region 1. The stack grows
+    //     downwards, which is why we set the stack pointer to the end of Region 1, BUT be sure to
+    //     leave enough room to store a pointer; DoIdle actually gets called by an "init" function
+    //     which places a return address on the DoIdle stack---if we set the sp to point to the
+    //     last valid byte of Region 1 then when the return address is placed on the stack we will
+    //     get a memory fault.
     idlePCB->uctxt->pc = DoIdle;
     idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
 
@@ -270,8 +285,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    our KCSwitch function uses the presence of NULL to determine if KCCopy should be called.
     //    More specifically, KCCopy will be used to initialize KernelContext the first time that
     //    the init process gets to run.
-    initPCB->kctxt     = (KernelContext *) malloc(sizeof(KernelContext));
-    initPCB->uctxt     = (UserContext *) malloc(sizeof(UserContext));
     initPCB->brk       = NULL;
     initPCB->data_end  = NULL;
     initPCB->text_end  = NULL;
@@ -380,7 +393,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
                PROT_READ | PROT_WRITE,              // page protection bits
                frame);    // frame number
 
-        FrameSet(frame);
         TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n",
                     i,
                     frame);
@@ -405,7 +417,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
            user_stack_page_num,       // page number
            PROT_READ | PROT_WRITE,    // page protection bits
            user_stack_frame_num);     // frame number
-    FrameSet(user_stack_frame_num);
 
     // 16. Tell the CPU where to find our kernel's page table, our dummy idle's page table, our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
@@ -418,7 +429,15 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     WriteRegister(REG_VM_ENABLE, 1);
     g_virtual_memory = 1;
 
-    int ret = LoadProgram(_cmd_args[0], _cmd_args, initPCB);
+    // 17.
+    //    Copy the context of our configured UserContext to the address indicated by _uctxt; this
+    //    address is where Yalnix will look for the UserContext of the current executing process. 
+    int ret;
+    if (!_cmd_args[0]) {
+        ret = LoadProgram("./user/init", _cmd_args, initPCB);
+    } else {
+        ret = LoadProgram(_cmd_args[0], _cmd_args, initPCB);
+    }
     if (ret < 0) {
         TracePrintf(1, "Error loading init program\n");
         Halt();
@@ -441,8 +460,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] idlePCB->pid:                %d\n", idlePCB->pid);
     TracePrintf(1, "[KernelStart] initPCB->pid:                %d\n", initPCB->pid);
     ProcListProcessPrint(e_proc_list);
-    // Check if cmd_args are blank. If blank, kernel starts to look for a executable called “init”.
-    // Otherwise, load `cmd_args[0]` as its initial process.
 }
 
 

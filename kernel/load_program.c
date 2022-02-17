@@ -186,11 +186,10 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> for every valid page, free the pfn and mark the page invalid.
      */
     for (int k = 0; k < MAX_PT_LEN; k++) {
-        pte_t pte = proc->pt[k];
-        if (pte.valid) {
-            pte.valid = 0;
-            FrameClear((int)pte.pfn);
-            TracePrintf(1, "[LoadProgram] Clearing frame: %d\n", pte.pfn);
+        if (proc->pt[k].valid) {
+            proc->pt[k].valid = 0;
+            FrameClear((int) proc->pt[k].pfn);
+            TracePrintf(1, "[LoadProgram] Clearing frame: %d\n", proc->pt[k].pfn);
         }
     }
 
@@ -218,7 +217,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
                text_pg1 + k,
                PROT_READ | PROT_WRITE,
                pfn);
-        FrameSet(pfn);
         TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
                     text_pg1 + k,
                     pfn);
@@ -242,7 +240,6 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
                data_pg1 + k,
                PROT_READ | PROT_WRITE,
                pfn);
-        FrameSet(pfn);
         TracePrintf(1, "[LoadProgram] Mapping page: %d to frame: %d\n",
                     data_pg1 + k,
                     pfn);
