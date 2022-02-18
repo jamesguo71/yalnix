@@ -21,8 +21,11 @@ typedef struct pcb {
     pte_t *pt;              // Defined in `hardware.h`
 
     void *brk;
-    void *text_end;
     void *data_end;
 } pcb_t;
 
+
+pcb_t *ProcessCreate();
+int    ProcessDelete();
+int    ProcessTerminate();
 #endif // __PROCESS_H
