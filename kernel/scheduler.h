@@ -23,6 +23,7 @@
 #define SCHEDULER_NUM_LISTS        17
 
 
+extern typedef struct pcb_t;
 typedef struct scheduler scheduler_t;
 
 
