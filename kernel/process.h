@@ -26,6 +26,7 @@ typedef struct pcb {
 
 
 pcb_t *ProcessCreate();
+pcb_t *ProcessCreateIdle();
 int    ProcessDelete();
 int    ProcessTerminate();
 #endif // __PROCESS_H
