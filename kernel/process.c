@@ -1,7 +1,9 @@
 #include <hardware.h>
 #include <ykernel.h>
+#include "frame.h"
 #include "kernel.h"
 #include "process.h"
+#include "pte.h"
 
 
 /*!
@@ -66,7 +68,7 @@ pcb_t *ProcessCreate() {
                frame);                              // frame number
         TracePrintf(1, "[ProcessCreate] Mapping page: %d to frame: %d\n", i, frame);
     }
-    return pcb;
+    return process;
 }
 
 
