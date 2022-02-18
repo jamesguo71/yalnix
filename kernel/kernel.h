@@ -1,6 +1,7 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include <hardware.h>
+#include "process.h"
 #include "scheduler.h"
 
 #define KERNEL_BYTE_SIZE           8
