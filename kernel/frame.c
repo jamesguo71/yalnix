@@ -25,8 +25,8 @@ int FrameClear(int _frame_num) {
 
     // 2. Check that our frames bit vector is initialized. If not, print message and halt.
     if (!e_frames) {
-    	TracePrintf(1, "[FrameClear] Frame bit vector e_frames is not initialized\n");
-    	Halt();
+        TracePrintf(1, "[FrameClear] Frame bit vector e_frames is not initialized\n");
+        Halt();
     }
 
     // 3. Check to see if the frame indicated by _frame_num is already invalid.
@@ -49,8 +49,8 @@ int FrameClear(int _frame_num) {
 int FrameFind() {
     // 1. Check that our frames bit vector is initialized. If not, print message and halt.
     if (!e_frames) {
-    	TracePrintf(1, "[FrameFind] Frame bit vector e_frames is not initialized\n");
-    	Halt();
+        TracePrintf(1, "[FrameFind] Frame bit vector e_frames is not initialized\n");
+        Halt();
     }
 
     // 2. Loop over the frame bit vector and return the index of the first free frame
@@ -82,8 +82,8 @@ int FrameSet(int _frame_num) {
 
     // 2. Check that our frames bit vector is initialized. If not, print message and halt.
     if (!e_frames) {
-    	TracePrintf(1, "[FrameSet] Frame bit vector e_frames is not initialized\n");
-    	Halt();
+        TracePrintf(1, "[FrameSet] Frame bit vector e_frames is not initialized\n");
+        Halt();
     }
 
     // 3. Check to see if the frame indicated by _frame_num is already valid.
