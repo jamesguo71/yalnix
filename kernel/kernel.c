@@ -304,7 +304,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle: %d\n", idlePCB->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFind();
-        PTESet(process->ks,                         // page table pointer
+        PTESet(idlePCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                frame);                              // frame number
@@ -316,7 +316,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init: %d\n", initPCB->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFind();
-        PTESet(process->ks,                         // page table pointer
+        PTESet(initPCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                frame);                              // frame number
