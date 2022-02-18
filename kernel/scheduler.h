@@ -1,7 +1,6 @@
 #ifndef __SCHEDULER_H
 #define __SCHEDULER_H
 #include "hardware.h"
-#include "kernel.h"
 
 #define SCHEDULER_DELAY_START      0
 #define SCHEDULER_DELAY_END        1
