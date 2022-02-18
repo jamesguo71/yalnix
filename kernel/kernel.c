@@ -195,19 +195,64 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // 5. Allocate space for the kernel list structures, which are used to track processes,
-    //    locks, cvars, and pipes. Halt upon error if any of these initializations fail.
-    e_scheduler = SchedulerCreate();
-    if (!e_scheduler) {
-        TracePrintf(1, "[KernelStart] Failed to create e_scheduler\n");
-        Halt();
-    }
-
     // 6. Allocate space for Region 0 page table (i.e., the kernel's page table). Halt upon error.
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (!e_kernel_pt) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
+    }
+
+    // 12. Now that we have finished all of our dynamic memory allocation, we can configure the
+    //     kernel's page table (previously, it may have changed due to malloc changing the brk).
+    //     
+    //     Calculate the number of pages being used to store the kernel text, which begins at the
+    //     start of physical memory and goes up to the beginning of the kernel data region. Since
+    //     the kernel text, data, and heap are laid out sequentially in *physical* memory, their
+    //     virtual addresses will be exactly the same (i.e., frame and page numbers are the same).
+    //    
+    //     Figure out the page number of the last page in the text region by right-shifting the
+    //     last address in the text region by PAGESHIFT bits---this will remove the offset bits
+    //     and leave us with the page number for that address.
+    //
+    //     Configure the page table entries for the text pages with read and execute permissions
+    //     (as text contains code), and mark the corresponding physical frames as in use.
+    int kernel_text_end_page_num = ((int ) _kernel_data_start) >> PAGESHIFT;
+    for(int i = 0; i < kernel_text_end_page_num; i++) {
+        PTESet(e_kernel_pt,              // page table pointer
+               i,                        // page number
+               PROT_READ | PROT_EXEC,    // page protection bits
+               i);                       // frame number
+        FrameSet(i);
+    }
+
+    // 13. Calculate the number of pages being used to store the kernel data. Again, since the
+    //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
+    //
+    //     Configure the page table entries for the data pages with read and write permissions,
+    //     and mark the corresponding physical frames as taken. The data section is above text,
+    //     so offset the page/frame numbers by the last text page number.
+    int kernel_data_end_page_num = ((int ) _kernel_data_end) >> PAGESHIFT;
+    for (int i = kernel_text_end_page_num; i < kernel_data_end_page_num; i++) {
+        PTESet(e_kernel_pt,               // page table pointer
+               i,                         // page number
+               PROT_READ | PROT_WRITE,    // page protection bits
+               i);                        // frame number
+        FrameSet(i);
+    }
+
+    // 14. Calculate the number of pages being used to store the kernel heap. Again, since the
+    //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
+    //
+    //     Configure the page table entries for the heap pages with read and write permissions,
+    //     and mark the corresponding physical frames as taken. The heap section is above data,
+    //     so offset the page/frame numbers by the last data page number.
+    int kernel_heap_end_page_num = ((int ) e_kernel_curr_brk) >> PAGESHIFT;
+    for (int i = kernel_data_end_page_num; i < kernel_heap_end_page_num; i++) {
+        PTESet(e_kernel_pt,               // page table pointer
+               i,                         // page number
+               PROT_READ | PROT_WRITE,    // page protection bits
+               i);                        // frame number
+        FrameSet(i);
     }
 
     // 7. Create pcbs for our idle and init processes. ProcessCreate will allocate memory for the
@@ -267,67 +312,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // 11. Add our pcbs to our process list structure for tracking. Note that we mark init as the
-    //     current running process, whereas idle gets put into the ready queue.
-    SchedulerAddProcess(e_scheduler, idlePCB);
-    SchedulerAddProcess(e_scheduler, initPCB);
-    SchedulerAddReady(e_scheduler,   idlePCB);
-    SchedulerAddRunning(e_scheduler, initPCB);
-
-
-    // 12. Now that we have finished all of our dynamic memory allocation, we can configure the
-    //     kernel's page table (previously, it may have changed due to malloc changing the brk).
-    //     
-    //     Calculate the number of pages being used to store the kernel text, which begins at the
-    //     start of physical memory and goes up to the beginning of the kernel data region. Since
-    //     the kernel text, data, and heap are laid out sequentially in *physical* memory, their
-    //     virtual addresses will be exactly the same (i.e., frame and page numbers are the same).
-    //    
-    //     Figure out the page number of the last page in the text region by right-shifting the
-    //     last address in the text region by PAGESHIFT bits---this will remove the offset bits
-    //     and leave us with the page number for that address.
-    //
-    //     Configure the page table entries for the text pages with read and execute permissions
-    //     (as text contains code), and mark the corresponding physical frames as in use.
-    int kernel_text_end_page_num = ((int ) _kernel_data_start) >> PAGESHIFT;
-    for(int i = 0; i < kernel_text_end_page_num; i++) {
-        PTESet(e_kernel_pt,              // page table pointer
-               i,                        // page number
-               PROT_READ | PROT_EXEC,    // page protection bits
-               i);                       // frame number
-        FrameSet(i);
-    }
-
-    // 13. Calculate the number of pages being used to store the kernel data. Again, since the
-    //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
-    //
-    //     Configure the page table entries for the data pages with read and write permissions,
-    //     and mark the corresponding physical frames as taken. The data section is above text,
-    //     so offset the page/frame numbers by the last text page number.
-    int kernel_data_end_page_num = ((int ) _kernel_data_end) >> PAGESHIFT;
-    for (int i = kernel_text_end_page_num; i < kernel_data_end_page_num; i++) {
-        PTESet(e_kernel_pt,               // page table pointer
-               i,                         // page number
-               PROT_READ | PROT_WRITE,    // page protection bits
-               i);                        // frame number
-        FrameSet(i);
-    }
-
-    // 14. Calculate the number of pages being used to store the kernel heap. Again, since the
-    //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
-    //
-    //     Configure the page table entries for the heap pages with read and write permissions,
-    //     and mark the corresponding physical frames as taken. The heap section is above data,
-    //     so offset the page/frame numbers by the last data page number.
-    int kernel_heap_end_page_num = ((int ) e_kernel_curr_brk) >> PAGESHIFT;
-    for (int i = kernel_data_end_page_num; i < kernel_heap_end_page_num; i++) {
-        PTESet(e_kernel_pt,               // page table pointer
-               i,                         // page number
-               PROT_READ | PROT_WRITE,    // page protection bits
-               i);                        // frame number
-        FrameSet(i);
-    }
-
     // 15. Note that *every* process has a kernel stack, but that the kernel always looks for its
     //     kernel stack at the end of region 0. Thus, whenever we switch processes we need to
     //     remember to copy the process' kernel stack page table into the kernel's master page
@@ -342,7 +326,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the init proc's page entries
            initPCB->ks,                                    // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
-
 
     // 16. Tell the CPU where to find our kernel's page table, init's region 1 page table, and our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
@@ -373,6 +356,21 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
     memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
+
+    // 5. Allocate space for the kernel list structures, which are used to track processes,
+    //    locks, cvars, and pipes. Halt upon error if any of these initializations fail.
+    e_scheduler = SchedulerCreate();
+    if (!e_scheduler) {
+        TracePrintf(1, "[KernelStart] Failed to create e_scheduler\n");
+        Halt();
+    }
+
+    // 11. Add our pcbs to our process list structure for tracking. Note that we mark init as the
+    //     current running process, whereas idle gets put into the ready queue.
+    SchedulerAddProcess(e_scheduler, idlePCB);
+    SchedulerAddProcess(e_scheduler, initPCB);
+    SchedulerAddReady(e_scheduler,   idlePCB);
+    SchedulerAddRunning(e_scheduler, initPCB);
 
     // 18. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
