@@ -4,7 +4,7 @@
 
 #include "frame.h"
 #include "kernel.h"
-#include "proc_list.h"
+#include "scheduler.h"
 #include "pte.h"
 #include "syscall.h"
 
@@ -69,9 +69,9 @@ int SyscallWait (int *status_ptr) {
 int SyscallGetPid (void) {
     // 1. Get the current running process from our process list. If there is none,
     //    print a message and Halt. Otherwise, return the running process' pid.
-    pcb_t *running = ProcListRunningGet(e_proc_list);
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
     if (!running) {
-        TracePrintf(1, "[SyscallGetPid] e_proc_list returned no running process\n");
+        TracePrintf(1, "[SyscallGetPid] e_scheduler returned no running process\n");
         Halt();
     }
     return running->pid;
@@ -87,9 +87,9 @@ int SyscallBrk (void *_brk) {
     // 2. Get the PCB for the current running process. If our process list thinks that there is
     //    no current running process, print a message and halt. Otherwise, make sure that the
     //    proposed _brk is not less than our lower heap boundary (i.e., data end).
-    pcb_t *running = ProcListRunningGet(e_proc_list);
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
     if (!running) {
-        TracePrintf(1, "[SyscallBrk] e_proc_list returned no running process\n");
+        TracePrintf(1, "[SyscallBrk] e_scheduler returned no running process\n");
         Halt();
     }
     TracePrintf(1, "[SyscallBrk] running->brk: %p\t_brk: %p\n", running->brk, _brk);
@@ -192,17 +192,17 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     }
 
     // 2. Get the pcb for the current running process and save its user context.
-    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    pcb_t *running_old = SchedulerGetRunning(e_scheduler);
     if (!running_old) {
-        TracePrintf(1, "[SyscallDelay] e_proc_list returned no running process\n");
+        TracePrintf(1, "[SyscallDelay] e_scheduler returned no running process\n");
         Halt();
     }
     memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
 
     // 3. Set the current process' delay value in its pcb then add it to the blocked list
     running_old->clock_ticks = _clock_ticks;
-    ProcListBlockedAdd(e_proc_list, running_old);
-    ProcListBlockedPrint(e_proc_list);
+    SchedulerAddDelay(e_scheduler, running_old);
+    SchedulerPrintDelay(e_scheduler);
     TracePrintf(1, "[SyscallDelay] Blocking process %d for %d clock cycles\n",
                    running_old->pid, _clock_ticks);
 
@@ -212,12 +212,12 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     //          very least it will contain the idleProc. We know this because idleProc
     //          never calls "delay" (or any other syscalls), thus if we are in delay we
     //          must be a different process and idleProc must be on the ready queue.
-    pcb_t *running_new = ProcListReadyNext(e_proc_list);
+    pcb_t *running_new = SchedulerGetReady(e_scheduler);
     if (!running_new) {
-        TracePrintf(1, "[SyscallDelay] e_proc_list returned no ready process\n");
+        TracePrintf(1, "[SyscallDelay] e_scheduler returned no ready process\n");
         Halt();
     }
-    ProcListRunningSet(e_proc_list, running_new);
+    SchedulerAddRunning(e_scheduler, running_new);
 
     // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
@@ -236,7 +236,7 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
     //    process that this new process previously gave up the CPU for). Thus, get the
     //    current running process (i.e., "this" process) and set the outgoing _uctxt.
-    running_new = ProcListRunningGet(e_proc_list);
+    running_new = SchedulerGetRunning(e_scheduler);
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }

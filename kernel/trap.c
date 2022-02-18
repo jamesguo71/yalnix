@@ -182,18 +182,18 @@ int TrapClock(UserContext *_uctxt) {
     //    loop over blocked list and decrement the clock_count for any processes delaying.
     //    If their count hits zero, they get added to the ready queue.
     //    TODO: Better name?
-    ProcListBlockedDelay(e_proc_list);
-    ProcListReadyPrint(e_proc_list);
-    ProcListBlockedPrint(e_proc_list);
+    SchedulerUpdateDelay(e_scheduler);
+    SchedulerPrintReady(e_scheduler);
+    SchedulerPrintDelay(e_scheduler);
 
     // 3. Get the pcb for the current running process and the next process to run. If there is
     //    not process in the ready queue, simply return and don't bother context switching.
-    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    pcb_t *running_old = SchedulerGetRunning(e_scheduler);
     if (!running_old) {
-        TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
+        TracePrintf(1, "[TrapClock] e_scheduler returned no running process\n");
         Halt();
     }
-    pcb_t *running_new = ProcListReadyNext(e_proc_list);
+    pcb_t *running_new = SchedulerGetReady(e_scheduler);
     if (!running_new) {
         TracePrintf(1, "[TrapClock] No ready process. Continuing with the current process\n");
         return 0;
@@ -202,8 +202,8 @@ int TrapClock(UserContext *_uctxt) {
     // 4. If there is a process waiting to run, save the old process' UserContext and add it to
     //    the ready queue. Then set the new process as the current running process.
     memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
-    ProcListReadyAdd(e_proc_list,   running_old);
-    ProcListRunningSet(e_proc_list, running_new);
+    SchedulerAddReady(e_scheduler,   running_old);
+    SchedulerAddRunning(e_scheduler, running_new);
 
     // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
@@ -222,7 +222,7 @@ int TrapClock(UserContext *_uctxt) {
     //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
     //    process that this new process previously gave up the CPU for). Thus, get the
     //    current running process (i.e., "this" process) and set the outgoing _uctxt.
-    running_new = ProcListRunningGet(e_proc_list);
+    running_new = SchedulerGetRunning(e_scheduler);
     memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
     return 0;
 }
@@ -269,9 +269,9 @@ int TrapMemory(UserContext *_uctxt) {
     if (!_uctxt) {
         return ERROR;
     }
-    pcb_t *running_old = ProcListRunningGet(e_proc_list);
+    pcb_t *running_old = SchedulerGetRunning(e_scheduler);
     if (!running_old) {
-        TracePrintf(1, "[TrapClock] e_proc_list returned no running process\n");
+        TracePrintf(1, "[TrapClock] e_scheduler returned no running process\n");
         Halt();
     }
 

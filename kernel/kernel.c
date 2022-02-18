@@ -5,7 +5,7 @@
 #include "frame.h"
 #include "kernel.h"
 #include "load_program.h"
-#include "proc_list.h"
+#include "scheduler.h"
 #include "pte.h"
 #include "syscall.h"
 #include "trap.h"
@@ -16,7 +16,7 @@
  */
 char        *e_frames           = NULL;   // Bit vector to track frames (set in KernelStart)
 int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
-proc_list_t *e_proc_list        = NULL;
+scheduler_t *e_scheduler        = NULL;
 pte_t       *e_kernel_pt        = NULL;
 void        *e_kernel_curr_brk  = NULL;
 
@@ -197,9 +197,9 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
 
     // 5. Allocate space for the kernel list structures, which are used to track processes,
     //    locks, cvars, and pipes. Halt upon error if any of these initializations fail.
-    e_proc_list = ProcListCreate();
-    if (!e_proc_list) {
-        TracePrintf(1, "[KernelStart] Error allocating e_proc_list\n");
+    e_scheduler = SchedulerCreate();
+    if (!e_scheduler) {
+        TracePrintf(1, "[KernelStart] Error allocating e_scheduler\n");
         Halt();
     }
 
@@ -291,10 +291,10 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     current running process, whereas idle gets put into the ready queue.
     idlePCB->pid = helper_new_pid(idlePCB->pt);
     initPCB->pid = helper_new_pid(initPCB->pt);
-    ProcListProcessAdd(e_proc_list, idlePCB);
-    ProcListProcessAdd(e_proc_list, initPCB);
-    ProcListRunningSet(e_proc_list, initPCB);
-    ProcListReadyAdd(e_proc_list,   idlePCB);
+    SchedulerAddProcess(e_scheduler, idlePCB);
+    SchedulerAddProcess(e_scheduler, initPCB);
+    SchedulerAddReady(e_scheduler,   idlePCB);
+    SchedulerAddRunning(e_scheduler, initPCB);
 
 
     // 14. Now that we have finished all of our dynamic memory allocation, we can configure the
@@ -457,7 +457,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
     TracePrintf(1, "[KernelStart] idlePCB->pid:                %d\n", idlePCB->pid);
     TracePrintf(1, "[KernelStart] initPCB->pid:                %d\n", initPCB->pid);
-    ProcListProcessPrint(e_proc_list);
+    SchedulerPrintProcess(e_scheduler);
 }
 
 

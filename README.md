@@ -1,16 +1,19 @@
 # Yalnix - Team Unics
 This repository contains our (Fei & Taylor) code for the COSC258 Yalnix project.
 
-# Checkpoint 3
-Use the following command to build and run our solution:
+# Checkpoint 4
+Implement the following functions
 
 ```bash
-make && ./yalnix
+Fork
+Exec
+Exit
+Wait
+TrapKernel
+TrapIllegal
+TrapMemory
+TrapMath
+TrapTTYRreceive
+TrapTTYWrite
+TrapDisk
 ```
-
-If no init program is provided, we will run our `./user/init` program by default. You can also run our test program, which invokes the three syscalls we implemented (`GetPid`, `Delay`, and `Brk`):
-
-```bash
-./yalnix ./user/chpt3_test
-```
-
