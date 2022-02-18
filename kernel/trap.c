@@ -4,6 +4,8 @@
 #include <ylib.h>
 
 #include "kernel.h"
+#include "process.h"
+#include "scheduler.h"
 #include "syscall.h"
 #include "trap.h"
 

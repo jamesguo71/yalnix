@@ -4,6 +4,7 @@
 
 #include "frame.h"
 #include "kernel.h"
+#include "process.h"
 #include "scheduler.h"
 #include "pte.h"
 #include "syscall.h"

@@ -14,8 +14,8 @@
  * ==>> #include anything you need for your kernel here
  */
 #include <hardware.h>
-#include "scheduler.h"
 #include "frame.h"
+#include "process.h"
 #include "pte.h"
 /*
  *  Load a program into an existing address space.  The program comes from
