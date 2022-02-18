@@ -49,7 +49,6 @@ static void *g_interrupt_table[TRAP_VECTOR_SIZE] = {
  * Local Function Definitions
  */
 static void DoIdle(void);
-static void DoIdle2(void);
 
 
 /*!
@@ -189,6 +188,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
 
     // 4. Allocate space for our frames bit vector. Use calloc to ensure that the memory is
     //    zero'd out (i.e., that every frame is currently marked as free).
+    //    TODO: Should we put frames bit vec and its size inside a small frames_t struct?
     e_frames = (char *) calloc(frames_len, sizeof(char));
     if (!e_frames) {
         TracePrintf(1, "Calloc for e_frames failed!\n");
