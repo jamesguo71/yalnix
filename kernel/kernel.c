@@ -299,24 +299,29 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         FrameSet(i);
     }
 
-    // 13. Find some free frames for idle's kernel stack and map them to the pages in its kernel
+    // 13. Since we plan on running init first, we need to ensure that we map the frames
+    //     currently used by the kernel for its stack to inits kernel stack page table.
+    //     Since virtual memory is not yet enabled, we know that the kernel stack starting
+    //     address maps to the actual frame (and not a virtual page).
+    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init: %d\n", initPCB->pid);
+    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        PTESet(initPCB->ks,                         // page table pointer
+               i,                                   // page number
+               PROT_READ | PROT_WRITE,              // page protection bits
+               i + kernel_stack_start_page_num);    // frame number
+        FrameSet(i + kernel_stack_start_page_num);
+        TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n",
+                    i,
+                    i + kernel_stack_start_page_num);
+    }
+
+    // 14. Find some free frames for idle's kernel stack and map them to the pages in its kernel
     //    stack page table.
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle: %d\n", idlePCB->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFind();
         PTESet(idlePCB->ks,                         // page table pointer
-               i,                                   // page number
-               PROT_READ | PROT_WRITE,              // page protection bits
-               frame);                              // frame number
-        TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n", i, frame);
-    }
-
-    // 14. Find some free frames for init's kernel stack and map them to the pages in its kernel
-    //    stack page table.
-    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init: %d\n", initPCB->pid);
-    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        int frame = FrameFind();
-        PTESet(initPCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                frame);                              // frame number
@@ -349,7 +354,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //
     //     Since we plan to run init first, we should copy its kernel stack ptes into the master
     //     kernel page table.
-    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the init proc's page entries
            initPCB->ks,                                    // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
