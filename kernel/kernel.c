@@ -188,31 +188,32 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     }
 
     // 4. Allocate space for our frames bit vector. Use calloc to ensure that the memory is
-    //    zero'd out (i.e., that every frame is currently marked as free). Halt upon error.
+    //    zero'd out (i.e., that every frame is currently marked as free).
     e_frames = (char *) calloc(frames_len, sizeof(char));
     if (!e_frames) {
         TracePrintf(1, "Calloc for e_frames failed!\n");
         Halt();
     }
 
-    // 5. Allocate space for the kernel list structures, which are used to track processes,
-    //    locks, cvars, and pipes. Halt upon error if any of these initializations fail.
+    // 5. Allocate space for our scheduler struct, which we will use to track processes.
     e_scheduler = SchedulerCreate();
     if (!e_scheduler) {
         TracePrintf(1, "[KernelStart] Failed to create e_scheduler\n");
         Halt();
     }
 
-    // 6. Allocate space for Region 0 page table (i.e., the kernel's page table). Halt upon error.
+    // 6. Allocate space for Region 0 page table (i.e., the kernel's page table).
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (!e_kernel_pt) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
     }
 
-    // 7. Create pcbs for our idle and init processes. ProcessCreate will allocate memory for the
-    //    Region 1 page table, Region 0 kernel stack page table, and the UserContext. Additionally,
-    //    it will assign the process a pid and find frames for the kernel stack.
+    // 7. Create pcbs for our idle and init processes. ProcessCreateIdle will allocate memory for
+    //    the Region 1 page table, Region 0 kernel stack page table, and the UserContext. Note that
+    //    we do not use ProcessCreate here because it also finds free frames for the process'
+    //    kernel stack. Since we have not yet configured our kernel page table, however, this would
+    //    find "free" frames that are actually being used for kernel text/data/heap.
     pcb_t *idlePCB = ProcessCreateIdle();
     if (!idlePCB) {
         TracePrintf(1, "[KernelStart] Failed to create idlePCB\n");
