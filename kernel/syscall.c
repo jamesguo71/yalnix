@@ -243,34 +243,6 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
                    running_old->pid, _clock_ticks);
 
     return KCSwitch(_uctxt, running_old);
-    // // 4. Get the next process from our ready queue and mark it as the current running process.
-    // pcb_t *running_new = SchedulerGetReady(e_scheduler);
-    // if (!running_new) {
-    //     TracePrintf(1, "[SyscallDelay] e_scheduler returned no ready process\n");
-    //     Halt();
-    // }
-    // SchedulerAddRunning(e_scheduler, running_new);
-
-    // // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
-    // //    first call KCCopy to initialize the KernelContext for the new process and clone the
-    // //    kernel stack contents of the old process.
-    // TracePrintf(1, "[SyscallDelay] running_old->pid: %d\t\trunning_new->pid: %d\n",
-    //                 running_old->pid, running_new->pid);
-    // int ret = KernelContextSwitch(KCSwitch,
-    //                      (void *) running_old,
-    //                      (void *) running_new);
-    // if (ret < 0) {
-    //     TracePrintf(1, "[SyscallDelay] Failed to switch to the next process\n");
-    //     Halt();
-    // }
-
-    // // 6. At this point, this code is being run by the *new* process, which means that its
-    // //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
-    // //    process that this new process previously gave up the CPU for). Thus, get the
-    // //    current running process (i.e., "this" process) and set the outgoing _uctxt.
-    // running_new = SchedulerGetRunning(e_scheduler);
-    // memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
-    // return 0;
 }
 
 
