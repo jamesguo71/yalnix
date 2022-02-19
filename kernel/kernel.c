@@ -430,24 +430,41 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
  * 
  * \return               Returns the kc_in pointer
  */
-KernelContext *KCSwitch(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p) {
+int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     // 1. Check if arguments are valid. If not, print message and halt.
-    if (!_kctxt || !_curr_pcb_p || !_next_pcb_p) {
+    if (!_uctxt || !_running_old) {
         TracePrintf(1, "[KCSwitch] One or more invalid argument pointers\n");
         Halt();
     }
 
-    // 2. Check to see if the next process has ever been run before. If not, call KCCopy to copy
-    //    the current process' KernelContext along with the contents of its stack frames.
-    pcb_t *running_old = (pcb_t *) _curr_pcb_p;
-    pcb_t *running_new = (pcb_t *) _next_pcb_p;
-    if (!running_new->kctxt) {
-        TracePrintf(1, "[KCSwitch] Calling KCCopy for pid: %d\n", running_new->pid);
-        KCCopy(_kctxt, _next_pcb_p, NULL);
+    // 2. Get the next process from our ready queue and mark it as the current running process.
+    pcb_t *running_new = SchedulerGetReady(e_scheduler);
+    if (!running_new) {
+        TracePrintf(1, "[KCSwitch] e_scheduler returned no ready process\n");
+        Halt();
+    }
+    SchedulerAddRunning(e_scheduler, running_new);
+
+    // 3. Switch to the new process. If the new process has never been run before, MyKCS will
+    //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    //    kernel stack contents of the old process.
+    TracePrintf(1, "[KCSwitch] running_old->pid: %d\t\trunning_new->pid: %d\n",
+                    running_old->pid, running_new->pid);
+    int ret = KernelContextSwitch(MyKCS,
+                         (void *) running_old,
+                         (void *) running_new);
+    if (ret < 0) {
+        TracePrintf(1, "[KCSwitch] Failed to switch to the next process\n");
+        Halt();
     }
 
-    // 3. Switch from the old process to the new
-    return MyKCS(_kctxt, _curr_pcb_p, _next_pcb_p);
+    // 4. At this point, this code is being run by the *new* process, which means that its
+    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    //    process that this new process previously gave up the CPU for). Thus, get the
+    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
+    running_new = SchedulerGetRunning(e_scheduler);
+    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+    return 0;
 }
 
 
@@ -542,14 +559,19 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
         Halt();
     }
 
-    // 2. Cast our void arguments to our custom pcb struct. Save the incoming KernelContext
-    //    for the current running process that we are about to switch out.
-    pcb_t *running_new = (pcb_t *) _next_pcb_p;
+    // 2. Save the incoming KernelContext for the current running process.
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
-    TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n", running_old->pid, running_new->pid);
 
-    // 3. Update the kernel's page table so that its stack pages map to
+    // 3. Check to see if the next process has ever been run before. If not, call KCCopy to copy
+    //    the current process' KernelContext along with the contents of its stack frames.
+    pcb_t *running_new = (pcb_t *) _next_pcb_p;
+    if (!running_new->kctxt) {
+        TracePrintf(1, "[MyKCS] Calling KCCopy for pid: %d\n", running_new->pid);
+        KCCopy(_kctxt, _next_pcb_p, NULL);
+    }
+
+    // 4. Update the kernel's page table so that its stack pages map to
     //    the correct frames for the new running process.
     //
     //    TODO: PTECopy function???
@@ -558,8 +580,9 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
            running_new->ks,                                // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
-    // 4. Tell the CPU where to find the page table for our new running process.
+    // 5. Tell the CPU where to find the page table for our new running process.
     //    Remember to flush the TLB so we dont map to the previous process' frames!
+    TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n", running_old->pid, running_new->pid); 
     WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return running_new->kctxt;
