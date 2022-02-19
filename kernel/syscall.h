@@ -25,7 +25,7 @@ int SyscallExec (char *filename, char **argvec);
 
 void SyscallExit (int);
 
-int SyscallWait (int *);
+int SyscallWait (UserContext *_uctxt, int *);
 
 int SyscallGetPid (void);
 
@@ -43,7 +43,7 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
  * 
  * \return             Number of bytes read on success, ERROR otherwise
  */
-int SyscallTtyRead (int tty_id, void *buf, int len);
+int SyscallTtyRead (UserContext *_uctxt, int tty_id, void *buf, int len);
 
 
 /*!
@@ -55,7 +55,7 @@ int SyscallTtyRead (int tty_id, void *buf, int len);
  * 
  * \return            Number of bytes written on success, ERROR otherwise
  */
-int SyscallTtyWrite (int tty_id, void *buf, int len);
+int SyscallTtyWrite (UserContext *_uctxt, int tty_id, void *buf, int len);
 
 
 /*!

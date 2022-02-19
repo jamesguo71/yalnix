@@ -56,7 +56,7 @@ void SyscallExit (int status) {
     // Check if the process is the initial process, if so, halt the system.
 }
 
-int SyscallWait (int *status_ptr) {
+int SyscallWait (UserContext *_uctxt, int *status_ptr) {
     // Check to see if the process's children list is empty (children is a null pointer),
     // if so, return ERROR
     // Otherwise, walk through the process's children list and see if there's a process with `exited = 1`
@@ -252,7 +252,7 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
  *
  * \return             Number of bytes read on success, ERROR otherwise
  */
-int SyscallTtyRead (int tty_id, void *buf, int len) {
+int SyscallTtyRead (UserContext *_uctxt, int tty_id, void *buf, int len) {
     // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
     //           else.... and have the receive trap handler wake up the blocker! and similar
     //           comments for SyscallTtyWrite
@@ -309,7 +309,7 @@ int SyscallTtyRead (int tty_id, void *buf, int len) {
  *
  * \return            Number of bytes written on success, ERROR otherwise
  */
-int SyscallTtyWrite (int tty_id, void *buf, int len) {
+int SyscallTtyWrite (UserContext *_uctxt, int tty_id, void *buf, int len) {
     // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
     //           else.... and have the receive trap handler wake up the blocker! and similar
     //           comments for SyscallTtyWrite
