@@ -234,8 +234,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    get a memory fault.
     //
     //    We don't have to set init's UserContext because it gets configured later in LoadProgram.
-    idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    idlePCB->uctxt.pc = DoIdle;
+    idlePCB->uctxt.sp = (void *) VMEM_1_LIMIT - sizeof(void *);
 
     // 9. Allocate space for init's KernelContext, but leave idle's NULL. This is because we
     //    plan to run the init program first and have idle clone into init later during a
