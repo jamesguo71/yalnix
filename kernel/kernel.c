@@ -449,7 +449,7 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
     //    kernel stack contents of the old process.
     TracePrintf(1, "[KCSwitch] running_old->pid: %d\t\trunning_new->pid: %d\n",
-                    running_old->pid, running_new->pid);
+                    _running_old->pid, running_new->pid);
     int ret = KernelContextSwitch(MyKCS,
                          (void *) _running_old,
                          (void *) running_new);
