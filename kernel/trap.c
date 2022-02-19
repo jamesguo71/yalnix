@@ -178,7 +178,7 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_scheduler returned no running process\n");
         Halt();
     }
-    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+    memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
     SchedulerAddReady(e_scheduler, running_old);
 
     return KCSwitch(_uctxt, running_old);
@@ -239,8 +239,8 @@ int TrapMemory(UserContext *_uctxt) {
         TracePrintf(1, "[TrapMemory] Invalid permissions: %p\n", _uctxt->addr);
     }
     TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\n", _uctxt->sp);
-    TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt->sp: %p\trunning->uctxt->pc: %p\n",
-                   running_old->pid, running_old->uctxt->sp, running_old->uctxt->pc);
+    TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt.sp: %p\trunning->uctxt.pc: %p\n",
+                   running_old->pid, running_old->uctxt.sp, running_old->uctxt.pc);
     Halt();
     return 0;
 }

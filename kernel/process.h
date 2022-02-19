@@ -2,6 +2,7 @@
 #define __PROCESS_H
 #include <hardware.h>
 
+#define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE
 
 // TODO: Add a char *name field for debugging/readability?
 typedef struct pcb {
@@ -14,11 +15,11 @@ typedef struct pcb {
     struct pcb *parent;     // For keeping track of parent process
     struct pcb *children;   // For keeping track of children processes
 
-    KernelContext *kctxt;   // Needed for KernelCopy? See Page 45 
-    UserContext   *uctxt;   // Defined in `hardware.h`    
+    KernelContext *kctxt;   // Needed for KernelCopy? See Page 45
+    UserContext uctxt;
 
-    pte_t *ks;
-    pte_t *pt;              // Defined in `hardware.h`
+    pte_t ks[KERNEL_NUMBER_STACK_FRAMES];
+    pte_t pt[MAX_PT_LEN];
 
     void *brk;
     void *data_end;
