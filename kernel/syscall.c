@@ -87,7 +87,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
     //    TODO: Should we actually switch to idle? What if the next ready process has never
     //          been run before? It will KCCopy our kernel context and when it starts it will
     //          return from this exit function which I *think* is not supposed to be allowed.
-    return KCSwitch(_uctxt, running_old);
+    KCSwitch(_uctxt, running_old);
 
 }
 
