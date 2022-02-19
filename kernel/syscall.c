@@ -73,7 +73,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
         }
     }
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        FrameClear(running_old->ks.pfn);
+        FrameClear(running_old->ks[i].pfn);
     }
 
     // 4. Save the Process' exit status and add it to the terminated list
