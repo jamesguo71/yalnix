@@ -7,7 +7,7 @@
  * 
  * \return              0 on success, ERROR otherwise
  */
-int SyscallFork (void);
+int SyscallFork (UserContext *_uctxt);
 
 
 /*!
