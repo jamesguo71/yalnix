@@ -12,52 +12,15 @@
  * \return  An initialized pcb_t struct, NULL otherwise.
  */
 pcb_t *ProcessCreate() {
-    // 1. Allocate space for our process struct. Print message and return NULL upon error
-    pcb_t *process = (pcb_t *) malloc(sizeof(pcb_t));
+    // 1. Call ProcessCreateIdle since it completes most of the steps that we would do for
+    //    a generic process. Then afterwards, all we have to do is map a kernel stack.
+    pcb_t *process = ProcessCreateIdle();
     if (!process) {
-        TracePrintf(1, "[ProcessCreate] Error mallocing space for process struct\n");
+        TracePrintf(1, "[ProcessCreate] Failed to create process\n");
         Halt();
     }
 
-    // 2. Allocate space for the Region 1 page table
-    process->pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
-    if (!process->pt) {
-        TracePrintf(1, "[ProcessCreate] Calloc for process->pt failed!\n");
-        Halt();
-    }
-
-    // 3. Allocate space for the Region 0 kernel stack table. Note that we only need
-    //    enough space to hold pages for the stack (not for the entire address space).
-    process->ks = (pte_t *) calloc(KERNEL_NUMBER_STACK_FRAMES, sizeof(pte_t));
-    if (!process->ks) {
-        TracePrintf(1, "[ProcessCreate] Calloc for process kernel stack failed!\n");
-        Halt();
-    }
-
-    // 4. Set the KernelContext to NULL. Later on when the process first gets run, our context
-    //    switching code will see that KC is NULL and call KCCopy to copy the KernelContext of
-    //    the current running process.
-    process->kctxt = NULL;
-
-    // 5. Allocate space for the UserContext.
-    process->uctxt = (UserContext *) malloc(sizeof(UserContext));
-    if (!process->uctxt) {
-        TracePrintf(1, "[ProcessCreate] Malloc for process uctxt failed\n");
-        Halt();
-    }
-
-    // 6. Set the KernelContext to NULL as it will be initialized later by KCCopy. Similarly,
-    //    Set the brk and data_end addresses to NULL as they will be set later by LoadProgram.
-    process->kctxt    = NULL;
-    process->brk      = NULL;
-    process->data_end = NULL;
-
-    // 7. Assign the process a pid. Note that the build system keeps a mappig of page tables
-    //    to pids, so if we don't assign pid via the helper function it complains about the
-    //    PTBR1 not being assigned to a process.
-    process->pid = helper_new_pid(process->pt);
-
-    // 8. Find some free frames for the process' kernel stack and map them to the pages in
+    // 2. Find some free frames for the process' kernel stack and map them to the pages in
     //    the process' kernel stack page table.
     TracePrintf(1, "[ProcessCreate] Mapping kernel stack pages for pid: %d\n", process->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
