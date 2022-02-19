@@ -451,7 +451,7 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     TracePrintf(1, "[KCSwitch] running_old->pid: %d\t\trunning_new->pid: %d\n",
                     running_old->pid, running_new->pid);
     int ret = KernelContextSwitch(MyKCS,
-                         (void *) running_old,
+                         (void *) _running_old,
                          (void *) running_new);
     if (ret < 0) {
         TracePrintf(1, "[KCSwitch] Failed to switch to the next process\n");
