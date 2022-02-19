@@ -49,11 +49,44 @@ int SyscallExec (char *filename, char **argvec) {
     return 0;
 }
 
-void SyscallExit (int status) {
-    // Free all the resources in the process's pcb
-    // Check to see if the current process has a parent (parent pointer is null?), if so, save the `status` parameter into the pcb
-    // Otherwise, free this pcb in the kernel (?) or put it on an orphan list (?)
-    // Check if the process is the initial process, if so, halt the system.
+void SyscallExit (int _status) {
+    // 1. Get the current running process from our process list. If there is
+    //    none, print a message and Halt because something has gone wrong. 
+    pcb_t *running_old = SchedulerGetRunning(e_scheduler);
+    if (!running_old) {
+        TracePrintf(1, "[SyscallExit] e_scheduler returned no running process\n");
+        Halt();
+    }
+
+    // 2. If the initial process exits then we should halt the system. Since our idle and init
+    //    processes are setup in KernelStart, we know that their pids are 0 and 1 respectively.
+    //    Thus, check if the running process pid is equal to either of these. If so, halt.
+    if (running_old->pid < 2) {
+        TracePrintf(1, "[SyscallExit] Idle or Init process called Exit. Halting system\n");
+        Halt();
+    }
+
+    // 3. Free the current process' memory by freeing its frames (both region 1 and region 0).
+    for (int i = 0; i < MAX_PT_LEN; i++) {
+        if (running_old->pt[i].valid) {
+            FrameClear(running_old->pt[i].pfn);
+        }
+    }
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        FrameClear(running_old->ks.pfn);
+    }
+
+    // 4. Save the Process' exit status and add it to the terminated list
+    running_old->exit_status = _status;
+    SchedulerAddTerminated(e_scheduler, running_old);
+
+    // 5. The guide states that this call should never return. Thus, we should context switch
+    //    to the next ready process. Since the exited process is now in the terminated list,
+    //    it will never again be added to ready and thus will never run (i.e., return).
+    //
+    //    TODO: Implement function in kernel for context switching
+    // KernelKCSwitch(running_old);
+
 }
 
 int SyscallWait (UserContext *_uctxt, int *status_ptr) {
