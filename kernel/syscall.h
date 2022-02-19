@@ -23,7 +23,7 @@ int SyscallFork (void);
  */
 int SyscallExec (char *filename, char **argvec);
 
-void SyscallExit (int);
+void SyscallExit (UserContext *_uctxt, int);
 
 int SyscallWait (UserContext *_uctxt, int *);
 

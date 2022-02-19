@@ -43,7 +43,7 @@ int TrapKernel(UserContext *_uctxt) {
 
         case YALNIX_EXIT:
             TracePrintf(1, "[TrapKernel_Exit] _uctxt->code: %x\n", _uctxt->code);
-            SyscallExit((int ) _uctxt->regs[0]);
+            SyscallExit(_uctxt, (int ) _uctxt->regs[0]);
             break;
 
         case YALNIX_WAIT:
@@ -178,38 +178,38 @@ int TrapClock(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_scheduler returned no running process\n");
         Halt();
     }
-    pcb_t *running_new = SchedulerGetReady(e_scheduler);
-    if (!running_new) {
-        TracePrintf(1, "[TrapClock] No ready process. Continuing with the current process\n");
-        return 0;
-    }
-
-    // 4. If there is a process waiting to run, save the old process' UserContext and add it to
-    //    the ready queue. Then set the new process as the current running process.
     memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
-    SchedulerAddReady(e_scheduler,   running_old);
-    SchedulerAddRunning(e_scheduler, running_new);
+    SchedulerAddReady(e_scheduler, running_old);
 
-    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
-    //    first call KCCopy to initialize the KernelContext for the new process and clone the
-    //    kernel stack contents of the old process.
-    TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
-                    running_old->pid, running_new->pid);
-    int ret = KernelContextSwitch(KCSwitch,
-                         (void *) running_old,
-                         (void *) running_new);
-    if (ret < 0) {
-        TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
-        Halt();
-    }
+    return KCSwitch(_uctxt, running_old);
+    // // 4. Get the next process from our ready queue and mark it as the current running process.
+    // pcb_t *running_new = SchedulerGetReady(e_scheduler);
+    // if (!running_new) {
+    //     TracePrintf(1, "[TrapClock] No ready process. Continuing with the current process\n");
+    //     return 0;
+    // }
+    // SchedulerAddRunning(e_scheduler, running_new);
 
-    // 6. At this point, this code is being run by the *new* process, which means that its
-    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
-    //    process that this new process previously gave up the CPU for). Thus, get the
-    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
-    running_new = SchedulerGetRunning(e_scheduler);
-    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
-    return 0;
+    // // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    // //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    // //    kernel stack contents of the old process.
+    // TracePrintf(1, "[TrapClock] running_old->pid: %d\t\trunning_new->pid: %d\n",
+    //                 running_old->pid, running_new->pid);
+    // int ret = KernelContextSwitch(KCSwitch,
+    //                      (void *) running_old,
+    //                      (void *) running_new);
+    // if (ret < 0) {
+    //     TracePrintf(1, "[TrapClock] Failed to switch to the next process\n");
+    //     Halt();
+    // }
+
+    // // 6. At this point, this code is being run by the *new* process, which means that its
+    // //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    // //    process that this new process previously gave up the CPU for). Thus, get the
+    // //    current running process (i.e., "this" process) and set the outgoing _uctxt.
+    // running_new = SchedulerGetRunning(e_scheduler);
+    // memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+    // return 0;
 }
 
 /*!

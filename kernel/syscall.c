@@ -49,7 +49,7 @@ int SyscallExec (char *filename, char **argvec) {
     return 0;
 }
 
-void SyscallExit (int _status) {
+void SyscallExit (UserContext *_uctxt, int _status) {
     // 1. Get the current running process from our process list. If there is
     //    none, print a message and Halt because something has gone wrong. 
     pcb_t *running_old = SchedulerGetRunning(e_scheduler);
@@ -84,8 +84,10 @@ void SyscallExit (int _status) {
     //    to the next ready process. Since the exited process is now in the terminated list,
     //    it will never again be added to ready and thus will never run (i.e., return).
     //
-    //    TODO: Implement function in kernel for context switching
-    // KernelKCSwitch(running_old);
+    //    TODO: Should we actually switch to idle? What if the next ready process has never
+    //          been run before? It will KCCopy our kernel context and when it starts it will
+    //          return from this exit function which I *think* is not supposed to be allowed.
+    return KCSwitch(_uctxt, running_old);
 
 }
 
@@ -240,39 +242,35 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     TracePrintf(1, "[SyscallDelay] Blocking process %d for %d clock cycles\n",
                    running_old->pid, _clock_ticks);
 
-    // 4. Get the next process from our ready queue and mark it as the current running process.
-    //
-    //    NOTE: We should *always* get a process back from the ready queue because at the
-    //          very least it will contain the idleProc. We know this because idleProc
-    //          never calls "delay" (or any other syscalls), thus if we are in delay we
-    //          must be a different process and idleProc must be on the ready queue.
-    pcb_t *running_new = SchedulerGetReady(e_scheduler);
-    if (!running_new) {
-        TracePrintf(1, "[SyscallDelay] e_scheduler returned no ready process\n");
-        Halt();
-    }
-    SchedulerAddRunning(e_scheduler, running_new);
+    return KCSwitch(_uctxt, running_old);
+    // // 4. Get the next process from our ready queue and mark it as the current running process.
+    // pcb_t *running_new = SchedulerGetReady(e_scheduler);
+    // if (!running_new) {
+    //     TracePrintf(1, "[SyscallDelay] e_scheduler returned no ready process\n");
+    //     Halt();
+    // }
+    // SchedulerAddRunning(e_scheduler, running_new);
 
-    // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
-    //    first call KCCopy to initialize the KernelContext for the new process and clone the
-    //    kernel stack contents of the old process.
-    TracePrintf(1, "[SyscallDelay] running_old->pid: %d\t\trunning_new->pid: %d\n",
-                    running_old->pid, running_new->pid);
-    int ret = KernelContextSwitch(KCSwitch,
-                         (void *) running_old,
-                         (void *) running_new);
-    if (ret < 0) {
-        TracePrintf(1, "[SyscallDelay] Failed to switch to the next process\n");
-        Halt();
-    }
+    // // 5. Switch to the new process. If the new process has never been run before, KCSwitch will
+    // //    first call KCCopy to initialize the KernelContext for the new process and clone the
+    // //    kernel stack contents of the old process.
+    // TracePrintf(1, "[SyscallDelay] running_old->pid: %d\t\trunning_new->pid: %d\n",
+    //                 running_old->pid, running_new->pid);
+    // int ret = KernelContextSwitch(KCSwitch,
+    //                      (void *) running_old,
+    //                      (void *) running_new);
+    // if (ret < 0) {
+    //     TracePrintf(1, "[SyscallDelay] Failed to switch to the next process\n");
+    //     Halt();
+    // }
 
-    // 6. At this point, this code is being run by the *new* process, which means that its
-    //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
-    //    process that this new process previously gave up the CPU for). Thus, get the
-    //    current running process (i.e., "this" process) and set the outgoing _uctxt.
-    running_new = SchedulerGetRunning(e_scheduler);
-    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
-    return 0;
+    // // 6. At this point, this code is being run by the *new* process, which means that its
+    // //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
+    // //    process that this new process previously gave up the CPU for). Thus, get the
+    // //    current running process (i.e., "this" process) and set the outgoing _uctxt.
+    // running_new = SchedulerGetRunning(e_scheduler);
+    // memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+    // return 0;
 }
 
 
