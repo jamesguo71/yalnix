@@ -31,8 +31,8 @@ int TrapKernel(UserContext *_uctxt) {
     switch(_uctxt->code) {
         case YALNIX_FORK:
             TracePrintf(1, "[TrapKernel_Fork] _uctxt->code: %x\n", _uctxt->code);
-            // ret = SyscallFork();
-            // _uctxt->regs[0] = ret;
+             ret = SyscallFork(_uctxt);
+             _uctxt->regs[0] = ret;
             break;
 
         case YALNIX_EXEC:

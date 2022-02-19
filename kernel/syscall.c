@@ -10,18 +10,62 @@
 #include "syscall.h"
 
 
-int SyscallFork (void) {
-    // Reference Checkpoint 3 for more details
+/*!
+ * \desc                Fork a new process based on the caller process's current setup
+ *
+ * \param[in] _uctxt    current UserContext
+ *
+ * \return              Return child process's pid for parent, 0 for child process, and ERROR otherwise
+ */
+int SyscallFork (UserContext *_uctxt) {
     // Create a new pcb for child process
     // Get a new pid for the child process
+    pcb_t *child = ProcessCreate();
+    if (child == NULL) {
+        TracePrintf(1, "Fork: failed to create a new process.\n");
+        ProcessDelete(child);
+        return ERROR;
+    }
     // Copy user_context into the new pcb
-    // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
+    memcpy(child->uctxt, _uctxt, sizeof(UserContext));
     // For each valid pte in the page table of the parent process, find a free frame and change the page table entry to map into this frame
-    // Copy the frame from parent to child
-    // Copy the frame stack to a new frame stack by temporarily mapping the destination frame into some page
-    // E.g, the page right below the kernel stack.
+    pcb_t *parent = SchedulerGetRunning(e_scheduler);
+    for (int i = 0; i < MAX_PT_LEN; i++) {
+        if (parent->pt[i].valid) {
+            int pfn = FrameFind();
+            if (pfn == ERROR) {
+                TracePrintf(1, "Fork: failed to find a free frame.\n");
+                ProcessDelete(child);
+                return ERROR;
+            }
+            PTESet(child->pt, i, (int) parent->pt[i].prot, pfn);
+            // Copy the frame stack to a new frame stack by temporarily mapping the destination frame into some page
+            // E.g, the page right below the kernel stack.
+            void *src_addr = (void *) ((i << PAGESHIFT) + VMEM_1_BASE);
+            int temp_page_num = (KERNEL_STACK_BASE >> PAGESHIFT) - 1;
+            // Assert kernel heap is at least one page below kernel stack
+            void *temp_page_addr = (void *) ((temp_page_num - 1) << PAGESHIFT);
+            if (temp_page_addr < e_kernel_curr_brk) {
+                TracePrintf(1, "Fork: unable to use the frame below kernel stack as a temporary.\n");
+                ProcessDelete(child);
+                return ERROR;
+            }
+            // Copy the frame from parent to child
+            PTESet(e_kernel_pt, temp_page_num, PROT_READ|PROT_WRITE, pfn);
+            memcpy(temp_page_addr, src_addr, PAGESIZE);
+            PTEClear(e_kernel_pt, temp_page_num);
+        }
+    }
+    // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
+    if (child->kctxt != NULL) { TracePrintf(1, "Fork: child->kctxt should be null\n"); Halt();}
+    KernelContextSwitch(KCCopy, child, NULL);
     // Make the return value different between parent process and child process
-    return 0;
+    pcb_t *cur_running = SchedulerGetRunning(e_scheduler);
+    if (cur_running == parent) {
+        return child->pid;
+    } else {
+        return 0;
+    }
 }
 
 /*!
