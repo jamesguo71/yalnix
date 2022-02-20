@@ -55,6 +55,30 @@ scheduler_t *SchedulerCreate() {
     running->next    = NULL;
     running->prev    = NULL;
     scheduler->lists[SCHEDULER_RUNNING] = running;
+
+    // 4. Go ahead and initialize a node for the idle process since we will only ever need
+    //    one and we never delete the node. Set its internel pointers to NULL though.
+    node_t *idle = (node_t *) malloc(sizeof(node_t));
+    if (!idle) {
+        TracePrintf(1, "[SchedulerCreate] Error mallocing space for idle node\n");
+        Halt();
+    }
+    idle->process = NULL;
+    idle->next    = NULL;
+    idle->prev    = NULL;
+    scheduler->lists[SCHEDULER_IDLE] = idle;
+
+    // 5. Go ahead and initialize a node for the init process since we will only ever need
+    //    one and we never delete the node. Set its internel pointers to NULL though.
+    node_t *init = (node_t *) malloc(sizeof(node_t));
+    if (!init) {
+        TracePrintf(1, "[SchedulerCreate] Error mallocing space for init node\n");
+        Halt();
+    }
+    init->process = NULL;
+    init->next    = NULL;
+    init->prev    = NULL;
+    scheduler->lists[SCHEDULER_INIT] = init;
     return scheduler;
 }
 
@@ -79,10 +103,11 @@ int SchedulerDelete(scheduler_t *_scheduler) {
 
 /*!
  * \desc                  ADD FUNCTIONS - These functions are used to add processes to one of the 
- *                        scheduler's internal lists. Aside from AddRunning, they are all thin
- *                        wrappers that call our internal add function. Since the running "list"
- *                        is only ever 1 node long, we simply update the existing node's process
- *                        pointer instead of calling add and appending a completely new node.
+ *                        scheduler's internal lists. Most of these are thin wrappers that call
+ *                        our internal add function. The Running, Init, and Idle lists, however,
+ *                        behave differently since they are all "lists" of size 1. Thus, we simply
+ *                        update the existing node's process pointer instead of calling add and
+ *                        appending a completely new node.
  *
  * \param[in] _scheduler  An initialized scheduler_t struct
  * \param[in] _process    The PCB of the process the caller wishes to add to the specified list
@@ -101,6 +126,26 @@ int SchedulerAddDelay(scheduler_t *_scheduler, pcb_t *_process) {
                        _process,
                        SCHEDULER_DELAY_START,
                        SCHEDULER_DELAY_END);
+}
+
+int SchedulerAddIdle(scheduler_t *_scheduler, pcb_t *_process) {
+    // 1. Check arguments. Return error if invalid. Otherwise, switch the current running process.
+    if (!_scheduler || !_process) {
+        TracePrintf(1, "[SchedulerAddIdle] Invalid list or process pointer\n");
+        return ERROR;
+    }
+    _scheduler->lists[SCHEDULER_IDLE]->process = _process;
+    return 0;
+}
+
+int SchedulerAddInit(scheduler_t *_scheduler, pcb_t *_process) {
+    // 1. Check arguments. Return error if invalid. Otherwise, switch the current running process.
+    if (!_scheduler || !_process) {
+        TracePrintf(1, "[SchedulerAddInit] Invalid list or process pointer\n");
+        return ERROR;
+    }
+    _scheduler->lists[SCHEDULER_INIT]->process = _process;
+    return 0;
 }
 
 int SchedulerAddLock(scheduler_t *_scheduler, pcb_t *_process) {
@@ -197,6 +242,18 @@ int SchedulerAddTTYWrite(scheduler_t *_scheduler, pcb_t *_process) {
                        SCHEDULER_TTY_WRITE_END);
 }
 
+int SchedulerAddWait(scheduler_t *_scheduler, pcb_t *_process) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal add.
+    if (!_scheduler || !_process) {
+        TracePrintf(1, "[SchedulerAddWait] Invalid list or process pointer\n");
+        return ERROR;
+    }
+    return SchedulerAdd(_scheduler,
+                       _process,
+                       SCHEDULER_WAIT_START,
+                       SCHEDULER_WAIT_END);
+}
+
 static int SchedulerAdd(scheduler_t *_scheduler, pcb_t *_process, int _start, int _end) {
     // 1.
     node_t *node = (node_t *) malloc(sizeof(node_t));
@@ -238,8 +295,8 @@ static int SchedulerAdd(scheduler_t *_scheduler, pcb_t *_process, int _start, in
  *                        GetReady removes and returns the pcb of the process at the beginning of
  *                        the list (i.e., it returns the next process that should be run).
  * 
- *                        GetRunning returns the one (and only) pcb in its "list", which is the pcb
- *                        of the process that is currently running.
+ *                        GetIdle, GetInit, and GetRunning return the one (and only) pcb in their
+ *                        respective "list".
  * 
  *                        All of the other "getter" functions will loop over their specified list
  *                        and return the pcb associated with the given pid (if the pcb is in the
@@ -252,6 +309,24 @@ static int SchedulerAdd(scheduler_t *_scheduler, pcb_t *_process, int _start, in
  * 
  * \return                PCB of the process associated with pid on success, NULL otherwise.
  */
+pcb_t *SchedulerGetIdle(scheduler_t *_scheduler) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerGetIdle] Invalid list pointer\n");
+        return NULL;
+    }
+    return _scheduler->lists[SCHEDULER_IDLE]->process;
+}
+
+pcb_t *SchedulerGetInit(scheduler_t *_scheduler) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerGetInit] Invalid list pointer\n");
+        return NULL;
+    }
+    return _scheduler->lists[SCHEDULER_INIT]->process;
+}
+
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal get.
     if (!_scheduler || _pid < 0) {
@@ -316,6 +391,18 @@ pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid) {
                        _pid,
                        SCHEDULER_TERMINATED_START,
                        SCHEDULER_TERMINATED_END);
+}
+
+pcb_t *SchedulerGetWait(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerGetWait] Invalid list or pid\n");
+        return NULL;
+    }
+    return SchedulerGet(_scheduler,
+                       _pid,
+                       SCHEDULER_WAIT_START,
+                       SCHEDULER_WAIT_END);
 }
 
 static pcb_t *SchedulerGet(scheduler_t *_scheduler, int _pid, int _start, int _end) {
@@ -422,6 +509,16 @@ int SchedulerPrintTTYWrite(scheduler_t *_scheduler) {
     }
     TracePrintf(1, "[SchedulerPrintTTYWrite] TTYWrite List:\n");
     return SchedulerPrint(_scheduler, SCHEDULER_TTY_WRITE_START);
+}
+
+int SchedulerPrintWait(scheduler_t *_scheduler) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal print.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerPrintWait] Invalid list pointer\n");
+        return ERROR;
+    }
+    TracePrintf(1, "[SchedulerPrintWait] TTYWrite List:\n");
+    return SchedulerPrint(_scheduler, SCHEDULER_WAIT_START);
 }
 
 static int SchedulerPrint(scheduler_t *_scheduler, int _start) {
@@ -541,6 +638,18 @@ int SchedulerRemoveTTYWrite(scheduler_t *_scheduler, int _pid) {
                           _pid,
                           SCHEDULER_TTY_WRITE_START,
                           SCHEDULER_TTY_WRITE_END);
+}
+
+int SchedulerRemoveWait(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal remove.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerRemoveWait] Invalid list or pid\n");
+        return ERROR;
+    }
+    return SchedulerRemove(_scheduler,
+                          _pid,
+                          SCHEDULER_WAIT_START,
+                          SCHEDULER_WAIT_END);
 }
 
 static int SchedulerRemove(scheduler_t *_scheduler, int _pid, int _start, int _end) {
@@ -673,6 +782,15 @@ int SchedulerUpdateTTYWrite(scheduler_t *_scheduler) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdateTTYWrite] Invalid list pointer\n");
+        return ERROR;
+    }
+    return 0;
+}
+
+int SchedulerUpdateWait(scheduler_t *_scheduler) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerUpdateWait] Invalid list pointer\n");
         return ERROR;
     }
     return 0;

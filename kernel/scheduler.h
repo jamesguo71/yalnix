@@ -19,33 +19,15 @@
 #define SCHEDULER_TTY_READ_END     13
 #define SCHEDULER_TTY_WRITE_START  14
 #define SCHEDULER_TTY_WRITE_END    15
-#define SCHEDULER_RUNNING          16
-#define SCHEDULER_NUM_LISTS        17
+#define SCHEDULER_WAIT_START       16
+#define SCHEDULER_WAIT_END         17
+#define SCHEDULER_RUNNING          18
+#define SCHEDULER_IDLE             19
+#define SCHEDULER_INIT             20
+#define SCHEDULER_NUM_LISTS        21
 
 
 typedef struct scheduler scheduler_t;
-
-// // TODO: Add a char *name field for debugging/readability?
-// typedef struct pcb {
-//     int  pid;
-//     int  clock_ticks;
-//     int  exit_status;       // for saving the process's exit status, See Page 32
-//     int  exited;            // if the process has exited?  
-//     int *held_locks;        // locks held by the current process, used by sync syscalls
-
-//     struct pcb *parent;     // For keeping track of parent process
-//     struct pcb *children;   // For keeping track of children processes
-
-//     KernelContext *kctxt;   // Needed for KernelCopy? See Page 45 
-//     UserContext   *uctxt;   // Defined in `hardware.h`    
-
-//     pte_t *ks;
-//     pte_t *pt;              // Defined in `hardware.h`
-
-//     void *brk;
-//     void *text_end;
-//     void *data_end;
-// } pcb_t;
 
 
 /*!
@@ -64,6 +46,8 @@ scheduler_t *SchedulerCreate();
 int SchedulerDelete(scheduler_t *_scheduler);
 
 int    SchedulerAddDelay(scheduler_t *_scheduler, pcb_t *_process);
+int    SchedulerAddIdle(scheduler_t *_scheduler, pcb_t *_process);
+int    SchedulerAddInit(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddLock(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddPipe(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddProcess(scheduler_t *_scheduler, pcb_t *_process);
@@ -72,11 +56,15 @@ int    SchedulerAddRunning(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddTerminated(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddTTYRead(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddTTYWrite(scheduler_t *_scheduler, pcb_t *_process);
+int    SchedulerAddWait(scheduler_t *_scheduler, pcb_t *_process);
 
+pcb_t *SchedulerGetIdle(scheduler_t *_scheduler);
+pcb_t *SchedulerGetInit(scheduler_t *_scheduler);
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid);
 pcb_t *SchedulerGetReady(scheduler_t *_scheduler);
 pcb_t *SchedulerGetRunning(scheduler_t *_scheduler);
 pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid);
+pcb_t *SchedulerGetWait(scheduler_t *_scheduler, int _pid);
 
 int    SchedulerPrintDelay(scheduler_t *_scheduler);
 int    SchedulerPrintLock(scheduler_t *_scheduler);
@@ -86,6 +74,7 @@ int    SchedulerPrintReady(scheduler_t *_scheduler);
 int    SchedulerPrintTerminated(scheduler_t *_scheduler);
 int    SchedulerPrintTTYRead(scheduler_t *_scheduler);
 int    SchedulerPrintTTYWrite(scheduler_t *_scheduler);
+int    SchedulerPrintWait(scheduler_t *_scheduler);
 
 int    SchedulerRemoveDelay(scheduler_t *_scheduler, int _pid);
 int    SchedulerRemoveLock(scheduler_t *_scheduler, int _pid);
@@ -95,10 +84,12 @@ int    SchedulerRemoveReady(scheduler_t *_scheduler, int _pid);
 int    SchedulerRemoveTerminated(scheduler_t *_scheduler, int _pid);
 int    SchedulerRemoveTTYRead(scheduler_t *_scheduler, int _pid);
 int    SchedulerRemoveTTYWrite(scheduler_t *_scheduler, int _pid);
+int    SchedulerRemoveWait(scheduler_t *_scheduler, int _pid);
 
 int    SchedulerUpdateDelay(scheduler_t *_scheduler);
 int    SchedulerUpdateLock(scheduler_t *_scheduler);
 int    SchedulerUpdatePipe(scheduler_t *_scheduler);
 int    SchedulerUpdateTTYRead(scheduler_t *_scheduler);
 int    SchedulerUpdateTTYWrite(scheduler_t *_scheduler);
+int    SchedulerUpdateWait(scheduler_t *_scheduler);
 #endif // __SCHEDULER_H
