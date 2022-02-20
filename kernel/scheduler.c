@@ -67,18 +67,6 @@ scheduler_t *SchedulerCreate() {
     idle->next    = NULL;
     idle->prev    = NULL;
     scheduler->lists[SCHEDULER_IDLE] = idle;
-
-    // 5. Go ahead and initialize a node for the init process since we will only ever need
-    //    one and we never delete the node. Set its internel pointers to NULL though.
-    node_t *init = (node_t *) malloc(sizeof(node_t));
-    if (!init) {
-        TracePrintf(1, "[SchedulerCreate] Error mallocing space for init node\n");
-        Halt();
-    }
-    init->process = NULL;
-    init->next    = NULL;
-    init->prev    = NULL;
-    scheduler->lists[SCHEDULER_INIT] = init;
     return scheduler;
 }
 
@@ -135,16 +123,6 @@ int SchedulerAddIdle(scheduler_t *_scheduler, pcb_t *_process) {
         return ERROR;
     }
     _scheduler->lists[SCHEDULER_IDLE]->process = _process;
-    return 0;
-}
-
-int SchedulerAddInit(scheduler_t *_scheduler, pcb_t *_process) {
-    // 1. Check arguments. Return error if invalid. Otherwise, switch the current running process.
-    if (!_scheduler || !_process) {
-        TracePrintf(1, "[SchedulerAddInit] Invalid list or process pointer\n");
-        return ERROR;
-    }
-    _scheduler->lists[SCHEDULER_INIT]->process = _process;
     return 0;
 }
 
@@ -316,15 +294,6 @@ pcb_t *SchedulerGetIdle(scheduler_t *_scheduler) {
         return NULL;
     }
     return _scheduler->lists[SCHEDULER_IDLE]->process;
-}
-
-pcb_t *SchedulerGetInit(scheduler_t *_scheduler) {
-    // 1. Check arguments. Return error if invalid.
-    if (!_scheduler) {
-        TracePrintf(1, "[SchedulerGetInit] Invalid list pointer\n");
-        return NULL;
-    }
-    return _scheduler->lists[SCHEDULER_INIT]->process;
 }
 
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid) {
@@ -764,6 +733,15 @@ int SchedulerUpdatePipe(scheduler_t *_scheduler) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdatePipe] Invalid list pointer\n");
+        return ERROR;
+    }
+    return 0;
+}
+
+int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerUpdateTerminated] Invalid list pointer\n");
         return ERROR;
     }
     return 0;

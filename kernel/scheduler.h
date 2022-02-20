@@ -23,8 +23,7 @@
 #define SCHEDULER_WAIT_END         17
 #define SCHEDULER_RUNNING          18
 #define SCHEDULER_IDLE             19
-#define SCHEDULER_INIT             20
-#define SCHEDULER_NUM_LISTS        21
+#define SCHEDULER_NUM_LISTS        20
 
 
 typedef struct scheduler scheduler_t;
@@ -47,7 +46,6 @@ int SchedulerDelete(scheduler_t *_scheduler);
 
 int    SchedulerAddDelay(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddIdle(scheduler_t *_scheduler, pcb_t *_process);
-int    SchedulerAddInit(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddLock(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddPipe(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddProcess(scheduler_t *_scheduler, pcb_t *_process);
@@ -59,7 +57,6 @@ int    SchedulerAddTTYWrite(scheduler_t *_scheduler, pcb_t *_process);
 int    SchedulerAddWait(scheduler_t *_scheduler, pcb_t *_process);
 
 pcb_t *SchedulerGetIdle(scheduler_t *_scheduler);
-pcb_t *SchedulerGetInit(scheduler_t *_scheduler);
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid);
 pcb_t *SchedulerGetReady(scheduler_t *_scheduler);
 pcb_t *SchedulerGetRunning(scheduler_t *_scheduler);
@@ -89,6 +86,7 @@ int    SchedulerRemoveWait(scheduler_t *_scheduler, int _pid);
 int    SchedulerUpdateDelay(scheduler_t *_scheduler);
 int    SchedulerUpdateLock(scheduler_t *_scheduler);
 int    SchedulerUpdatePipe(scheduler_t *_scheduler);
+int    SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent);
 int    SchedulerUpdateTTYRead(scheduler_t *_scheduler);
 int    SchedulerUpdateTTYWrite(scheduler_t *_scheduler);
 int    SchedulerUpdateWait(scheduler_t *_scheduler, int _pid);
