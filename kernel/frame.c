@@ -46,10 +46,10 @@ int FrameClear(int _frame_num) {
  * 
  * \return  Frame number on success, ERROR otherwise.
  */
-int FrameFind() {
+int FrameFindAndSet() {
     // 1. Check that our frames bit vector is initialized. If not, print message and halt.
     if (!e_frames) {
-        TracePrintf(1, "[FrameFind] Frame bit vector e_frames is not initialized\n");
+        TracePrintf(1, "[FrameFindAndSet] Frame bit vector e_frames is not initialized\n");
         Halt();
     }
 

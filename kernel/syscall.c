@@ -22,8 +22,7 @@ int SyscallFork (UserContext *_uctxt) {
     // Get a new pid for the child process
     pcb_t *child = ProcessCreate();
     if (child == NULL) {
-        TracePrintf(1, "Fork: failed to create a new process.\n");
-        ProcessDelete(child);
+        TracePrintf(1, "SyscallFork: failed to create a new process.\n");
         return ERROR;
     }
     // Copy user_context into the new pcb
@@ -32,9 +31,9 @@ int SyscallFork (UserContext *_uctxt) {
     pcb_t *parent = SchedulerGetRunning(e_scheduler);
     for (int i = 0; i < MAX_PT_LEN; i++) {
         if (parent->pt[i].valid) {
-            int pfn = FrameFind();
+            int pfn = FrameFindAndSet();
             if (pfn == ERROR) {
-                TracePrintf(1, "Fork: failed to find a free frame.\n");
+                TracePrintf(1, "SyscallFork: failed to find a free frame.\n");
                 ProcessDelete(child);
                 return ERROR;
             }
@@ -46,7 +45,7 @@ int SyscallFork (UserContext *_uctxt) {
             // Assert kernel heap is at least one page below kernel stack
             void *temp_page_addr = (void *) ((temp_page_num - 1) << PAGESHIFT);
             if (temp_page_addr < e_kernel_curr_brk) {
-                TracePrintf(1, "Fork: unable to use the frame below kernel stack as a temporary.\n");
+                TracePrintf(1, "SyscallFork: unable to use the frame below kernel stack as a temporary.\n");
                 ProcessDelete(child);
                 return ERROR;
             }
@@ -57,8 +56,11 @@ int SyscallFork (UserContext *_uctxt) {
         }
     }
     // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
-    if (child->kctxt != NULL) { TracePrintf(1, "Fork: child->kctxt should be null\n"); Halt();}
-    KernelContextSwitch(KCCopy, child, NULL);
+    if (child->kctxt != NULL) { TracePrintf(1, "SyscallFork: child->kctxt should be null\n"); Halt();}
+    if (KernelContextSwitch(KCCopy, child, NULL) == ERROR) {
+        TracePrintf(1, "SyscallFork: KernelContextSwitch failed.\n");
+        Halt();
+    }
     // Make the return value different between parent process and child process
     pcb_t *cur_running = SchedulerGetRunning(e_scheduler);
     if (cur_running == parent) {
@@ -274,7 +276,7 @@ int SyscallBrk (void *_brk) {
         if (growing) {
             // 6a. If we are growing the heap, then we first need to find an available frame.
             //     If we can't find one (i.e., we are out of memory) return ERROR.
-            int frame_num = FrameFind();
+            int frame_num = FrameFindAndSet();
             if (frame_num == ERROR) {
                 TracePrintf(1, "[SyscallBrk] Unable to find free frame\n");
                 return ERROR;

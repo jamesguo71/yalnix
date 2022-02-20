@@ -113,7 +113,7 @@ int SetKernelBrk(void *_kernel_new_brk) {
         if (growing) {
             // 6a. If we are growing the heap, then we first need to find an available frame.
             //     If we can't find one (i.e., we are out of memory) return ERROR.
-            int frame_num = FrameFind();
+            int frame_num = FrameFindAndSet();
             if (frame_num == ERROR) {
                 TracePrintf(1, "[SetKernelBrk] Unable to find free frame\n");
                 return ERROR;
@@ -321,7 +321,11 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    stack page table.
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle: %d\n", idlePCB->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        int frame = FrameFind();
+        int frame = FrameFindAndSet();
+        if (frame == ERROR) {
+            TracePrintf(1, "[KernelStart] Failed to find a frame for idle kernel stack\n");
+            Halt();
+        }
         PTESet(idlePCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
@@ -339,7 +343,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     by hand since DoIdle is not a true userland process---indeed its code lives in the
     //     kernel text (i.e., Region 0)!
     int user_stack_page_num  = (((int ) idlePCB->uctxt.sp) >> PAGESHIFT) - MAX_PT_LEN;
-    int user_stack_frame_num = FrameFind();
+    int user_stack_frame_num = FrameFindAndSet();
     if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "[KernelStart] Unable to find free frame for DoIdle userstack!\n");
         Halt();

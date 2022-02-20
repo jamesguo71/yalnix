@@ -2,6 +2,6 @@
 #define __FRAME_H
 
 int FrameClear(int _frame_num);
-int FrameFind(void);
+int FrameFindAndSet(void);
 int FrameSet(int _frame_num);
 #endif // __FRAME_H

@@ -207,7 +207,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
     TracePrintf(1, "[LoadProgram] Mapping pages for text\n");
     for (int k = 0; k < li.t_npg; k++) {
-        int pfn = FrameFind();
+        int pfn = FrameFindAndSet();
         if (pfn == ERROR) {
             TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
@@ -230,7 +230,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
     TracePrintf(1, "[LoadProgram] Mapping pages for data\n");
     for (int k = 0; k < data_npg; k++) {
-        int pfn = FrameFind();
+        int pfn = FrameFindAndSet();
         if (pfn == ERROR) {
             TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);
@@ -252,7 +252,7 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      */
     TracePrintf(1, "[LoadProgram] Mapping pages for stack\n");
     for (int k = stack_npg; k > 0; k--) {
-        int pfn = FrameFind();
+        int pfn = FrameFindAndSet();
         if (pfn == ERROR) {
             TracePrintf(1, "[LoadProgram] failed: can't find a free frame.\n");
             close(fd);

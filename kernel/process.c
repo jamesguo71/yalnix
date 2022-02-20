@@ -17,14 +17,19 @@ pcb_t *ProcessCreate() {
     pcb_t *process = ProcessCreateIdle();
     if (!process) {
         TracePrintf(1, "[ProcessCreate] Failed to create process\n");
-        Halt();
+        return NULL;
     }
 
     // 2. Find some free frames for the process' kernel stack and map them to the pages in
     //    the process' kernel stack page table.
     TracePrintf(1, "[ProcessCreate] Mapping kernel stack pages for pid: %d\n", process->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        int frame = FrameFind();
+        int frame = FrameFindAndSet();
+        if (frame == ERROR) {
+            ProcessDelete(process);
+            TracePrintf(1, "[ProcessCreate]: Failed to find a free frame.\n");
+            return NULL;
+        }
         PTESet(process->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
@@ -39,7 +44,7 @@ pcb_t *ProcessCreateIdle() {
     pcb_t *process = (pcb_t *) malloc(sizeof(pcb_t));
     if (!process) {
         TracePrintf(1, "[ProcessCreateIdle] Error mallocing space for process struct\n");
-        Halt();
+        return NULL;
     }
 
     bzero(process->ks, sizeof(process->ks[0]) * KERNEL_NUMBER_STACK_FRAMES);
@@ -63,24 +68,37 @@ pcb_t *ProcessCreateIdle() {
  *
  * \param[in] _pcb  A pcb_t struct that the caller wishes to free
  */
-int ProcessDelete(pcb_t *_process) {
+void ProcessDelete(pcb_t *_process) {
     // 1. Check arguments. Return error if invalid.
     if (!_process) {
         TracePrintf(1, "[ProcessDelete] Invalid pcb pointer\n");
-        return ERROR;
+        Halt();
     }
+
+    // Free region 1 pagetable frames
+    for (int i = 0; i < MAX_PT_LEN; i++) {
+        if (_process->pt[i].valid) {
+            PTEClear(_process->pt, i);
+        }
+    }
+    // Free kernel stack page frames
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        if (_process->ks[i].valid) {
+            PTEClear(_process->ks, i);
+        }
+    }
+
 
     // 2. TODO: Loop over every list and free nodes. Then free pcb struct
     if (_process->kctxt) {
         free(_process->kctxt);
     }
     free(_process);
-    return 0;
 }
 
 
 /*!
- * \desc                
+ * \desc
  *
  * \param[in] _process  The pcb struct for the process the caller wishes to terminate
  */
