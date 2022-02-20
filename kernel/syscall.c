@@ -120,8 +120,22 @@ void SyscallExit (UserContext *_uctxt, int _status) {
     // 3. If we have no runnning parent, then we do not need to save our exit status or keep
     //    track of our pcb for future use. Instead, free all frames and pcb process memory.
     if (!running->parent) {
+
+        // Before we free all of our resources, check to see if we have any children. If so,
+        // update the terminated list. More specifically, check to see if any of our children
+        // have exited and their states are stored in the terminated list---if they are, remove
+        // their pcbs from the terminated list and free them. If we did not do this then our
+        // Terminated list could potentially grow forever and cause the system to crash.
+        if (running->headchild) {
+            SchedulerUpdateTerminated(e_scheduler, running);
+        }
+
+        // Remove ourselves from the master process list and free our pcb memory. If we have any
+        // living children, ProcessDelete will update their parent pointers to NULL so that they
+        // do not add themselves to the Terminated list when they exit.
         SchedulerRemoveProcess(e_scheduler, running->pid);
         ProcessDelete(running);
+        return;
     }
 
     // 4. Otherwise, we want to save the process' exit status and "terminate" it. The difference
@@ -133,6 +147,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
     //    update will check to see if the headchild's parent process is waiting on them, and if so,
     //    move the parent over to the ready list. Later on, the parent resume in SyscallWait and
     //    find its child's pcb in the terminated list.
+    running->exited      = 1;
     running->exit_status = _status;
     ProcessTerminate(running);
     SchedulerAddTerminated(e_scheduler, running);
@@ -145,20 +160,14 @@ void SyscallExit (UserContext *_uctxt, int _status) {
 }
 
 int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
-    // 1. Check that the status pointer is valid. If not, return ERROR.
-    if (!_status_ptr) {
-        TracePrintf(1, "[SyscallWait] Invalid status pointer\n");
-        return ERROR;
-    }
-
-    // 2. Get the current running process
+    // 1. Get the current running process
     pcb_t *running = SchedulerGetRunning(e_scheduler);
     if (!running) {
         TracePrintf(1, "[SyscallWait] e_scheduler returned no running process\n");
         Halt();
     }
 
-    // 3. If the parent has no remaining child processes, return immediately.
+    // 2. If the parent has no remaining child processes, return immediately.
     if (!running->headchild) {
         TracePrintf(1, "[SyscallWait] Parent %d has no remaining headchild\n", running->pid);
         return ERROR;
@@ -173,7 +182,7 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
     // from this function.
     while (1) {
 
-        // 4. Loop through the current running process' headchild to see if any have finished.
+        // 3. Loop through the current running process' headchild to see if any have finished.
         pcb_t *child = running->headchild;
         while (child) {
             int child_pid = child->pid;
@@ -181,18 +190,18 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
             // If we find a child in the terminated list, first remove it so that we do
             // not "find" it again in successive calls to "Wait". Save its exit status
             // in the outgoing status_ptr, free its pcb memory, and return its pid.
-            //
-            // TODO: Does ProcessDelete update headchild and sibling pointers or do I need
-            //       to do that here?
             if (SchedulerGetTerminated(e_scheduler, child_pid)) {
                 SchedulerRemoveTerminated(e_scheduler, child_pid);
-                *_status_ptr = child->exit_status;
+                if (_status_ptr) {
+                    *_status_ptr = child->exit_status;
+                }
                 ProcessDelete(child);
                 return child_pid;
             }
+            child = child->sibling;
         }
 
-        // 5. If none of the running process' headchild have finished, then save its UserContext,
+        // 4. If none of the running process' headchild have finished, then save its UserContext,
         //    add it to the wait queue and let the next ready process run. The parent process will
         //    get moved back onto the ready queue once one of its headchild exits (this may happen
         //    in SyscallExit, TrapMemory, or any function where a process is termianted).
@@ -207,7 +216,7 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
         KCSwitch(_uctxt, running);
     }
 
-    // 6. This should never be reached.
+    // 5. This should never be reached.
     return ERROR;
 }
 
