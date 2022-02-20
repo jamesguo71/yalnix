@@ -27,7 +27,7 @@ int SyscallFork (UserContext *_uctxt) {
         return ERROR;
     }
     // Copy user_context into the new pcb
-    memcpy(child->uctxt, _uctxt, sizeof(UserContext));
+    memcpy(&child->uctxt, _uctxt, sizeof(UserContext));
     // For each valid pte in the page table of the parent process, find a free frame and change the page table entry to map into this frame
     pcb_t *parent = SchedulerGetRunning(e_scheduler);
     for (int i = 0; i < MAX_PT_LEN; i++) {
@@ -277,7 +277,7 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
         TracePrintf(1, "[SyscallDelay] e_scheduler returned no running process\n");
         Halt();
     }
-    memcpy(running_old->uctxt, _uctxt, sizeof(UserContext));
+    memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
 
     // 3. Set the current process' delay value in its pcb then add it to the blocked list
     running_old->clock_ticks = _clock_ticks;

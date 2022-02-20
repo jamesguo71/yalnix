@@ -234,8 +234,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    get a memory fault.
     //
     //    We don't have to set init's UserContext because it gets configured later in LoadProgram.
-    idlePCB->uctxt->pc = DoIdle;
-    idlePCB->uctxt->sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    idlePCB->uctxt.pc = DoIdle;
+    idlePCB->uctxt.sp = (void *) VMEM_1_LIMIT - sizeof(void *);
 
     // 9. Allocate space for init's KernelContext, but leave idle's NULL. This is because we
     //    plan to run the init program first and have idle clone into init later during a
@@ -338,7 +338,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     Note that LoadProgram would normally LoadProgram perform this step, but we must do it
     //     by hand since DoIdle is not a true userland process---indeed its code lives in the
     //     kernel text (i.e., Region 0)!
-    int user_stack_page_num  = (((int ) idlePCB->uctxt->sp) >> PAGESHIFT) - MAX_PT_LEN;
+    int user_stack_page_num  = (((int ) idlePCB->uctxt.sp) >> PAGESHIFT) - MAX_PT_LEN;
     int user_stack_frame_num = FrameFind();
     if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "[KernelStart] Unable to find free frame for DoIdle userstack!\n");
@@ -399,7 +399,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     SchedulerAddProcess(e_scheduler, initPCB);
     SchedulerAddReady(e_scheduler,   idlePCB);
     SchedulerAddRunning(e_scheduler, initPCB);
-    memcpy(_uctxt, initPCB->uctxt, sizeof(UserContext));
+    memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
 
     // 20. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
@@ -412,8 +412,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     TracePrintf(1, "[KernelStart] idle_stack_frame_num:        %d\n", user_stack_frame_num);
-    TracePrintf(1, "[KernelStart] idlePCB->uctxt->sp:          %p\n", idlePCB->uctxt->sp);
-    TracePrintf(1, "[KernelStart] initPCB->uctxt->sp:          %p\n", initPCB->uctxt->sp);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt.sp:          %p\n", idlePCB->uctxt.sp);
+    TracePrintf(1, "[KernelStart] initPCB->uctxt.sp:          %p\n", initPCB->uctxt.sp);
     TracePrintf(1, "[KernelStart] idlePCB->pid:                %d\n", idlePCB->pid);
     TracePrintf(1, "[KernelStart] initPCB->pid:                %d\n", initPCB->pid);
     SchedulerPrintProcess(e_scheduler);
@@ -463,7 +463,7 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     //    process that this new process previously gave up the CPU for). Thus, get the
     //    current running process (i.e., "this" process) and set the outgoing _uctxt.
     running_new = SchedulerGetRunning(e_scheduler);
-    memcpy(_uctxt, running_new->uctxt, sizeof(UserContext));
+    memcpy(_uctxt, &running_new->uctxt, sizeof(UserContext));
     return 0;
 }
 

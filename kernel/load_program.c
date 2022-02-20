@@ -47,8 +47,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
     long segment_size;
     char *argbuf;
 
-    TracePrintf(1, "[LoadProgram] initPCB->uctxt->sp: %p\tinitPCB->uctxt->pc: %p\tinitPCB->pt: %p\n",
-                    proc->uctxt->sp, proc->uctxt->pc, proc->pt);
+    TracePrintf(1, "[LoadProgram] initPCB->uctxt.sp: %p\tinitPCB->uctxt.pc: %p\tinitPCB->pt: %p\n",
+                    proc->uctxt.sp, proc->uctxt.pc, proc->pt);
 
     /*
      * Open the executable file
@@ -151,8 +151,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> (rewrite the line below to match your actual data structure)
      * ==>> proc->uc.sp = cp2;
      */
-    proc->uctxt->sp = cp2;
-    TracePrintf(1, "[LoadProgram] proc->uctxt->sp: %p\n", proc->uctxt->sp);
+    proc->uctxt.sp = cp2;
+    TracePrintf(1, "[LoadProgram] proc->uctxt.sp: %p\n", proc->uctxt.sp);
 
     /*
      * Now save the arguments in a separate buffer in region 0, since
@@ -333,8 +333,8 @@ LoadProgram(char *name, char *args[], pcb_t *proc) {
      * ==>> (rewrite the line below to match your actual data structure)
      * ==>> proc->uc.pc = (caddr_t) li.entry;
      */
-    proc->uctxt->pc = (caddr_t) li.entry;
-    TracePrintf(1, "[LoadProgram] proc->uctxt->pc: %p\n", proc->uctxt->pc);
+    proc->uctxt.pc = (caddr_t) li.entry;
+    TracePrintf(1, "[LoadProgram] proc->uctxt->pc: %p\n", proc->uctxt.pc);
 
     /*
      * Now, finally, build the argument list on the new stack.
