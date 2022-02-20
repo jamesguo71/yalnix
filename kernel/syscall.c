@@ -96,8 +96,8 @@ int SyscallExec (char *filename, char **argvec) {
 void SyscallExit (UserContext *_uctxt, int _status) {
     // 1. Get the current running process from our process list. If there is
     //    none, print a message and Halt because something has gone wrong. 
-    pcb_t *running_old = SchedulerGetRunning(e_scheduler);
-    if (!running_old) {
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    if (!running) {
         TracePrintf(1, "[SyscallExit] e_scheduler returned no running process\n");
         Halt();
     }
@@ -105,34 +105,36 @@ void SyscallExit (UserContext *_uctxt, int _status) {
     // 2. If the initial process exits then we should halt the system. Since our idle and init
     //    processes are setup in KernelStart, we know that their pids are 0 and 1 respectively.
     //    Thus, check if the running process pid is equal to either of these. If so, halt.
-    if (running_old->pid < 2) {
+    if (running->pid < 2) {
         TracePrintf(1, "[SyscallExit] Idle or Init process called Exit. Halting system\n");
         Halt();
     }
 
-    // 3. Free the current process' memory by freeing its frames (both region 1 and region 0).
-    for (int i = 0; i < MAX_PT_LEN; i++) {
-        if (running_old->pt[i].valid) {
-            FrameClear(running_old->pt[i].pfn);
-        }
-    }
-    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        FrameClear(running_old->ks[i].pfn);
+    // 3. If we have no runnning parent, then we do not need to save our exit status or keep
+    //    track of our pcb for future use. Instead, free all frames and pcb process memory.
+    if (!running->parent) {
+        SchedulerRemoveProcess(e_scheduler, running->pid);
+        ProcessDelete(running);
     }
 
-    // 4. Save the Process' exit status and add it to the terminated list
-    running_old->exit_status = _status;
-    SchedulerAddTerminated(e_scheduler, running_old);
+    // 4. Otherwise, we want to save the process' exit status and "terminate" it. The difference
+    //    between termination and deletion is that termination frees the process' region 1 and
+    //    kernel stack frames (but not the pcb), whereas deletion frees frames and pcb memory.
+    //    The reason we want to save the pcb is that it holds information needed by the parent.
+    //
+    //    So "terminate" the process, add it to our terminated list, then update the wait list---
+    //    update will check to see if the children's parent process is waiting on them, and if so,
+    //    move the parent over to the ready list. Later on, the parent resume in SyscallWait and
+    //    find its child's pcb in the terminated list.
+    running->exit_status = _status;
+    ProcessTerminate(running);
+    SchedulerAddTerminated(e_scheduler, running);
+    SchedulerUpdateWait(e_scheduler, running->parent->pid);
 
     // 5. The guide states that this call should never return. Thus, we should context switch
     //    to the next ready process. Since the exited process is now in the terminated list,
     //    it will never again be added to ready and thus will never run (i.e., return).
-    //
-    //    TODO: Should we actually switch to idle? What if the next ready process has never
-    //          been run before? It will KCCopy our kernel context and when it starts it will
-    //          return from this exit function which I *think* is not supposed to be allowed.
-    KCSwitch(_uctxt, running_old);
-
+    KCSwitch(_uctxt, running);
 }
 
 int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
