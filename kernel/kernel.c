@@ -395,8 +395,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     Afterwards, copy init's UserContext (now configured thanks to LoadProgram) to the
     //     address indicated by _uctxt; this address is where Yalnix will look for the
     //     UserContext of the process that it should currently execute.
-    SchedulerAddProcess(e_scheduler, idlePCB);
-    SchedulerAddProcess(e_scheduler, initPCB);
+    SchedulerAddIdle(e_scheduler, idlePCB);
+    SchedulerAddInit(e_scheduler, initPCB);
     SchedulerAddReady(e_scheduler,   idlePCB);
     SchedulerAddRunning(e_scheduler, initPCB);
     memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
@@ -563,12 +563,19 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
     memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
 
-    // 3. Check to see if the next process has ever been run before. If not, call KCCopy to copy
-    //    the current process' KernelContext along with the contents of its stack frames.
+    // 3. Check to see if the next process has ever been run before. If not, then we need to
+    //    initialize the next process' KernelContext and kernel stack contents. Do this by
+    //    copying the KernelContext and stack of our init process.
+    //
+    //    The reason we want to copy init, and not the current running process, is that we know
+    //    init's kernel stack simply contains a TrapClock call which will simply return after the
+    //    context switch, but the current process may be blocked in a syscall (e.g., wait) that
+    //    would cause the new process to get stuck or put in a bad state.
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     if (!running_new->kctxt) {
         TracePrintf(1, "[MyKCS] Calling KCCopy for pid: %d\n", running_new->pid);
-        KCCopy(_kctxt, _next_pcb_p, NULL);
+        pcb_t *initPCB = SchedulerGetInit(e_scheduler);
+        KCCopy(_kctxt, (void *) initPCB, NULL);
     }
 
     // 4. Update the kernel's page table so that its stack pages map to
