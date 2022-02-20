@@ -317,8 +317,8 @@ pcb_t *SchedulerGetReady(scheduler_t *_scheduler) {
 
     // 2. Check to see that we actually have processes in our ready list. If not, return NULL
     if (!_scheduler->lists[SCHEDULER_READY_START]) {
-        TracePrintf(1, "[SchedulerGetReady] Ready list is empty\n");
-        return NULL;
+        TracePrintf(1, "[SchedulerGetReady] Ready list is empty. Returning idle process\n");
+        return SchedulerGetIdle(_scheduler);
     }
 
     // 3. Check for our base case: there is only 1 process in the ready list.

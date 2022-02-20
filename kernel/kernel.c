@@ -401,7 +401,6 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     UserContext of the process that it should currently execute.
     SchedulerAddIdle(e_scheduler,    idlePCB);
     SchedulerAddProcess(e_scheduler, initPCB);
-    SchedulerAddReady(e_scheduler,   idlePCB);
     SchedulerAddRunning(e_scheduler, initPCB);
     memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
 
