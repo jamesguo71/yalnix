@@ -70,6 +70,20 @@ int ProcessDelete(pcb_t *_process) {
         return ERROR;
     }
 
+    // Free region 1 pagetable frames
+    for (int i = 0; i < MAX_PT_LEN; i++) {
+        if (_process->pt[i].valid) {
+            PTEClear(_process->pt, i);
+        }
+    }
+    // Free kernel stack page frames
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        if (_process->ks[i].valid) {
+            PTEClear(_process->ks, i);
+        }
+    }
+
+
     // 2. TODO: Loop over every list and free nodes. Then free pcb struct
     if (_process->kctxt) {
         free(_process->kctxt);
