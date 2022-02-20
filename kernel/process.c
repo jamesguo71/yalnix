@@ -59,6 +59,7 @@ pcb_t *ProcessCreateIdle() {
     process->headchild = NULL;
     process->sibling = NULL;
 
+
     // 3. Assign the process a pid. Note that the build system keeps a mappig of page tables
     //    to pids, so if we don't assign pid via the helper function it complains about the
     //    PTBR1 not being assigned to a process.
@@ -91,8 +92,10 @@ void ProcessDelete(pcb_t *_process) {
         }
     }
 
+    if (_process->parent) {
+        ProcessRemoveChild(_process->parent, _process);
+    }
 
-    // 2. TODO: Loop over every list and free nodes. Then free pcb struct
     if (_process->kctxt) {
         free(_process->kctxt);
     }

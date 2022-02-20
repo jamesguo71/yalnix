@@ -32,4 +32,5 @@ pcb_t *ProcessCreateIdle();
 void ProcessDelete(pcb_t *_process);
 int    ProcessTerminate(pcb_t *_process);
 void ProcessAddChild(pcb_t *_parent, pcb_t *_child);
+void ProcessRemoveChild(pcb_t *_parent, pcb_t *_child);
 #endif // __PROCESS_H
