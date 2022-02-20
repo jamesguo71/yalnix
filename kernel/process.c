@@ -42,6 +42,8 @@ pcb_t *ProcessCreateIdle() {
         Halt();
     }
 
+    bzero(process->ks, sizeof(process->ks[0]) * KERNEL_NUMBER_STACK_FRAMES);
+    bzero(process->pt, sizeof(process->pt[0]) * MAX_PT_LEN);
 
     // 2. Set the KernelContext to NULL as it will be initialized later by KCCopy. Similarly,
     //    Set the brk and data_end addresses to NULL as they will be set later by LoadProgram.
