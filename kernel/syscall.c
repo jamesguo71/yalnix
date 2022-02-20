@@ -22,8 +22,7 @@ int SyscallFork (UserContext *_uctxt) {
     // Get a new pid for the child process
     pcb_t *child = ProcessCreate();
     if (child == NULL) {
-        TracePrintf(1, "Fork: failed to create a new process.\n");
-        ProcessDelete(child);
+        TracePrintf(1, "SyscallFork: failed to create a new process.\n");
         return ERROR;
     }
     // Copy user_context into the new pcb
@@ -34,7 +33,7 @@ int SyscallFork (UserContext *_uctxt) {
         if (parent->pt[i].valid) {
             int pfn = FrameFindAndSet();
             if (pfn == ERROR) {
-                TracePrintf(1, "Fork: failed to find a free frame.\n");
+                TracePrintf(1, "SyscallFork: failed to find a free frame.\n");
                 ProcessDelete(child);
                 return ERROR;
             }
@@ -46,7 +45,7 @@ int SyscallFork (UserContext *_uctxt) {
             // Assert kernel heap is at least one page below kernel stack
             void *temp_page_addr = (void *) ((temp_page_num - 1) << PAGESHIFT);
             if (temp_page_addr < e_kernel_curr_brk) {
-                TracePrintf(1, "Fork: unable to use the frame below kernel stack as a temporary.\n");
+                TracePrintf(1, "SyscallFork: unable to use the frame below kernel stack as a temporary.\n");
                 ProcessDelete(child);
                 return ERROR;
             }
@@ -57,7 +56,7 @@ int SyscallFork (UserContext *_uctxt) {
         }
     }
     // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
-    if (child->kctxt != NULL) { TracePrintf(1, "Fork: child->kctxt should be null\n"); Halt();}
+    if (child->kctxt != NULL) { TracePrintf(1, "SyscallFork: child->kctxt should be null\n"); Halt();}
     KernelContextSwitch(KCCopy, child, NULL);
     // Make the return value different between parent process and child process
     pcb_t *cur_running = SchedulerGetRunning(e_scheduler);

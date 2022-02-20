@@ -17,7 +17,7 @@ pcb_t *ProcessCreate() {
     pcb_t *process = ProcessCreateIdle();
     if (!process) {
         TracePrintf(1, "[ProcessCreate] Failed to create process\n");
-        Halt();
+        return NULL;
     }
 
     // 2. Find some free frames for the process' kernel stack and map them to the pages in
@@ -26,6 +26,7 @@ pcb_t *ProcessCreate() {
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFindAndSet();
         if (frame == ERROR) {
+            ProcessDelete(process);
             TracePrintf(1, "[ProcessCreate]: Failed to find a free frame.\n");
             return NULL;
         }
@@ -43,7 +44,7 @@ pcb_t *ProcessCreateIdle() {
     pcb_t *process = (pcb_t *) malloc(sizeof(pcb_t));
     if (!process) {
         TracePrintf(1, "[ProcessCreateIdle] Error mallocing space for process struct\n");
-        Halt();
+        return NULL;
     }
 
     bzero(process->ks, sizeof(process->ks[0]) * KERNEL_NUMBER_STACK_FRAMES);
@@ -67,11 +68,11 @@ pcb_t *ProcessCreateIdle() {
  *
  * \param[in] _pcb  A pcb_t struct that the caller wishes to free
  */
-int ProcessDelete(pcb_t *_process) {
+void ProcessDelete(pcb_t *_process) {
     // 1. Check arguments. Return error if invalid.
     if (!_process) {
         TracePrintf(1, "[ProcessDelete] Invalid pcb pointer\n");
-        return ERROR;
+        Halt();
     }
 
     // Free region 1 pagetable frames
@@ -93,5 +94,4 @@ int ProcessDelete(pcb_t *_process) {
         free(_process->kctxt);
     }
     free(_process);
-    return 0;
 }
