@@ -2,6 +2,6 @@
 #define __PTE_H
 #include <hardware.h>
 
-int PTEClear(pte_t *pt, int page_num);
-int PTESet(pte_t *pt, int page_num, int prot, int pfn);
+void PTEClear(pte_t *_pt, int _page_num);
+void PTESet(pte_t *_pt, int _page_num, int _prot, int _pfn);
 #endif // __PTE_H
