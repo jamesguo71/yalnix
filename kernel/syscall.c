@@ -32,7 +32,7 @@ int SyscallFork (UserContext *_uctxt) {
     pcb_t *parent = SchedulerGetRunning(e_scheduler);
     for (int i = 0; i < MAX_PT_LEN; i++) {
         if (parent->pt[i].valid) {
-            int pfn = FrameFind();
+            int pfn = FrameFindAndSet();
             if (pfn == ERROR) {
                 TracePrintf(1, "Fork: failed to find a free frame.\n");
                 ProcessDelete(child);
@@ -216,7 +216,7 @@ int SyscallBrk (void *_brk) {
         if (growing) {
             // 6a. If we are growing the heap, then we first need to find an available frame.
             //     If we can't find one (i.e., we are out of memory) return ERROR.
-            int frame_num = FrameFind();
+            int frame_num = FrameFindAndSet();
             if (frame_num == ERROR) {
                 TracePrintf(1, "[SyscallBrk] Unable to find free frame\n");
                 return ERROR;

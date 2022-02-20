@@ -24,7 +24,11 @@ pcb_t *ProcessCreate() {
     //    the process' kernel stack page table.
     TracePrintf(1, "[ProcessCreate] Mapping kernel stack pages for pid: %d\n", process->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        int frame = FrameFind();
+        int frame = FrameFindAndSet();
+        if (frame == ERROR) {
+            TracePrintf(1, "[ProcessCreate]: Failed to find a free frame.\n");
+            return NULL;
+        }
         PTESet(process->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
