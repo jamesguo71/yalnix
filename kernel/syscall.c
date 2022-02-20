@@ -18,8 +18,7 @@
  * \return              Return child process's pid for parent, 0 for child process, and ERROR otherwise
  */
 int SyscallFork (UserContext *_uctxt) {
-    // Create a new pcb for child process
-    // Get a new pid for the child process
+    // Create a new pcb for child process, and get a new pid for the child process
     pcb_t *child = ProcessCreate();
     if (child == NULL) {
         TracePrintf(1, "SyscallFork: failed to create a new process.\n");
@@ -55,6 +54,12 @@ int SyscallFork (UserContext *_uctxt) {
             PTEClear(e_kernel_pt, temp_page_num);
         }
     }
+    // Setup relationship between parent/child
+    ProcessAddChild(parent, child);
+    child->parent = parent;
+    // Add child to ready list
+    SchedulerAddRunning(e_scheduler, child);
+
     // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
     if (child->kctxt != NULL) { TracePrintf(1, "SyscallFork: child->kctxt should be null\n"); Halt();}
     if (KernelContextSwitch(KCCopy, child, NULL) == ERROR) {
@@ -125,7 +130,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
     //    The reason we want to save the pcb is that it holds information needed by the parent.
     //
     //    So "terminate" the process, add it to our terminated list, then update the wait list---
-    //    update will check to see if the children's parent process is waiting on them, and if so,
+    //    update will check to see if the headchild's parent process is waiting on them, and if so,
     //    move the parent over to the ready list. Later on, the parent resume in SyscallWait and
     //    find its child's pcb in the terminated list.
     running->exit_status = _status;
@@ -154,22 +159,22 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
     }
 
     // 3. If the parent has no remaining child processes, return immediately.
-    if (!running->children) {
-        TracePrintf(1, "[SyscallWait] Parent %d has no remaining children\n", running->pid);
+    if (!running->headchild) {
+        TracePrintf(1, "[SyscallWait] Parent %d has no remaining headchild\n", running->pid);
         return ERROR;
     }
 
     // If our code works correctly, then this outer while loop should never actually run more than
-    // two times. Specifically, a process might loop through all of its children but see that none
+    // two times. Specifically, a process might loop through all of its headchild but see that none
     // are finished. So, it blocks itself and cedes the CPU to the next ready process. At some
-    // point in time one of its children finishes and *sees* that its parent is in the wait queue.
+    // point in time one of its headchild finishes and *sees* that its parent is in the wait queue.
     // before exiting, the child moves the parent to the ready queue. When the parent runs again,
     // it loops back once more but this time should find a child in the terminated queue and return
     // from this function.
     while (1) {
 
-        // 4. Loop through the current running process' children to see if any have finished.
-        pcb_t *child = running->children;
+        // 4. Loop through the current running process' headchild to see if any have finished.
+        pcb_t *child = running->headchild;
         while (child) {
             int child_pid = child->pid;
 
@@ -177,7 +182,7 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
             // not "find" it again in successive calls to "Wait". Save its exit status
             // in the outgoing status_ptr, free its pcb memory, and return its pid.
             //
-            // TODO: Does ProcessDelete update children and sibling pointers or do I need
+            // TODO: Does ProcessDelete update headchild and sibling pointers or do I need
             //       to do that here?
             if (SchedulerGetTerminated(e_scheduler, child_pid)) {
                 SchedulerRemoveTerminated(e_scheduler, child_pid);
@@ -187,9 +192,9 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
             }
         }
 
-        // 5. If none of the running process' children have finished, then save its UserContext,
+        // 5. If none of the running process' headchild have finished, then save its UserContext,
         //    add it to the wait queue and let the next ready process run. The parent process will
-        //    get moved back onto the ready queue once one of its children exits (this may happen
+        //    get moved back onto the ready queue once one of its headchild exits (this may happen
         //    in SyscallExit, TrapMemory, or any function where a process is termianted).
         //
         //    TODO: Again, what if we run a process that has never been run before? We do not want

@@ -55,6 +55,9 @@ pcb_t *ProcessCreateIdle() {
     process->kctxt    = NULL;
     process->brk      = NULL;
     process->data_end = NULL;
+    process->parent = NULL;
+    process->headchild = NULL;
+    process->sibling = NULL;
 
     // 3. Assign the process a pid. Note that the build system keeps a mappig of page tables
     //    to pids, so if we don't assign pid via the helper function it complains about the
@@ -119,4 +122,44 @@ int ProcessTerminate(pcb_t *_process) {
         FrameClear(_process->ks[i].pfn);
     }
     return 0;
+}
+
+/*!
+ * \desc    Add a child process's link to its parent
+ */
+void ProcessAddChild(pcb_t *_parent, pcb_t *_child) {
+    if (!_parent || !_child) {
+        TracePrintf(1, "[ProcessAddChild] invalid pointer.\n");
+        Halt();
+    }
+
+    if (_parent->headchild == NULL) {
+        _parent->headchild = _child;
+    }
+    else {
+        pcb_t *end;
+        for (end = _parent->headchild; end->sibling != NULL; end = end->sibling)
+            ;
+        end->sibling = _child;
+    }
+}
+
+/*!
+ * \desc    Remove a child process's link from its parent
+ */
+void ProcessRemoveChild(pcb_t *_parent, pcb_t *_child) {
+    if (!_parent || !_child) {
+        TracePrintf(1, "[ProcessAddChild] invalid pointer.\n");
+        Halt();
+    }
+
+    if (_parent->headchild == _child) {
+        _parent->headchild = _child->sibling;
+    }
+    else {
+        pcb_t *end;
+        for (end = _parent->headchild; end->sibling != _child; end = end->sibling)
+            ;
+        end->sibling = _child->sibling;
+    }
 }
