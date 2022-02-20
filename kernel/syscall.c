@@ -57,7 +57,10 @@ int SyscallFork (UserContext *_uctxt) {
     }
     // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
     if (child->kctxt != NULL) { TracePrintf(1, "SyscallFork: child->kctxt should be null\n"); Halt();}
-    KernelContextSwitch(KCCopy, child, NULL);
+    if (KernelContextSwitch(KCCopy, child, NULL) == ERROR) {
+        TracePrintf(1, "SyscallFork: KernelContextSwitch failed.\n");
+        Halt();
+    }
     // Make the return value different between parent process and child process
     pcb_t *cur_running = SchedulerGetRunning(e_scheduler);
     if (cur_running == parent) {
