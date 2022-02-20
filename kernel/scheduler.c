@@ -787,7 +787,7 @@ int SchedulerUpdateTTYWrite(scheduler_t *_scheduler) {
     return 0;
 }
 
-int SchedulerUpdateWait(scheduler_t *_scheduler) {
+int SchedulerUpdateWait(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdateWait] Invalid list pointer\n");

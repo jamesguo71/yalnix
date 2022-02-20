@@ -91,5 +91,5 @@ int    SchedulerUpdateLock(scheduler_t *_scheduler);
 int    SchedulerUpdatePipe(scheduler_t *_scheduler);
 int    SchedulerUpdateTTYRead(scheduler_t *_scheduler);
 int    SchedulerUpdateTTYWrite(scheduler_t *_scheduler);
-int    SchedulerUpdateWait(scheduler_t *_scheduler);
+int    SchedulerUpdateWait(scheduler_t *_scheduler, int _pid);
 #endif // __SCHEDULER_H
