@@ -77,3 +77,28 @@ int ProcessDelete(pcb_t *_process) {
     free(_process);
     return 0;
 }
+
+
+/*!
+ * \desc                
+ *
+ * \param[in] _process  The pcb struct for the process the caller wishes to terminate
+ */
+int ProcessTerminate(pcb_t *_process) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_process) {
+        TracePrintf(1, "[ProcessTerminate] Invalid pcb pointer\n");
+        return ERROR;
+    }
+
+    // 2. Free the current process' memory by freeing its frames (both region 1 and region 0).
+    for (int i = 0; i < MAX_PT_LEN; i++) {
+        if (_process->pt[i].valid) {
+            FrameClear(_process->pt[i].pfn);
+        }
+    }
+    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
+        FrameClear(_process->ks[i].pfn);
+    }
+    return 0;
+}
