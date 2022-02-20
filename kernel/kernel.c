@@ -416,8 +416,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     TracePrintf(1, "[KernelStart] kernel_heap_end_page_num:    %d\n", kernel_heap_end_page_num);
     TracePrintf(1, "[KernelStart] kernel_stack_start_page_num: %d\n", kernel_stack_start_page_num);
     TracePrintf(1, "[KernelStart] idle_stack_frame_num:        %d\n", user_stack_frame_num);
-    TracePrintf(1, "[KernelStart] idlePCB->uctxt.sp:          %p\n", idlePCB->uctxt.sp);
-    TracePrintf(1, "[KernelStart] initPCB->uctxt.sp:          %p\n", initPCB->uctxt.sp);
+    TracePrintf(1, "[KernelStart] idlePCB->uctxt.sp:           %p\n", idlePCB->uctxt.sp);
+    TracePrintf(1, "[KernelStart] initPCB->uctxt.sp:           %p\n", initPCB->uctxt.sp);
     TracePrintf(1, "[KernelStart] idlePCB->pid:                %d\n", idlePCB->pid);
     TracePrintf(1, "[KernelStart] initPCB->pid:                %d\n", initPCB->pid);
     SchedulerPrintProcess(e_scheduler);
