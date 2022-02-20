@@ -399,8 +399,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     Afterwards, copy init's UserContext (now configured thanks to LoadProgram) to the
     //     address indicated by _uctxt; this address is where Yalnix will look for the
     //     UserContext of the process that it should currently execute.
-    SchedulerAddIdle(e_scheduler, idlePCB);
-    SchedulerAddInit(e_scheduler, initPCB);
+    SchedulerAddIdle(e_scheduler,    idlePCB);
+    SchedulerAddProcess(e_scheduler, initPCB);
     SchedulerAddReady(e_scheduler,   idlePCB);
     SchedulerAddRunning(e_scheduler, initPCB);
     memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
@@ -578,8 +578,7 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     pcb_t *running_new = (pcb_t *) _next_pcb_p;
     if (!running_new->kctxt) {
         TracePrintf(1, "[MyKCS] Calling KCCopy for pid: %d\n", running_new->pid);
-        pcb_t *initPCB = SchedulerGetInit(e_scheduler);
-        KCCopy(_kctxt, (void *) initPCB, NULL);
+        KCCopy(_kctxt, _next_pcb_p, NULL);
     }
 
     // 4. Update the kernel's page table so that its stack pages map to
