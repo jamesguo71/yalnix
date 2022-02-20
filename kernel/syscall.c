@@ -135,15 +135,71 @@ void SyscallExit (UserContext *_uctxt, int _status) {
 
 }
 
-int SyscallWait (UserContext *_uctxt, int *status_ptr) {
-    // Check to see if the process's children list is empty (children is a null pointer),
-    // if so, return ERROR
-    // Otherwise, walk through the process's children list and see if there's a process with `exited = 1`
-    // If so, continue to next step; If not, block the current process until if its has a child with `exited=1`
-    // Check if status_ptr is not null, collect its status and Save its exit status into `status_ptr`, otherwise just continue
-    // retire its pid, delete it from the process's children list, then return
-    // then, the call returns with the pid of that child.
-    return 0;
+int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
+    // 1. Check that the status pointer is valid. If not, return ERROR.
+    if (!_status_ptr) {
+        TracePrintf(1, "[SyscallWait] Invalid status pointer\n");
+        return ERROR;
+    }
+
+    // 2. Get the current running process
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    if (!running) {
+        TracePrintf(1, "[SyscallWait] e_scheduler returned no running process\n");
+        Halt();
+    }
+
+    // 3. If the parent has no remaining child processes, return immediately.
+    if (!running->children) {
+        TracePrintf(1, "[SyscallWait] Parent %d has no remaining children\n", running->pid);
+        return ERROR;
+    }
+
+    // If our code works correctly, then this outer while loop should never actually run more than
+    // two times. Specifically, a process might loop through all of its children but see that none
+    // are finished. So, it blocks itself and cedes the CPU to the next ready process. At some
+    // point in time one of its children finishes and *sees* that its parent is in the wait queue.
+    // before exiting, the child moves the parent to the ready queue. When the parent runs again,
+    // it loops back once more but this time should find a child in the terminated queue and return
+    // from this function.
+    while (1) {
+
+        // 4. Loop through the current running process' children to see if any have finished.
+        pcb_t *child = running->children;
+        while (child) {
+            int child_pid = child->pid;
+
+            // If we find a child in the terminated list, first remove it so that we do
+            // not "find" it again in successive calls to "Wait". Save its exit status
+            // in the outgoing status_ptr, free its pcb memory, and return its pid.
+            //
+            // TODO: Does ProcessDelete update children and sibling pointers or do I need
+            //       to do that here?
+            if (SchedulerGetTerminated(e_scheduler, child_pid)) {
+                SchedulerRemoveTerminated(e_scheduler, child_pid);
+                *_status_ptr = child->exit_status;
+                ProcessDelete(child);
+                return child_pid;
+            }
+        }
+
+        // 5. If none of the running process' children have finished, then save its UserContext,
+        //    add it to the wait queue and let the next ready process run. The parent process will
+        //    get moved back onto the ready queue once one of its children exits (this may happen
+        //    in SyscallExit, TrapMemory, or any function where a process is termianted).
+        //
+        //    TODO: Again, what if we run a process that has never been run before? We do not want
+        //          to KCCopy from here. What if I update KCSwitch to pass the init process as the
+        //          process to copy for the new process?
+        TracePrintf(1, "[SyscallWait] Parent %d for a child to finish\n", running->pid);
+        memcpy(&running->uctxt, _uctxt, sizeof(UserContext));
+        SchedulerAddWait(e_scheduler, running);
+        SchedulerPrintWait(e_scheduler);
+        KCSwitch(_uctxt, running);
+    }
+
+    // 6. This should never be reached.
+    return ERROR;
 }
 
 int SyscallGetPid (void) {
