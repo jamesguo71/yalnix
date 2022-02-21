@@ -757,8 +757,8 @@ int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
     while (child) {
         pcb_t *next = child->sibling;
         if (child->exited) {
-            TracePrintf(1, "[SchedulerUpdateTerminated] Removing child %d. Next is %d\n",
-                           child->pid, next->pid);
+            TracePrintf(1, "[SchedulerUpdateTerminated] Removing child %d.\n",
+                           child->pid);
             SchedulerRemoveTerminated(_scheduler, child->pid);
             ProcessDelete(child);
         }
