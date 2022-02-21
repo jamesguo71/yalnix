@@ -58,7 +58,7 @@ int SyscallFork (UserContext *_uctxt) {
     ProcessAddChild(parent, child);
     child->parent = parent;
     // Add child to ready list
-    SchedulerAddRunning(e_scheduler, child);
+    SchedulerAddReady(e_scheduler, child);
 
     // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
     if (child->kctxt != NULL) { TracePrintf(1, "SyscallFork: child->kctxt should be null\n"); Halt();}
