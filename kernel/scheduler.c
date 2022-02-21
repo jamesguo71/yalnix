@@ -682,7 +682,7 @@ static int SchedulerRemove(scheduler_t *_scheduler, int _pid, int _start, int _e
  *                        "blocked" lists (e.g., delay, lock, pipe, tty). They loop over the
  *                        specified list to check if any of the processes meet the necessary
  *                        conditions for being unblocked. If so, they are removed from the list
- *                        and added to the ready list.
+ *                        and added to the ready list (if applicable).
  *
  * \param[in] _scheduler  An initialized scheduler_t struct
  * 
@@ -738,11 +738,31 @@ int SchedulerUpdatePipe(scheduler_t *_scheduler) {
     return 0;
 }
 
+// \desc    This function should be called by a *parent* process in SyscallExit only, as it is used
+//          to remove any of the parents remaining children from the terminated list---otherwise,
+//          they would sit on the terminated list forever. For any of the parents children that are
+//          still running, ProcessDelete will set their parent pointer to NULL so that they do not
+//          later add themselves to the terminated list when they exit.
 int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
     // 1. Check arguments. Return error if invalid.
-    if (!_scheduler) {
-        TracePrintf(1, "[SchedulerUpdateTerminated] Invalid list pointer\n");
+    if (!_scheduler || !_parent) {
+        TracePrintf(1, "[SchedulerUpdateTerminated] One or more invalid list pointers\n");
         return ERROR;
+    }
+
+    // 2. Loop through the parents children. If any of them have exited, remove them from the
+    //    terminated list and free their pcbs. Make sure you grab a reference to their sibling
+    //    before freeing the pcb though.
+    pcb_t *child = _parent->headchild;
+    while (child) {
+        pcb_t *next = child->sibling;
+        if (child->exited) {
+            TracePrintf(1, "[SchedulerUpdateTerminated] Removing child %d. Next is %d\n",
+                           child->pid, next->pid);
+            SchedulerRemoveTerminated(_scheduler, child->pid);
+            ProcessDelete(child);
+        }
+        child = next;
     }
     return 0;
 }
@@ -770,6 +790,14 @@ int SchedulerUpdateWait(scheduler_t *_scheduler, int _pid) {
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdateWait] Invalid list pointer\n");
         return ERROR;
+    }
+
+    // 2. Check to see if the parent is in the waiting list.
+    //    If so, remove them and move them to the ready list.
+    pcb_t *parent = SchedulerGetWait(_scheduler, _pid);
+    if (parent) {
+        SchedulerRemoveWait(_scheduler, _pid);
+        SchedulerAddReady(_scheduler, parent);
     }
     return 0;
 }
