@@ -741,7 +741,7 @@ int SchedulerUpdatePipe(scheduler_t *_scheduler) {
 // \desc    This function should be called by a *parent* process in SyscallExit only, as it is used
 //          to remove any of the parents remaining children from the terminated list---otherwise,
 //          they would sit on the terminated list forever. For any of the parents children that are
-//          still running, ProcessDelete will set their parent pointer to NULL so that they do not
+//          still running, ProcessDestroy will set their parent pointer to NULL so that they do not
 //          later add themselves to the terminated list when they exit.
 int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
     // 1. Check arguments. Return error if invalid.
@@ -760,7 +760,7 @@ int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
             TracePrintf(1, "[SchedulerUpdateTerminated] Removing child %d.\n",
                            child->pid);
             SchedulerRemoveTerminated(_scheduler, child->pid);
-            ProcessDelete(child);
+            ProcessDestroy(child);
         }
         child = next;
     }

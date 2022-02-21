@@ -19,5 +19,3 @@ TrapDisk
 ```
 
 * Add SchedulerUpdateTerminated which takes the parent pcb and loops over its children. For any children that have exited, it removes their pcb from the terminated list and frees it. We need to do this, otherwise a parent may exit and all of its children will add themselves to the terminated list never to be removed.
-
-* Make sure you or fei update ProcessDelete so that if a process has live children, it sets their parent pointer to NULL so that they do not later add themselves to the Terminated list

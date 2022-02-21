@@ -26,7 +26,7 @@ pcb_t *ProcessCreate() {
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFindAndSet();
         if (frame == ERROR) {
-            ProcessDelete(process);
+            ProcessDestroy(process);
             TracePrintf(1, "[ProcessCreate]: Failed to find a free frame.\n");
             return NULL;
         }
@@ -67,64 +67,79 @@ pcb_t *ProcessCreateIdle() {
     return process;
 }
 
+
 /*!
- * \desc                  Frees the memory associated with a pcb_t struct
+ * \desc                  Destroy the process by ProcessTerminate it and ProcessDelete it
+ *
+ * \param[in] _pcb  A pcb_t struct that the caller wishes to destroy
+ */
+void ProcessDestroy(pcb_t *_process) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_process) {
+        TracePrintf(1, "[ProcessDestroy] Invalid pcb pointer\n");
+        Halt();
+    }
+    ProcessTerminate(_process);
+    ProcessDelete(_process);
+}
+
+/*!
+ * \desc                  remove the relationships for this pcb and retire its pid before freeing its memory
  *
  * \param[in] _pcb  A pcb_t struct that the caller wishes to free
  */
-void ProcessDelete(pcb_t *_process) {
+ void ProcessDelete(pcb_t *_process) {
     // 1. Check arguments. Return error if invalid.
     if (!_process) {
-        TracePrintf(1, "[ProcessDelete] Invalid pcb pointer\n");
+        TracePrintf(1, "[ProcessTerminate] Invalid pcb pointer\n");
         Halt();
     }
 
-    // Free region 1 pagetable entries
-    for (int i = 0; i < MAX_PT_LEN; i++) {
-        if (_process->pt[i].valid) {
-            PTEClear(_process->pt, i);
-        }
-    }
-    // Free kernel stack pagetable entries
-    for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        if (_process->ks[i].valid) {
-            PTEClear(_process->ks, i);
-        }
-    }
-
+    // remove itself from its parent's children list
     if (_process->parent) {
         ProcessRemoveChild(_process->parent, _process);
     }
 
-    if (_process->kctxt) {
-        free(_process->kctxt);
+    // this will change its children's parent pointers to null
+    for (pcb_t *end = _process->headchild; end != NULL; end = end->sibling) {
+        end->parent = NULL;
     }
-    free(_process);
-}
 
+    helper_retire_pid(_process->pid);
+
+    free(_process);
+ }
 
 /*!
- * \desc
+ * \desc                this will free the resources, frames, pagetable entries of the pcb
  *
  * \param[in] _process  The pcb struct for the process the caller wishes to terminate
  */
-int ProcessTerminate(pcb_t *_process) {
+void ProcessTerminate(pcb_t *_process) {
     // 1. Check arguments. Return error if invalid.
     if (!_process) {
         TracePrintf(1, "[ProcessTerminate] Invalid pcb pointer\n");
-        return ERROR;
+        Halt();
     }
 
     // 2. Free the current process' memory by freeing its frames (both region 1 and region 0).
     for (int i = 0; i < MAX_PT_LEN; i++) {
         if (_process->pt[i].valid) {
             FrameClear(_process->pt[i].pfn);
+            PTEClear(_process->pt, i);
         }
     }
+
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        FrameClear(_process->ks[i].pfn);
+        if (_process->ks[i].valid) {
+            FrameClear(_process->ks[i].pfn);
+            PTEClear(_process->ks, i);
+        }
     }
-    return 0;
+
+    if (_process->kctxt) {
+        free(_process->kctxt);
+    }
 }
 
 /*!

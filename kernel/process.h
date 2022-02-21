@@ -13,7 +13,7 @@ typedef struct pcb {
     int *held_locks;        // locks held by the current process, used by sync syscalls
 
     struct pcb *parent;     // For keeping track of parent process
-    struct pcb *headchild;   // For keeping track of headchild processes
+    struct pcb *headchild;   // For keeping track of children processes
     struct pcb *sibling;
 
     KernelContext *kctxt;   // Needed for KernelCopy? See Page 45
@@ -29,8 +29,10 @@ typedef struct pcb {
 
 pcb_t *ProcessCreate();
 pcb_t *ProcessCreateIdle();
+
+void ProcessTerminate(pcb_t *_process);
 void ProcessDelete(pcb_t *_process);
-int    ProcessTerminate(pcb_t *_process);
+void ProcessDestroy(pcb_t *_process);
 void ProcessAddChild(pcb_t *_parent, pcb_t *_child);
 void ProcessRemoveChild(pcb_t *_parent, pcb_t *_child);
 #endif // __PROCESS_H
