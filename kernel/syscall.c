@@ -52,6 +52,7 @@ int SyscallFork (UserContext *_uctxt) {
             PTESet(e_kernel_pt, temp_page_num, PROT_READ|PROT_WRITE, pfn);
             memcpy(temp_page_addr, src_addr, PAGESIZE);
             PTEClear(e_kernel_pt, temp_page_num);
+            WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_0);
         }
     }
     // Setup relationship between parent/child
