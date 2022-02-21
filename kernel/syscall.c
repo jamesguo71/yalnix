@@ -42,7 +42,7 @@ int SyscallFork (UserContext *_uctxt) {
             void *src_addr = (void *) ((i << PAGESHIFT) + VMEM_1_BASE);
             int temp_page_num = (KERNEL_STACK_BASE >> PAGESHIFT) - 1;
             // Assert kernel heap is at least one page below kernel stack
-            void *temp_page_addr = (void *) ((temp_page_num - 1) << PAGESHIFT);
+            void *temp_page_addr = (void *) (temp_page_num << PAGESHIFT);
             if (temp_page_addr < e_kernel_curr_brk) {
                 TracePrintf(1, "SyscallFork: unable to use the frame below kernel stack as a temporary.\n");
                 ProcessDelete(child);
