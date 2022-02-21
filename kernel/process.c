@@ -79,13 +79,13 @@ void ProcessDelete(pcb_t *_process) {
         Halt();
     }
 
-    // Free region 1 pagetable frames
+    // Free region 1 pagetable entries
     for (int i = 0; i < MAX_PT_LEN; i++) {
         if (_process->pt[i].valid) {
             PTEClear(_process->pt, i);
         }
     }
-    // Free kernel stack page frames
+    // Free kernel stack pagetable entries
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         if (_process->ks[i].valid) {
             PTEClear(_process->ks, i);
