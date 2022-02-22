@@ -4,10 +4,10 @@ int main() {
     int pid = Fork();
     if (pid) {
         while (1) {
-            TracePrintf(1, "[fork_and_exit] parent got pid returned from fork %d\n", pid);
+            TracePrintf(1, "[fork_and_exit] Parent fork return value: %d\n", pid);
             Pause();
         }
     }
-    TracePrintf(1, "[fork_and_exit] child got pid returned from fork %d \n", pid);
+    TracePrintf(1, "[fork_and_exit] Child fork return value: %d \n", pid);
     return 0;
 }
