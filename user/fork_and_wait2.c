@@ -26,6 +26,8 @@ int main() {
         // grandchild process
         else {
             pid = GetPid();
+            TracePrintf(1, "[fork_and_wait] Grandchild process: %d delaying...\n", pid);
+            Delay(2);
             TracePrintf(1, "[fork_and_wait] Grandchild process: %d exiting...\n", pid);
             return 0;
         }
