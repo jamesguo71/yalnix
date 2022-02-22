@@ -17,7 +17,7 @@ K_INCS = kernel.h frame.h load_program.h process.h pte.h scheduler.h syscall.h t
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c chpt3_test.c fork_test.c fork_and_exit.c fork_and_wait.c
+U_SRCS = init.c chpt3_test.c fork_test.c fork_and_exit.c fork_and_wait.c fork_and_wait2.c
 U_INCS = 
 
 
