@@ -1,7 +1,7 @@
 #include "yuser.h"
 
 int main() {
-    int num_children = 5;
+    int num_children = 2;
     for (int i = 0; i < num_children; i++) {
         int pid = Fork();
         if (pid) {
