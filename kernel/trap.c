@@ -147,7 +147,6 @@ int TrapClock(UserContext *_uctxt) {
     //    If their count hits zero, they get added to the ready queue.
     //    TODO: Better name?
     SchedulerUpdateDelay(e_scheduler);
-    SchedulerPrintReady(e_scheduler);
     SchedulerPrintDelay(e_scheduler);
 
     // 3. Get the pcb for the current running process and the next process to run. If there is
@@ -159,7 +158,7 @@ int TrapClock(UserContext *_uctxt) {
     }
     memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
     SchedulerAddReady(e_scheduler, running_old);
-
+    SchedulerPrintReady(e_scheduler);
     return KCSwitch(_uctxt, running_old);
 }
 
