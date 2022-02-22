@@ -435,8 +435,8 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
  */
 int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     // 1. Check if arguments are valid. If not, print message and halt.
-    if (!_uctxt || !_running_old) {
-        TracePrintf(1, "[KCSwitch] One or more invalid argument pointers\n");
+    if (!_uctxt) {
+        TracePrintf(1, "[KCSwitch] Invalid _uctxt argument\n");
         Halt();
     }
 
@@ -451,8 +451,6 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     // 3. Switch to the new process. If the new process has never been run before, MyKCS will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
     //    kernel stack contents of the old process.
-    TracePrintf(1, "[KCSwitch] running_old->pid: %d\t\trunning_new->pid: %d\n",
-                    _running_old->pid, running_new->pid);
     int ret = KernelContextSwitch(MyKCS,
                          (void *) _running_old,
                          (void *) running_new);
@@ -562,9 +560,13 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
         Halt();
     }
 
-    // 2. Save the incoming KernelContext for the current running process.
+    // 2. Save the incoming KernelContext for the current running process. It is possible that
+    //    the current process exited---and its pcb has been free'd---so first check to see that
+    //    the pcb still exists. If not, don't bother saving the kernel context.
     pcb_t *running_old = (pcb_t *) _curr_pcb_p;
-    memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
+    if (running_old) {
+        memcpy(running_old->kctxt, _kctxt, sizeof(KernelContext));
+    }
 
     // 3. Check to see if the next process has ever been run before. If not, then we need to
     //    initialize the next process' KernelContext and kernel stack contents. Do this by
@@ -591,7 +593,13 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
 
     // 5. Tell the CPU where to find the page table for our new running process.
     //    Remember to flush the TLB so we dont map to the previous process' frames!
-    TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n", running_old->pid, running_new->pid); 
+    if (running_old) {
+        TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n",
+                                running_old->pid, running_new->pid);
+    } else {
+        TracePrintf(1, "[MyKCS] Switching from deleted process to pid: %d\n",
+                                running_new->pid);
+    } 
     WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
     return running_new->kctxt;
