@@ -2,9 +2,14 @@
 
 
 /*
- * The parent process spawns num_children child processes then waits for them to exit.
- * The child processes simply print their pid and exit. Afterwards, the parent exits as
- * well, which should cause a system halt since the parent is the init program.
+ * This program tests both (1) our ability to spawn grandchildren processes (2) and our correct
+ * handling of parent processes that exit before their children. Specifically, the child process
+ * in this program exits first, but is only "terminated" as its parent is still alive and waiting
+ * on it. Thus, we delay the grandchild process so that the parent has time to unblock from wait
+ * and retrieve the child's information (which also involves completely deleting the child process'
+ * pcb information and removing its pointer in the grandchild pcb). Then, when the grandchild
+ * finally runs again and exits, its parent (the child process) has already exited. So the
+ * grandchild completely deletes itself instead of adding its pcb to the terminated queue.
  */
 int main() {
     // parent process

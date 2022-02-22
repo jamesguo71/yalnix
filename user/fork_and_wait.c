@@ -1,7 +1,13 @@
 #include "yuser.h"
 
+
+/*
+ * The parent process spawns num_children child processes then waits for them to exit.
+ * The child processes simply print their pid and exit. Afterwards, the parent exits as
+ * well, which should cause a system halt since the parent is the init program.
+ */
 int main() {
-    int num_children = 2;
+    int num_children = 5;
     for (int i = 0; i < num_children; i++) {
         int pid = Fork();
         if (pid) {
