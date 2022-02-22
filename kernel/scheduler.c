@@ -324,7 +324,7 @@ pcb_t *SchedulerGetReady(scheduler_t *_scheduler) {
     // 3. Check for our base case: there is only 1 process in the ready list.
     //    If so, set the list start and end pointers to NULL and return the process.
     node_t *node    = _scheduler->lists[SCHEDULER_READY_START];
-    pcb_t    *process = node->process;
+    pcb_t  *process = node->process;
     if (node == _scheduler->lists[SCHEDULER_READY_END]) {
         _scheduler->lists[SCHEDULER_READY_START] = NULL;
         _scheduler->lists[SCHEDULER_READY_END]   = NULL;

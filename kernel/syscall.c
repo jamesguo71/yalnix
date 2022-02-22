@@ -168,6 +168,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
     SchedulerUpdateWait(e_scheduler, running->parent->pid);
     SchedulerPrintTerminated(e_scheduler);
     SchedulerPrintWait(e_scheduler);
+    SchedulerPrintReady(e_scheduler);
 
     // 5. The guide states that this call should never return. Thus, we should context switch
     //    to the next ready process. Since the exited process is now in the terminated list,
