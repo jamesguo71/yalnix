@@ -486,7 +486,7 @@ int SchedulerPrintWait(scheduler_t *_scheduler) {
         TracePrintf(1, "[SchedulerPrintWait] Invalid list pointer\n");
         return ERROR;
     }
-    TracePrintf(1, "[SchedulerPrintWait] TTYWrite List:\n");
+    TracePrintf(1, "[SchedulerPrintWait] Wait List:\n");
     return SchedulerPrint(_scheduler, SCHEDULER_WAIT_START);
 }
 
