@@ -95,6 +95,10 @@ void ProcessDestroy(pcb_t *_process) {
         Halt();
     }
 
+    if (_process->kctxt) {
+        free(_process->kctxt);
+    }
+
     // remove itself from its parent's children list
     if (_process->parent) {
         ProcessRemoveChild(_process->parent, _process);
@@ -135,10 +139,6 @@ void ProcessTerminate(pcb_t *_process) {
             FrameClear(_process->ks[i].pfn);
             PTEClear(_process->ks, i);
         }
-    }
-
-    if (_process->kctxt) {
-        free(_process->kctxt);
     }
 }
 
