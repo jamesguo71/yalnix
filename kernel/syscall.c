@@ -214,7 +214,7 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
                 if (_status_ptr) {
                     *_status_ptr = child->exit_status;
                 }
-                ProcessDestroy(child);
+                ProcessDelete(child);
                 return child_pid;
             }
             child = child->sibling;
