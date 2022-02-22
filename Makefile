@@ -70,11 +70,16 @@ LINK_KERNEL = $(LINK.c)
 #	compiled and linked.  Use these flags *only* when linking a
 #	Yalnix user program.
 #
-
 USER_LIBS = $(LIBDIR)/libuser.a
-ASFLAGS = -D__ASM__
-# CPPFLAGS= -m32 -fno-builtin -I. -I$(INCDIR) -g -DLINUX
-CPPFLAGS = -D_FILE_OFFSET_BITS=64 -m32 -fno-builtin -I. -I$(INCDIR) -g -DLINUX
+ASFLAGS   = -D__ASM__
+CPPFLAGS  = -D_FILE_OFFSET_BITS=64 \
+            -m32                   \
+            -fno-builtin           \
+            -fno-stack-protector   \
+            -I.                    \
+            -I$(INCDIR)            \
+            -g                     \
+            -DLINUX
 
 
 
