@@ -30,43 +30,35 @@ int TrapKernel(UserContext *_uctxt) {
     //    the syscall return value in reg[0].
     switch(_uctxt->code) {
         case YALNIX_FORK:
-            TracePrintf(1, "[TrapKernel_Fork] _uctxt->code: %x\n", _uctxt->code);
              _uctxt->regs[0] = SyscallFork(_uctxt);
             break;
 
         case YALNIX_EXEC:
-            TracePrintf(1, "[TrapKernel_Exec] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallExec((char *)  _uctxt->regs[0],
                                           (char **) _uctxt->regs[1]);
             break;
 
         case YALNIX_EXIT:
-            TracePrintf(1, "[TrapKernel_Exit] _uctxt->code: %x\n", _uctxt->code);
             SyscallExit(_uctxt, (int ) _uctxt->regs[0]);
             break;
 
         case YALNIX_WAIT:
-            TracePrintf(1, "[TrapKernel_Wait] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallWait(_uctxt, (int *) _uctxt->regs[0]);
             break;
 
         case YALNIX_GETPID:
-            TracePrintf(1, "[TrapKernel_GetPid] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallGetPid();
             break;
 
         case YALNIX_BRK:
-            TracePrintf(1, "[TrapKernel_Brk] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallBrk((void *) _uctxt->regs[0]);
             break;
 
         case YALNIX_DELAY:
-            TracePrintf(1, "[TrapKernel_Delay] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallDelay(_uctxt, (int ) _uctxt->regs[0]);
             break;
 
         case YALNIX_TTY_READ:
-            TracePrintf(1, "[TrapKernel_TTYRead] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallTtyRead(_uctxt,
                                     (int )   _uctxt->regs[0],
                                     (void *) _uctxt->regs[1],
@@ -74,7 +66,6 @@ int TrapKernel(UserContext *_uctxt) {
             break;
 
         case YALNIX_TTY_WRITE:
-            TracePrintf(1, "[TrapKernel_TTYWrite] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallTtyWrite(_uctxt,
                                      (int)    _uctxt->regs[0],
                                      (void *) _uctxt->regs[1],
@@ -82,62 +73,51 @@ int TrapKernel(UserContext *_uctxt) {
             break;
 
         case YALNIX_PIPE_INIT:
-            TracePrintf(1, "[TrapKernel_PipeInit] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallPipeInit((int *) _uctxt->regs[0]);
             break;
 
         case YALNIX_PIPE_READ:
-            TracePrintf(1, "[TrapKernel_PipeRead] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallPipeRead((int)    _uctxt->regs[0],
                                               (void *) _uctxt->regs[1],
                                               (int)    _uctxt->regs[2]);
             break;
 
         case YALNIX_PIPE_WRITE:
-            TracePrintf(1, "[TrapKernel_PipeWrite] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallPipeWrite((int)    _uctxt->regs[0],
                                                (void *) _uctxt->regs[1],
                                                (int)    _uctxt->regs[2]);
             break;
 
         case YALNIX_LOCK_INIT:
-            TracePrintf(1, "[TrapKernel_LockInit] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallLockInit((int *) _uctxt->regs[0]);
             break;
 
         case YALNIX_LOCK_ACQUIRE:
-            TracePrintf(1, "[TrapKernel_LockAquire] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallAcquire((int ) _uctxt->regs[0]);
             break;
 
         case YALNIX_LOCK_RELEASE:
-            TracePrintf(1, "[TrapKernel_LockRelease] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallRelease((int) _uctxt->regs[0]);
             break;
 
         case YALNIX_CVAR_INIT:
-            TracePrintf(1, "[TrapKernel_CvarInit] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallCvarInit((int *) _uctxt->regs[0]);
             break;
 
         case YALNIX_CVAR_SIGNAL:
-            TracePrintf(1, "[TrapKernel_CvarSignal] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallCvarSignal((int ) _uctxt->regs[0]);
             break;
 
         case YALNIX_CVAR_BROADCAST:
-            TracePrintf(1, "[TrapKernel_CvarBroadcast] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallCvarBroadcast((int ) _uctxt->regs[0]);
             break;
 
         case YALNIX_CVAR_WAIT:
-            TracePrintf(1, "[TrapKernel_CVarWait] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallCvarWait((int ) _uctxt->regs[0],
                                                      _uctxt->regs[1]);
             break;
 
         case YALNIX_RECLAIM:
-            TracePrintf(1, "[TrapKernel_Reclaim] _uctxt->code: %x\n", _uctxt->code);
             _uctxt->regs[0] = SyscallReclaim((int ) _uctxt->regs[0]);
             break;
 
