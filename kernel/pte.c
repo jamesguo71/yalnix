@@ -47,13 +47,13 @@ int PTECheckAddress(pte_t *_pt, void *_address, int _length, int _prot) {
     int num_pages = end_page - start_page;
     for (int i = 0; i <= num_pages; i++) {
         if (!_pt[start_page + i].valid) {
-            TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Page: %d not valid\n:",
+            TracePrintf(1, "[PTECheckAddress] Page: %d not valid\n:",
                                               _address, start_page + i);
             return ERROR;
         }
         if (_pt[start_page + i].prot != _prot) {
-            TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Page: %d prot doesn't match\n:",
-                                              _address, start_page + i);
+            TracePrintf(1, "[PTECheckAddress] Page: %d prot: %d doesn't match _prot: %d\n:",
+                                              _address, _pt[_start_page + i].prot, _prot);
             return ERROR;            
         }
     }
