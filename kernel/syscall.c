@@ -125,8 +125,6 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
 
     // 4. Calculate the number of arguments. For each argument, calculate its length then check
     //    that it is within valid region 1 memory space.
-    //
-    //    TODO: Can argvec be NULL? We do not check in LoadProgram which could segfault
     int num_args = 0;
     if (_argvec) {
         while (_argvec[num_args]) { num_args++; }
