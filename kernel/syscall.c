@@ -92,8 +92,8 @@ int SyscallFork (UserContext *_uctxt) {
  */
 int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     // 1. Check filename argument for NULL
-    if (!_filename) {
-        TracePrintf(1, "[SyscallExec] Invalid _filename pointer\n");
+    if (!_filename || !_argvec || !_argvec[0]) {
+        TracePrintf(1, "[SyscallExec] One or more invalid arguments\n");
         return ERROR;
     }
 
@@ -249,7 +249,11 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
         return ERROR;
     }
 
-    // 3. Check that the address of the status pointer is within valid memory space'
+    // 3. Check that the address of the status pointer is within valid memory space. Note that we
+    //    want to ensure every *byte* of _status is within valid memory space. Thus, we convert it
+    //    to a void buffer (void is 1 byte each) that is the length of an int. This way, a user
+    //    cannot pass us an address of the last byte of a valid page in hopes of writing to the
+    //    next (potentially invalid) page because an integer is larger than a byte.
     int ret = PTECheckAddress(running->pt,
                      (void *) _status_ptr,
                               sizeof(int),
