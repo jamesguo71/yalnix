@@ -51,11 +51,11 @@ int PTECheckAddress(pte_t *_pt, void *_address, int _length, int _prot) {
                                               _address, start_page + i);
             return ERROR;
         }
-        if (_pt[start_page + i].prot != _prot) {
-            TracePrintf(1, "[PTECheckAddress] Page: %d prot: %d doesn't match _prot: %d\n:",
-                                              _address, _pt[start_page + i].prot, _prot);
-            return ERROR;            
-        }
+        // if (_pt[start_page + i].prot != _prot) {
+        //     TracePrintf(1, "[PTECheckAddress] Page: %d prot: %d doesn't match _prot: %d\n:",
+        //                                       _address, _pt[start_page + i].prot, _prot);
+        //     return ERROR;            
+        // }
     }
     return 0;
 }
