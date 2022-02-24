@@ -1,8 +1,64 @@
 #include <hardware.h>
 #include <ykernel.h>
 
+#include "hardware.h"
 #include "pte.h"
 #include "kernel.h"
+
+
+int PTEAddressToPage(void *_address) {
+    // 1.
+    if (!_address) {
+        TracePrintf(1, "[PTEAddressToPage] Invalid address pointer\n");
+        return ERROR;
+    }
+    return ((int ) _address) >> PAGESHIFT;
+}
+
+
+int PTECheckAddress(pte_t *_pt, void *_address, int _length, int _prot) {
+    // 1. Check that our page table, address, and length variables are valid values.
+    if (!_pt || !_address || _length < 1) {
+        TracePrintf(1, "[PTECheckAddress] One or more invalid arguments\n");
+        return ERROR;
+    }
+
+    // 2. Calculate the page number of the incoming address; remember to subtract MAX_PT_LEN since
+    //    region 1 addresses map to pages 128-255 but our page tables are indexed 0-127. 
+    int start_page = PTEAddressToPage(_address) - MAX_PT_LEN;
+    if (start_page < 0) {
+        TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Points below region 1\n", _address);
+        return ERROR;
+    }
+
+    // 3. Calculate the number of pages that the buffer spans. For the start page, we had to check
+    //    that it was not below region 1, but for the end page we need to make sure that it is not
+    //    above region 1.
+    int end_page = PTEAddressToPage(_address + _length) - MAX_PT_LEN;
+    if (end_page >= MAX_PT_LEN) {
+        TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Points above region 1\n",
+                                          _address + _length);
+        return ERROR;
+    }
+
+    // 4. Calculate the number of pages that the buffer spans and check that each one is valid
+    //    and has the proper protection bits. If not, return ERROR. Note that in the case that
+    //    the buffer is on a single page our num_pages will be 0; thus, let i be <= num_pages.
+    int num_pages = end_page - start_page;
+    for (int i = 0; i <= num_pages; i++) {
+        if (pt[start_page + i].valid != 0) {
+            TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Page: %d not valid\n:",
+                                              _address, start_page + i);
+            return ERROR;
+        }
+        if (pt[start_page + i].prot != _prot) {
+            TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Page: %d prot doesn't match\n:",
+                                              _address, start_page + i);
+            return ERROR;            
+        }
+    }
+    return 0;
+}
 
 
 /*!
