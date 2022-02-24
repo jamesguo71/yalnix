@@ -116,7 +116,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     int ret = PTECheckAddress(running->pt,
                      (void *) _filename,
                               length,
-                              PROT_READ | PROT_WRITE);
+                              PROT_READ);
     if (ret < 0) {
         TracePrintf(1, "[SyscallExec] Filename is not within valid address space\n");
         PTEPrint(running->pt);
@@ -135,7 +135,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
         ret = PTECheckAddress(running->pt,
                      (void *) _argvec[i],
                               length,
-                              PROT_READ | PROT_WRITE);
+                              PROT_READ);
         if (ret < 0) {
             TracePrintf(1, "[SyscallExec] Argvec[%d] is not within valid address space\n", i);
             PTEPrint(running->pt);
