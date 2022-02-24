@@ -62,6 +62,7 @@ int SyscallFork (UserContext *_uctxt) {
     child->parent = parent;
     // Add child to ready list
     SchedulerAddReady(e_scheduler, child);
+    PTEPrint(child->pt);
 
     // Call KernelContextSwitch(KCCopy, *new_pcb, NULL) to copy the current process into the new pcb
     if (child->kctxt != NULL) { TracePrintf(1, "SyscallFork: child->kctxt should be null\n"); Halt();}
@@ -115,6 +116,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
                               PROT_READ | PROT_WRITE);
     if (ret < 0) {
         TracePrintf(1, "[SyscallExec] Filename is not within valid address space\n");
+        PTEPrint(running->pt);
         Halt();
     }
 
@@ -135,6 +137,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
                               PROT_READ | PROT_WRITE);
         if (ret < 0) {
             TracePrintf(1, "[SyscallExec] Argvec[%d] is not within valid address space\n", i);
+            PTEPrint(running->pt);
             Halt();
         }
     }

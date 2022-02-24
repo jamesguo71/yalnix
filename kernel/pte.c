@@ -93,6 +93,25 @@ void PTEClear(pte_t *_pt, int _page_num) {
     _pt[_page_num].pfn   = 0;
 }
 
+void PTEPrint(pte_t *_pt) {
+    // 1. Check that our page table pointer is invalid. If not, print message and return error.
+    if (!_pt) {
+        TracePrintf(1, "[PTEClear] Invalid page table pointer\n");
+        Halt();
+    }
+
+    for (int i = 0; i < MAX_PT_LEN; i++) {
+        if (_pt[i].valid) {
+            TracePrintf(1, "[PTEPrint] Page: %d valid: %d prot: %d pfn: %d\n",
+                                       i, _pt[i].valid, _pt[i].prot, _pt[i].pfn);
+        } else {
+            TracePrintf(1, "[PTEPrint] Page: %d valid: %d prot: %d pfn: none\n",
+                                       i, _pt[i].valid, _pt[i].prot);
+        }
+    }
+}
+
+
 
 /*!
  * \desc                A
