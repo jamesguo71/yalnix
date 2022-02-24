@@ -115,7 +115,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
                               PROT_READ | PROT_WRITE);
     if (ret < 0) {
         TracePrintf(1, "[SyscallExec] Filename is not within valid address space\n");
-        return ERROR;
+        Halt();
     }
 
     // 4. Calculate the number of arguments. For each argument, calculate its length then check
@@ -135,7 +135,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
                               PROT_READ | PROT_WRITE);
         if (ret < 0) {
             TracePrintf(1, "[SyscallExec] Argvec[%d] is not within valid address space\n", i);
-            return ERROR;
+            Halt();
         }
     }
 
@@ -149,7 +149,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     ret = LoadProgram(_filename, _argvec, running);
     if (ret < 0) {
         TracePrintf(1, "[SyscallExec] Error loading program: %s\n", _filename);
-        return ERROR;
+        Halt();
     }
     memcpy(_uctxt, &running->uctxt, sizeof(UserContext));
     return 0;
