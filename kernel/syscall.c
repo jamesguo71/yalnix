@@ -78,6 +78,7 @@ int SyscallFork (UserContext *_uctxt) {
     }
 }
 
+
 /*!
  * \desc                Replaces the currently running program in the calling process' memory with
  *                      the program stored in the file named by filename. The argumetn argvec
@@ -107,6 +108,9 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     // 3. Calculate the length of the filename string and then check that it is within valid
     //    region 1 memory space for the current running process. Specifically, check that every
     //    byte is within region 1 and that they are in pages that have valid protections.
+    //
+    //    TODO: How, if at all, should i check protection bits? Technically the filename could be
+    //          in rx memory, or rw memory depending on if its data or on the heap.
     int length = 0;
     while (_filename[length] != '\0') { length++; }
     int ret = PTECheckAddress(running->pt,
