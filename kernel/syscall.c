@@ -122,8 +122,8 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     //
     //    TODO: Can argvec be NULL? We do not check in LoadProgram which could segfault
     int num_args = 0;
-    if (argvec) {
-        while (argvec[num_args]) { num_args++; }
+    if (_argvec) {
+        while (_argvec[num_args]) { num_args++; }
     }
     for (int i = 0; i < num_args; i++) {
         length = 0;
