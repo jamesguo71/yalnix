@@ -21,7 +21,7 @@ int SyscallFork (UserContext *_uctxt);
  * 
  * \return              0 on success, ERROR otherwise
  */
-int SyscallExec (char *filename, char **argvec);
+int SyscallExec (UserContext *_uctxt, char *filename, char **argvec);
 
 void SyscallExit (UserContext *_uctxt, int);
 

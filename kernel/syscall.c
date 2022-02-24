@@ -88,17 +88,69 @@ int SyscallFork (UserContext *_uctxt) {
  *
  * \return              0 on success, ERROR otherwise
  */
-int SyscallExec (char *filename, char **argvec) {
-    // Should be pretty similar to what LoadProgram in `template.c` does
-    // Open the file
-    // Calculate the start and end position of each section (Text, Data, Stack)
-    // Reserve space for argc and argv on the stack
-    // Throw away the old page table and build up the new one
-    // Flush TLB
-    // Read the data from file into memory
-    // Change the PROT field of the TEXT section
-    // Set the entry point in the process's UserContext
-    // Build the argument list on the new stack.
+int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
+    // 1. Check filename argument for NULL
+    if (!_filename) {
+        TracePrintf(1, "[SyscallExec] Invalid _filename pointer\n");
+        return ERROR;
+    }
+
+    // 2. Get the current running process from our process list. If there is
+    //    none, print a message and Halt because something has gone wrong. 
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    if (!running) {
+        TracePrintf(1, "[SyscallExec] e_scheduler returned no running process\n");
+        Halt();
+    }
+
+    // 3. Calculate the length of the filename string and then check that it is within valid
+    //    region 1 memory space for the current running process. Specifically, check that every
+    //    byte is within region 1 and that they are in pages that have valid protections.
+    int length = 0;
+    while (_filename[length] != '\0') { length++; }
+    int ret = PTECheckAddress(running->pt,
+                     (void *) _filename,
+                              length,
+                              PROT_READ | PROT_WRITE);
+    if (ret < 0) {
+        TracePrintf(1, "[SyscallExec] Filename is not within valid address space\n");
+        return ERROR;
+    }
+
+    // 4. Calculate the number of arguments. For each argument, calculate its length then check
+    //    that it is within valid region 1 memory space.
+    //
+    //    TODO: Can argvec be NULL? We do not check in LoadProgram which could segfault
+    int num_args = 0;
+    if (argvec) {
+        while (argvec[num_args]) { num_args++; }
+    }
+    for (int i = 0; i < num_args; i++) {
+        length = 0;
+        while (_argvec[i][length] != '\0') { length++; }
+        ret = PTECheckAddress(running->pt,
+                     (void *) _argvec[i],
+                              length,
+                              PROT_READ | PROT_WRITE);
+        if (ret < 0) {
+            TracePrintf(1, "[SyscallExec] Argvec[%d] is not within valid address space\n", i);
+            return ERROR;
+        }
+    }
+
+    // 5. Call LoadProgram which will copy over _filename and the argvec to kernel memory, free
+    //    all current pages in the page table, then load the program into memory and reallocate
+    //    pages for the new program. It will also set its UserContext for the new pc and sp.
+    //
+    //    If LoadProgram is successfull, copy the update UserContext into the yalnix system's
+    //    UserContext variable so that when we return we begin executing at the newly loaded
+    //    program's code instead of the code that we just replaced.
+    ret = LoadProgram(_filename, _argvec, running);
+    if (ret < 0) {
+        TracePrintf(1, "[SyscallExec] Error loading program: %s\n", _filename);
+        return ERROR;
+    }
+    memcpy(_uctxt, &running->uctxt, sizeof(UserContext));
     return 0;
 }
 
@@ -187,6 +239,16 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
     // 2. If the parent has no remaining child processes, return immediately.
     if (!running->headchild) {
         TracePrintf(1, "[SyscallWait] Parent %d has no remaining children\n", running->pid);
+        return ERROR;
+    }
+
+    // 3. Check that the address of the status pointer is within valid memory space'
+    int ret = PTECheckAddress(running->pt,
+                     (void *) _status_ptr,
+                              sizeof(int),
+                              PROT_READ | PROT_WRITE);
+    if (ret < 0) {
+        TracePrintf(1, "[SyscallWait] Status pointer is not within valid address space\n");
         return ERROR;
     }
 
