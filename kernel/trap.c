@@ -20,6 +20,7 @@
 int TrapKernel(UserContext *_uctxt) {
     // 1. Check arguments. Return error if invalid.
     if (!_uctxt) {
+        TracePrintf(1, "[TrapKernel] Invalid _uctxt pointer\n");
         return ERROR;
     }
 
@@ -34,8 +35,9 @@ int TrapKernel(UserContext *_uctxt) {
             break;
 
         case YALNIX_EXEC:
-            _uctxt->regs[0] = SyscallExec((char *)  _uctxt->regs[0],
-                                          (char **) _uctxt->regs[1]);
+            _uctxt->regs[0] = SyscallExec(_uctxt,
+                                (char *)  _uctxt->regs[0],
+                                (char **) _uctxt->regs[1]);
             break;
 
         case YALNIX_EXIT:
