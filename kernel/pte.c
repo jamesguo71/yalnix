@@ -46,12 +46,12 @@ int PTECheckAddress(pte_t *_pt, void *_address, int _length, int _prot) {
     //    the buffer is on a single page our num_pages will be 0; thus, let i be <= num_pages.
     int num_pages = end_page - start_page;
     for (int i = 0; i <= num_pages; i++) {
-        if (pt[start_page + i].valid != 0) {
+        if (_pt[start_page + i].valid != 0) {
             TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Page: %d not valid\n:",
                                               _address, start_page + i);
             return ERROR;
         }
-        if (pt[start_page + i].prot != _prot) {
+        if (_pt[start_page + i].prot != _prot) {
             TracePrintf(1, "[PTECheckAddress] Invalid address: %p. Page: %d prot doesn't match\n:",
                                               _address, start_page + i);
             return ERROR;            
