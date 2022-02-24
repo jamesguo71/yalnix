@@ -3,6 +3,7 @@
 #include <ykernel.h>
 
 #include "frame.h"
+#include "load_program.h"
 #include "kernel.h"
 #include "process.h"
 #include "scheduler.h"
