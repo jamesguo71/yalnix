@@ -15,7 +15,7 @@ int main() {
         Exec(program, argvec);
         while (1) {
             TracePrintf(1, "[fork_and_exec] Child failed to exec: %s\n");
-            Pause();
+            Halt();
         }
     }
     return 0;
