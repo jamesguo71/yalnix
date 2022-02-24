@@ -205,7 +205,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
         // TODO: This should not return! Instead you need to context switch, but how do we do that
         //       if I just destroyed the current process? Our context switch functions expect to
         //       recieve the current pcb. Might have to update them to accept NULL.
-        KCSwitch(_uctxt, running);
+        KCSwitch(_uctxt, NULL);
     }
 
     // 4. Otherwise, we want to save the process' exit status and "terminate" it. The difference
