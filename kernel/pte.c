@@ -51,11 +51,17 @@ int PTECheckAddress(pte_t *_pt, void *_address, int _length, int _prot) {
                                               _address, start_page + i);
             return ERROR;
         }
-        // if (_pt[start_page + i].prot != _prot) {
-        //     TracePrintf(1, "[PTECheckAddress] Page: %d prot: %d doesn't match _prot: %d\n:",
-        //                                       _address, _pt[start_page + i].prot, _prot);
-        //     return ERROR;            
-        // }
+
+        // Note that we want to make sure the page *at least* has our desired protection bits
+        // but that it may have others. For example, the caller may want to ensure that the page
+        // is readable, which means that any page that is r/rx/rw is valid. Thus, we we use
+        // logical AND to check the the page at least has the caller's specified prot bits.
+        int prot = _pt[start_page + i].prot & _prot;
+        if (prot != _prot) {
+            TracePrintf(1, "[PTECheckAddress] Page: %d prot: %d doesn't match _prot: %d\n:",
+                                              _address, _pt[start_page + i].prot, _prot);
+            return ERROR;            
+        }
     }
     return 0;
 }
