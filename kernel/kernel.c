@@ -555,7 +555,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
  */
 KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p) {
     // 1. Check if arguments are valid. If not, print message and halt.
-    if (!_kctxt || !_curr_pcb_p || !_next_pcb_p) {
+    if (!_kctxt || !_next_pcb_p) {
         TracePrintf(1, "[MyKCS] One or more invalid argument pointers\n");
         Halt();
     }
