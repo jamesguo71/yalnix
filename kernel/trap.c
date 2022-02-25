@@ -213,9 +213,9 @@ int TrapMemory(UserContext *_uctxt) {
     int sp_pn   = PTEAddressToPage(running_old->uctxt.sp) - MAX_PT_LEN;
     int brk_pn  = PTEAddressToPage(running_old->brk)      - MAX_PT_LEN + 1;
     TracePrintf(1, "[TrapMemory] addr_pn: %d\tsp_pn: %d\tbrk_pn: %d\n", addr_pn, sp_pn, brk_pn);
-    TracePrintf(1, "[TrapMemory] running->uctxt.sp: %p\t_uctxt->sp: %p\n",
-                                 running_old->uctxt.sp, _uctxt->sp);
-    
+    TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\trunning->uctxt.sp: %p\n",
+                                 _uctxt->sp, running_old->uctxt.sp);
+
     if (addr_pn < sp_pn && addr_pn > brk_pn) {
         TracePrintf(1, "[TrapMemory] Growing stack spaces.\n");
         for (int start = addr_pn; start < sp_pn; start++) {
