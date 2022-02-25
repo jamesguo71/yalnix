@@ -184,7 +184,7 @@ int TrapIllegal(UserContext *_uctxt) {
     pcb_t *running = SchedulerGetRunning(e_scheduler);
     TracePrintf(1, "[TrapIllegal] Killing process: %d for illegal instruction: %d\n",
                                   running->pid, _uctxt->code);
-    SyscallExit(_uctxt, uctxt->code);
+    SyscallExit(_uctxt, _uctxt->code);
     return 0;
 }
 
@@ -241,7 +241,7 @@ int TrapMath(UserContext *_uctxt) {
     pcb_t *running = SchedulerGetRunning(e_scheduler);
     TracePrintf(1, "[TrapMath] Killing process: %d for math error: %d\n",
                                   running->pid, _uctxt->code);
-    SyscallExit(_uctxt, uctxt->code);
+    SyscallExit(_uctxt, _uctxt->code);
     return 0;
 }
 
