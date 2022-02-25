@@ -23,7 +23,8 @@ U_SRCS = init.c           \
          fork_and_exec.c  \
          fork_and_exit.c  \
          fork_and_wait.c  \
-         fork_and_wait2.c
+         fork_and_wait2.c \
+         trap_math.c
 U_INCS = 
 
 
