@@ -210,7 +210,15 @@ int TrapMemory(UserContext *_uctxt) {
     }
     // Check if we need to grow the stack, if yes, make sure it will be one page above the heap
     int addr_pn = PTEAddressToPage(_uctxt->addr)          - MAX_PT_LEN;
-    int sp_pn   = PTEAddressToPage(running_old->uctxt.sp) - MAX_PT_LEN;
+    int sp_pn   = 0;
+    for (int i = addr_pn; i < MAX_PT_LEN; i++) {
+        if (running_old->pt[i].valid) {
+            sp_pn = i;
+            break;
+        }
+    }
+
+    // int sp_pn   = PTEAddressToPage(running_old->uctxt.sp) - MAX_PT_LEN;
     int brk_pn  = PTEAddressToPage(running_old->brk)      - MAX_PT_LEN + 1;
     TracePrintf(1, "[TrapMemory] addr_pn: %d\tsp_pn: %d\tbrk_pn: %d\n", addr_pn, sp_pn, brk_pn);
     TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\trunning->uctxt.sp: %p\n",
