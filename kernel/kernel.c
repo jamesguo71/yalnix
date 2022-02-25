@@ -93,8 +93,13 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //    page table to reflect any pages/frames that have been added/removed as a result of
     //    the brk change. Start off by calculating the page numbers for our new proposed brk
     //    and our current brk.
-    int new_brk_page_num = ((int) _kernel_new_brk)   >> PAGESHIFT;
-    int cur_brk_page_num = ((int) e_kernel_curr_brk) >> PAGESHIFT;
+    int stack_page_num   = PTEAddressToPage((void *) KERNEL_STACK_BASE);
+    int cur_brk_page_num = PTEAddressToPage(e_kernel_curr_brk);
+    int new_brk_page_num = PTEAddressToPage(_kernel_new_brk);
+    if (new_brk_page_num >= stack_page_num - KERNEL_NUMBER_STACK_FRAMES) {
+        TracePrintf(1, "[SetKernelBrk] Error: proposed brk is in red zone.\n");
+        return ERROR;
+    }
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.
@@ -448,7 +453,15 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     }
     SchedulerAddRunning(e_scheduler, running_new);
 
-    // 3. Switch to the new process. If the new process has never been run before, MyKCS will
+    // 3. Before we context switch, check to see if we are actually switching to a new process.
+    //    If not, simply return. It may be the case in TrapClock that the current running
+    //    process is the only one ready to run because everything else is blocked. If so, we
+    //    should just keep running it without wasting time context switching.
+    if (_running_old == running_new) {
+        return 0;
+    }
+
+    // 4. Switch to the new process. If the new process has never been run before, MyKCS will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
     //    kernel stack contents of the old process.
     int ret = KernelContextSwitch(MyKCS,
@@ -459,7 +472,7 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
         Halt();
     }
 
-    // 4. At this point, this code is being run by the *new* process, which means that its
+    // 5. At this point, this code is being run by the *new* process, which means that its
     //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
     //    process that this new process previously gave up the CPU for). Thus, get the
     //    current running process (i.e., "this" process) and set the outgoing _uctxt.
@@ -555,7 +568,7 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
  */
 KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p) {
     // 1. Check if arguments are valid. If not, print message and halt.
-    if (!_kctxt || !_curr_pcb_p || !_next_pcb_p) {
+    if (!_kctxt || !_next_pcb_p) {
         TracePrintf(1, "[MyKCS] One or more invalid argument pointers\n");
         Halt();
     }

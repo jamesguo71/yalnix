@@ -116,7 +116,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     int ret = PTECheckAddress(running->pt,
                      (void *) _filename,
                               length,
-                              PROT_READ | PROT_WRITE);
+                              PROT_READ);
     if (ret < 0) {
         TracePrintf(1, "[SyscallExec] Filename is not within valid address space\n");
         PTEPrint(running->pt);
@@ -135,7 +135,7 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
         ret = PTECheckAddress(running->pt,
                      (void *) _argvec[i],
                               length,
-                              PROT_READ | PROT_WRITE);
+                              PROT_READ);
         if (ret < 0) {
             TracePrintf(1, "[SyscallExec] Argvec[%d] is not within valid address space\n", i);
             PTEPrint(running->pt);
@@ -205,7 +205,7 @@ void SyscallExit (UserContext *_uctxt, int _status) {
         // TODO: This should not return! Instead you need to context switch, but how do we do that
         //       if I just destroyed the current process? Our context switch functions expect to
         //       recieve the current pcb. Might have to update them to accept NULL.
-        KCSwitch(_uctxt, running);
+        KCSwitch(_uctxt, NULL);
     }
 
     // 4. Otherwise, we want to save the process' exit status and "terminate" it. The difference
@@ -318,7 +318,7 @@ int SyscallGetPid (void) {
     return running->pid;
 }
 
-int SyscallBrk (void *_brk) {
+int SyscallBrk (UserContext *_uctxt, void *_brk) {
     // 1. Make sure the incoming address is not NULL. If so, return ERROR.
     if (!_brk) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is NULL\n");
@@ -347,18 +347,19 @@ int SyscallBrk (void *_brk) {
     //          brk values are those that fall on page boundaries, so the process may end up with
     //          *more* memory than it asked for. It should never end up freeing more memory than
     //          it specified, however, because we round up.
-    //
-    //    TODO: Do I need to round up? I need to think about this more...
     _brk = (void *) UP_TO_PAGE(_brk);
 
-    // 4. If virtual memory has been enabled, then we are responsible for updating the process'
-    //    page table to reflect any pages/frames that have been added/removed as a result of
-    //    the brk change. Start off by calculating the page numbers for our new proposed brk
-    //    and our current brk.
-    int new_brk_page_num = ((int) _brk)         >> PAGESHIFT;
-    int cur_brk_page_num = ((int) running->brk) >> PAGESHIFT;
-    new_brk_page_num -= MAX_PT_LEN;
-    cur_brk_page_num -= MAX_PT_LEN;
+    // 4. Calculate the page numbers for the process' region 1 stack, current brk, and new brk.
+    //    The guide advises us to leave a "red" zone between the heap and stack to prevent them
+    //    from overwriting each other. Check to see that the new brk leaves enough space between
+    //    the stack. If not, print a message and return ERROR.
+    int stack_page_num   = PTEAddressToPage(_uctxt->sp)   - MAX_PT_LEN;
+    int cur_brk_page_num = PTEAddressToPage(running->brk) - MAX_PT_LEN;
+    int new_brk_page_num = PTEAddressToPage(_brk)         - MAX_PT_LEN;
+    if (new_brk_page_num >= stack_page_num - KERNEL_NUMBER_STACK_FRAMES) {
+        TracePrintf(1, "[SyscallBrk] Error: proposed brk is in red zone.\n");
+        return ERROR;
+    }
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.
