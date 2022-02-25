@@ -318,7 +318,7 @@ int SyscallGetPid (void) {
     return running->pid;
 }
 
-int SyscallBrk (void *_brk) {
+int SyscallBrk (UserContext *_uctxt, void *_brk) {
     // 1. Make sure the incoming address is not NULL. If so, return ERROR.
     if (!_brk) {
         TracePrintf(1, "[SyscallBrk] Error: proposed brk is NULL\n");
