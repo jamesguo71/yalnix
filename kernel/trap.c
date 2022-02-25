@@ -174,21 +174,17 @@ int TrapClock(UserContext *_uctxt) {
  * \return             0 on success, ERROR otherwise.
  */
 int TrapIllegal(UserContext *_uctxt) {
-    // TracePrintf a message at level 0, giving the process id of the process and some explanation
-    // of the problem. 
-    // The exit status reported to the parent process of the aborted process when the parent calls
-    // the Wait syscall (as described in Section 3.1) should be the value ERROR.    
-    // Wrap some of the functionalities below to a function `abort`?
-    // Put the current process to `terminated`
-    // Free its resources now or only when its parent calls Wait?
-    // KernelContextSwitch to a ready process (does KCS need special treatment with an aborted
-    // process?) 
-    // If there's no process in the ready queue, switch to `idle`
     // 1. Check arguments. Return error if invalid.
     if (!_uctxt) {
         return ERROR;
     }
-    TracePrintf(1, "[TrapIllegal] _uctxt->sp: %p\n", _uctxt->sp);
+
+    // 2. Grab the current running process and print some debug information. Then kill the
+    //    process by calling SyscallExit with the illegal instruction as the exit code.
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    TracePrintf(1, "[TrapIllegal] Killing process: %d for illegal instruction: %d\n",
+                                  running->pid, _uctxt->code);
+    SyscallExit(_uctxt, uctxt->code);
     return 0;
 }
 
@@ -235,14 +231,17 @@ int TrapMemory(UserContext *_uctxt) {
  * \return             0 on success, ERROR otherwise.
  */
 int TrapMath(UserContext *_uctxt) {
-    // TracePrintf the error message identified with the `code` field in `_uctxt`
-    // Refer to `TrapIllegal` above: `Abort` the process and switch to a process in the
-    // ready_queue
     // 1. Check arguments. Return error if invalid.
     if (!_uctxt) {
         return ERROR;
     }
-    TracePrintf(1, "[TrapMath] _uctxt->sp: %p\n", _uctxt->sp);
+
+    // 2. Grab the current running process and print some debug information. Then kill the
+    //    process by calling SyscallExit with the math error as the exit code.
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    TracePrintf(1, "[TrapMath] Killing process: %d for math error: %d\n",
+                                  running->pid, _uctxt->code);
+    SyscallExit(_uctxt, uctxt->code);
     return 0;
 }
 
