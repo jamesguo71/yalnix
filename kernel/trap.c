@@ -236,7 +236,7 @@ int TrapMemory(UserContext *_uctxt) {
     // 5. Check to see if the unmapped page the process is trying to touch is below
     //    the brk or above the stack. If so, this is not valid so abort the process.
     if (addr_pn < brk_pn || addr_pn > sp_pn) {
-        TracePrintf(1, "[TrapMemory] Addres not mapped: %p\n", _uctxt->addr);
+        TracePrintf(1, "[TrapMemory] Address out of bounds: %p\n", _uctxt->addr);
         SyscallExit(_uctxt, ERROR);        
     }
 
