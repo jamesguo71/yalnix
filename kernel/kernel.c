@@ -453,12 +453,15 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     }
     SchedulerAddRunning(e_scheduler, running_new);
 
-    // 3.
+    // 3. Before we context switch, check to see if we are actually switching to a new process.
+    //    If not, simply return. It may be the case in TrapClock that the current running
+    //    process is the only one ready to run because everything else is blocked. If so, we
+    //    should just keep running it without wasting time context switching.
     if (_running_old == running_new) {
         return 0;
     }
 
-    // 3. Switch to the new process. If the new process has never been run before, MyKCS will
+    // 4. Switch to the new process. If the new process has never been run before, MyKCS will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
     //    kernel stack contents of the old process.
     int ret = KernelContextSwitch(MyKCS,
@@ -469,7 +472,7 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
         Halt();
     }
 
-    // 4. At this point, this code is being run by the *new* process, which means that its
+    // 5. At this point, this code is being run by the *new* process, which means that its
     //    running_new stack variable is "stale" (i.e., running_new contains the pcb for the
     //    process that this new process previously gave up the CPU for). Thus, get the
     //    current running process (i.e., "this" process) and set the outgoing _uctxt.
