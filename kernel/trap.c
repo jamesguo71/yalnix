@@ -221,9 +221,11 @@ int TrapMemory(UserContext *_uctxt) {
                 TracePrintf(1, "[TrapMemory] Failed to find a free frame.\n");
                 return ERROR;
             }
+            TracePrintf(1, "[TrapMemory] Mapping page: %d to frame: %d\n", start, pfn);
             PTESet(running_old->pt, start, PROT_READ | PROT_WRITE, pfn);
         }
         WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+        memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
         return SUCCESS;
     }
     if (_uctxt->code == YALNIX_MAPERR) {
