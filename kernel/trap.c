@@ -225,7 +225,7 @@ int TrapMemory(UserContext *_uctxt) {
             PTESet(running_old->pt, start, PROT_READ | PROT_WRITE, pfn);
         }
         WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-        memcpy(_uctxt, &running_old->uctxt, sizeof(UserContext));
+        memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
         return SUCCESS;
     }
     if (_uctxt->code == YALNIX_MAPERR) {
