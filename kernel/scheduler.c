@@ -168,6 +168,11 @@ int SchedulerAddReady(scheduler_t *_scheduler, pcb_t *_process) {
         TracePrintf(1, "[SchedulerAddReady] Invalid list or process pointer\n");
         return ERROR;
     }
+
+    // 2. If the process is the idle process, do not add it to the ready queue.
+    if (_process == SchedulerGetIdle(_scheduler)) {
+        return 0;
+    }
     return SchedulerAdd(_scheduler,
                        _process,
                        SCHEDULER_READY_START,
