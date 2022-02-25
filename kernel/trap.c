@@ -223,6 +223,7 @@ int TrapMemory(UserContext *_uctxt) {
             }
             PTESet(running_old->pt, start, PROT_READ | PROT_WRITE, pfn);
         }
+        WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
         return SUCCESS;
     }
     if (_uctxt->code == YALNIX_MAPERR) {
