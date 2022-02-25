@@ -10,8 +10,22 @@
 K_SRC_DIR = ./kernel
 
 # What are the kernel c and include files?
-K_SRCS = kernel.c frame.c load_program.c process.c pte.c scheduler.c syscall.c trap.c
-K_INCS = kernel.h frame.h load_program.h process.h pte.h scheduler.h syscall.h trap.h
+K_SRCS = kernel.c       \
+         frame.c        \
+         load_program.c \
+         process.c      \
+         pte.c          \
+         scheduler.c    \
+         syscall.c      \
+         trap.c
+K_INCS = kernel.h       \
+         frame.h        \
+         load_program.h \
+         process.h      \
+         pte.h          \
+         scheduler.h    \
+         syscall.h      \
+         trap.h
 
 # Where's your user source?
 U_SRC_DIR = ./user
@@ -70,7 +84,13 @@ LD_EXTRA =
 KERNEL_LIBS = $(LIBDIR)/libkernel.a $(LIBDIR)/libhardware.so
 
 # the "kernel.x" argument tells the loader to use the memory layout in the kernel.x file..
-KERNEL_LDFLAGS = $(LD_EXTRA) -L$(LIBDIR) -lkernel -lelf  -Wl,-T,$(ETCDIR)/kernel.x  -Wl,-R$(LIBDIR)  -lhardware
+KERNEL_LDFLAGS = $(LD_EXTRA)                \
+                 -L$(LIBDIR)                \
+                 -lkernel                   \
+                 -lelf                      \
+                 -Wl,-T,$(ETCDIR)/kernel.x  \
+                 -Wl,-R$(LIBDIR)            \
+                 -lhardware
 LINK_KERNEL = $(LINK.c)
 
 #
