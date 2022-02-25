@@ -3,7 +3,7 @@
 void recurse(int depth) {
     TracePrintf(1, "[trap_memory] Recurse depth: %d\n", depth);
     int array[1000];
-    recurse(depth--);
+    recurse(--depth);
 }
 
 int main() {
