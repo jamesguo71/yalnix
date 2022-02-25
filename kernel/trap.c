@@ -8,7 +8,8 @@
 #include "scheduler.h"
 #include "syscall.h"
 #include "trap.h"
-
+#include "frame.h"
+#include "pte.h"
 
 /*!
  * \desc               Calls the appropriate internel syscall function based on the current process
@@ -211,7 +212,22 @@ int TrapMemory(UserContext *_uctxt) {
         TracePrintf(1, "[TrapClock] e_scheduler returned no running process\n");
         Halt();
     }
-
+    // Check if we need to grow the stack, if yes, make sure it will be one page above the heap
+    int addr_pn = PTEAddressToPage(_uctxt->addr) - MAX_PT_LEN;
+    int sp_pn = PTEAddressToPage(_uctxt->sp) - MAX_PT_LEN;
+    int brk_pn = PTEAddressToPage(running_old->brk) + 1 - MAX_PT_LEN;
+    if (addr_pn < sp_pn && addr_pn > brk_pn) {
+        TracePrintf(1, "[TrapMemory] Growing stack spaces.\n");
+        for (int start = addr_pn; start < sp_pn; start++) {
+            int pfn = FrameFindAndSet();
+            if (pfn == ERROR) {
+                TracePrintf(1, "[TrapMemory] Failed to find a free frame.\n");
+                return ERROR;
+            }
+            PTESet(running_old->pt, start, PROT_READ | PROT_WRITE, pfn);
+        }
+        return SUCCESS;
+    }
     if (_uctxt->code == YALNIX_MAPERR) {
         TracePrintf(1, "[TrapMemory] Address not mapped: %p\n", _uctxt->addr);
     }
@@ -221,7 +237,8 @@ int TrapMemory(UserContext *_uctxt) {
     TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\n", _uctxt->sp);
     TracePrintf(1, "[TrapMemory] running->pid: %d\trunning->uctxt.sp: %p\trunning->uctxt.pc: %p\n",
                    running_old->pid, running_old->uctxt.sp, running_old->uctxt.pc);
-    Halt();
+
+    SyscallExit(_uctxt, ERROR);
     return 0;
 }
 
