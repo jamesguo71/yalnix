@@ -203,13 +203,28 @@ int TrapMemory(UserContext *_uctxt) {
     if (!_uctxt) {
         return ERROR;
     }
+
+    // 2. If the memory fault was due to invalid permissions, simply abort the process.
+    if (_uctxt->code == YALNIX_ACCERR) {
+        TracePrintf(1, "[TrapMemory] Invalid permissions: %p\n", _uctxt->addr);
+        SyscallExit(_uctxt, ERROR);
+    }
+
+    // 3. Grab the pcb for the current running process
     pcb_t *running_old = SchedulerGetRunning(e_scheduler);
     if (!running_old) {
         TracePrintf(1, "[TrapClock] e_scheduler returned no running process\n");
         Halt();
     }
-    // Check if we need to grow the stack, if yes, make sure it will be one page above the heap
-    int addr_pn = PTEAddressToPage(_uctxt->addr)          - MAX_PT_LEN;
+
+    // 4. If the fault was not due to invalid permissions, then its due to the address pointing
+    //    to an unmapped page. Check to see if this unmapped page is between the heap and stack
+    //    (i.e., if the fault is due to the stack growing).
+    //
+    //    Calculate the page number for the address that caused the fault, the brk (but add
+    //    a page for the redzone buffer), and then find the current last valid stack page.
+    int addr_pn = PTEAddressToPage(_uctxt->addr)     - MAX_PT_LEN;
+    int brk_pn  = PTEAddressToPage(running_old->brk) - MAX_PT_LEN + 1;
     int sp_pn   = 0;
     for (int i = addr_pn; i < MAX_PT_LEN; i++) {
         if (running_old->pt[i].valid) {
@@ -218,35 +233,29 @@ int TrapMemory(UserContext *_uctxt) {
         }
     }
 
-    // int sp_pn   = PTEAddressToPage(running_old->uctxt.sp) - MAX_PT_LEN;
-    int brk_pn  = PTEAddressToPage(running_old->brk)      - MAX_PT_LEN + 1;
-    TracePrintf(1, "[TrapMemory] addr_pn: %d\tsp_pn: %d\tbrk_pn: %d\n", addr_pn, sp_pn, brk_pn);
-    TracePrintf(1, "[TrapMemory] _uctxt->sp: %p\trunning->uctxt.sp: %p\n",
-                                 _uctxt->sp, running_old->uctxt.sp);
+    // 5. Check to see if the unmapped page the process is trying to touch is below
+    //    the brk or above the stack. If so, this is not valid so abort the process.
+    if (addr_pn < brk_pn || addr_pn > sp_pn) {
+        TracePrintf(1, "[TrapMemory] Addres not mapped: %p\n", _uctxt->addr);
+        SyscallExit(_uctxt, ERROR);        
+    }
 
-    if (addr_pn < sp_pn && addr_pn > brk_pn) {
-        TracePrintf(1, "[TrapMemory] Growing stack spaces.\n");
-        for (int start = addr_pn; start < sp_pn; start++) {
-            int pfn = FrameFindAndSet();
-            if (pfn == ERROR) {
-                TracePrintf(1, "[TrapMemory] Failed to find a free frame.\n");
-                return ERROR;
-            }
-            TracePrintf(1, "[TrapMemory] Mapping page: %d to frame: %d\n", start, pfn);
-            PTESet(running_old->pt, start, PROT_READ | PROT_WRITE, pfn);
+    // 6. Find free frames to grow the stack so that the address the process is trying to use
+    //    is valid. If we run out of memory, print a message and abort the process. Remember
+    //    to flush the TLB afterwards and to update the saved sp in the process' pcb.
+    TracePrintf(1, "[TrapMemory] Growing process: %d stack.\n", running_old->pid);
+    for (int start = addr_pn; start < sp_pn; start++) {
+        int pfn = FrameFindAndSet();
+        if (pfn == ERROR) {
+            TracePrintf(1, "[TrapMemory] Failed to find a free frame.\n");
+            SyscallExit(_uctxt, ERROR);
         }
-        WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
-        memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
-        return SUCCESS;
+        TracePrintf(1, "[TrapMemory] Mapping page: %d to frame: %d\n", start, pfn);
+        PTESet(running_old->pt, start, PROT_READ | PROT_WRITE, pfn);
     }
-    if (_uctxt->code == YALNIX_MAPERR) {
-        TracePrintf(1, "[TrapMemory] Address not mapped: %p\n", _uctxt->addr);
-    }
-    if (_uctxt->code == YALNIX_ACCERR) {
-        TracePrintf(1, "[TrapMemory] Invalid permissions: %p\n", _uctxt->addr);
-    }
-    SyscallExit(_uctxt, ERROR);
-    return 0;
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+    memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
+    return SUCCESS;
 }
 
 /*!
