@@ -2,8 +2,8 @@
 This repository contains our (Fei & Taylor) code for the COSC258 Yalnix project.
 
 # Checkpoint 4
-Implement the following functions
 
+For this checkpoint, we implemented the following functions and some other helper functions.
 ```bash
 Fork
 Exec
@@ -13,9 +13,20 @@ TrapKernel
 TrapIllegal
 TrapMemory
 TrapMath
-TrapTTYRreceive
-TrapTTYWrite
-TrapDisk
+
 ```
 
-* Add SchedulerUpdateTerminated which takes the parent pcb and loops over its children. For any children that have exited, it removes their pcb from the terminated list and frees it. We need to do this, otherwise a parent may exit and all of its children will add themselves to the terminated list never to be removed.
+Use the following command to build and run our solution:
+
+```bash
+make && ./yalnix
+``` 
+You can run our test programs in this way:
+```
+./yalnix ./user/fork_and_exec
+./yalnix ./user/fork_and_exit
+./yalnix ./user/fork_and_wait
+./yalnix ./user/fork_test
+./yalnix ./user/trap_math
+./yalnix ./user/trap_memory
+```
