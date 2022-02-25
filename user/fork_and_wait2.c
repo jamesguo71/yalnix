@@ -20,7 +20,7 @@ int main() {
         pid = Wait(&status);
         while(1) {
             TracePrintf(1, "[fork_and_wait] Parent received child: %d exit status: %d\n", pid, status);
-            Pause();
+            Delay(2);
         }
     } 
 
