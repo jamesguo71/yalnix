@@ -453,6 +453,11 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     }
     SchedulerAddRunning(e_scheduler, running_new);
 
+    // 3.
+    if (running_old == running_new) {
+        return 0;
+    }
+
     // 3. Switch to the new process. If the new process has never been run before, MyKCS will
     //    first call KCCopy to initialize the KernelContext for the new process and clone the
     //    kernel stack contents of the old process.
