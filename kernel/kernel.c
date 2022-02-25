@@ -93,8 +93,13 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //    page table to reflect any pages/frames that have been added/removed as a result of
     //    the brk change. Start off by calculating the page numbers for our new proposed brk
     //    and our current brk.
-    int new_brk_page_num = ((int) _kernel_new_brk)   >> PAGESHIFT;
-    int cur_brk_page_num = ((int) e_kernel_curr_brk) >> PAGESHIFT;
+    int stack_page_num   = PTEAddressToPage((void *) KERNEL_STACK_BASE);
+    int cur_brk_page_num = PTEAddressToPage(e_kernel_curr_brk);
+    int new_brk_page_num = PTEAddressToPage(_kernel_new_brk);
+    if (new_brk_page_num >= stack_page_num - KERNEL_NUMBER_STACK_FRAMES) {
+        TracePrintf(1, "[SetKernelBrk] Error: proposed brk is in red zone.\n");
+        return ERROR;
+    }
 
     // 5. Check to see if we are growing or shrinking the brk and calculate the number
     //    of pages that we either need to add or remove given the new proposed brk.

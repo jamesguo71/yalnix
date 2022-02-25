@@ -21,7 +21,7 @@ int SyscallFork (UserContext *_uctxt);
  * 
  * \return              0 on success, ERROR otherwise
  */
-int SyscallExec (UserContext *_uctxt, char *filename, char **argvec);
+int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec);
 
 void SyscallExit (UserContext *_uctxt, int);
 
@@ -29,7 +29,7 @@ int SyscallWait (UserContext *_uctxt, int *);
 
 int SyscallGetPid (void);
 
-int SyscallBrk (void *);
+int SyscallBrk (UserContext *_uctxt, void *_brk);
 
 int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
 

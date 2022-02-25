@@ -53,7 +53,7 @@ int TrapKernel(UserContext *_uctxt) {
             break;
 
         case YALNIX_BRK:
-            _uctxt->regs[0] = SyscallBrk((void *) _uctxt->regs[0]);
+            _uctxt->regs[0] = SyscallBrk(_uctxt, (void *) _uctxt->regs[0]);
             break;
 
         case YALNIX_DELAY:
