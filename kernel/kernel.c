@@ -454,7 +454,7 @@ int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     SchedulerAddRunning(e_scheduler, running_new);
 
     // 3.
-    if (running_old == running_new) {
+    if (_running_old == running_new) {
         return 0;
     }
 
