@@ -7,6 +7,7 @@ int main(void) {
 	int terminal  = 0;
 	char buf[MAX_LINE];
 	int ret;
+	int test;
 	for (int i = 0; i < num_lines; i++) {
 		TracePrintf(1, "[tty_test] About to read from terminal: %d\n", terminal);
 		ret = TtyRead(terminal, buf, MAX_LINE);
@@ -15,7 +16,8 @@ int main(void) {
 			return ret;
 		}
 		buf[ret] = '\0';
-		TracePrintf(1, "[tty_test] Read: %d bytes from terminal: %d\n", ret, terminal);
+		test = ret;
+		TracePrintf(1, "[tty_test] Read: %d bytes from terminal: %d\n", test, terminal);
 		TracePrintf(1, "[tty_test] buf: %s\n", buf);
 	}
 	return 0;
