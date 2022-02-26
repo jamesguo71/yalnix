@@ -214,6 +214,13 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_write_buf
 int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     // 1. Validate arguments
 
+    // TODO: So after reading the guide more I think this is wrong. Specifically, I think our
+    //       internal read buffer needs to be variable length because it is possible that a
+    //       terminal gets written to *many* times before anybody ever reads from it; I thought
+    //       that TERMINAL_MAX_LINE was meant to be the length of our internal buffer, but this
+    //       is actually the maximum characters that a single call to TtyReceive could return, and
+    //       our internal buffer may need to store multiple lines. Thus, update the code here (and
+    //       in TTYRead to)
     // 2. Read from the specified terminal and store its output in our read buffer
     terminal_t *terminal = _tty->terminals[_tty_id];
     int read_len = TtyReceive(_tty_id,
