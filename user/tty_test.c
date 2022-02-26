@@ -10,7 +10,7 @@ int main(void) {
 	for (int i = 0; i < num_lines; i++) {
 		TracePrintf(1, "[tty_test] About to read from terminal: %d\n", terminal);
 		int ret = TtyRead(terminal, buf, MAX_LINE);
-		if (ret <= 0 || ret >= MAX_LINE) {
+		if (ret <= 0 || ret > MAX_LINE) {
 			TracePrintf(1, "[tty_test] TtyRead returned bad number of bytes: %d\n", ret);
 			return ret;
 		}
