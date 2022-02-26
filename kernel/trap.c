@@ -32,6 +32,7 @@ int TrapKernel(UserContext *_uctxt) {
     //    to the syscall will be placed in the "regs" array beginning with reg[0]. Use
     //    this information to dispatch the appropriate syscall function. Afterwards, store
     //    the syscall return value in reg[0].
+    int ret;
     switch(_uctxt->code) {
         case YALNIX_FORK:
              _uctxt->regs[0] = SyscallFork(_uctxt);
@@ -57,10 +58,15 @@ int TrapKernel(UserContext *_uctxt) {
             _uctxt->regs[0] = SyscallDelay(_uctxt, (int ) _uctxt->regs[0]);
             break;
         case YALNIX_TTY_READ:
-            _uctxt->regs[0] = SyscallTtyRead(_uctxt,
+            // _uctxt->regs[0] = SyscallTtyRead(_uctxt,
+            //                         (int )   _uctxt->regs[0],
+            //                         (void *) _uctxt->regs[1],
+            //                         (int)    _uctxt->regs[2]);
+            ret = SyscallTtyRead(_uctxt,
                                     (int )   _uctxt->regs[0],
                                     (void *) _uctxt->regs[1],
                                     (int)    _uctxt->regs[2]);
+            _uctxt->regs[0] = ret;
             break;
         case YALNIX_TTY_WRITE:
             _uctxt->regs[0] = SyscallTtyWrite(_uctxt,
