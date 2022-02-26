@@ -109,9 +109,6 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     // 3. Calculate the length of the filename string and then check that it is within valid
     //    region 1 memory space for the current running process. Specifically, check that every
     //    byte is within region 1 and that they are in pages that have valid protections.
-    //
-    //    TODO: How, if at all, should i check protection bits? Technically the filename could be
-    //          in rx memory, or rw memory depending on if its data or on the heap.
     int length = 0;
     while (_filename[length] != '\0') { length++; }
     int ret = PTECheckAddress(running->pt,
@@ -202,10 +199,6 @@ void SyscallExit (UserContext *_uctxt, int _status) {
         TracePrintf(1, "[SyscallExit] Process %d deleted with status %d\n", running->pid, _status);
         SchedulerRemoveProcess(e_scheduler, running->pid);
         ProcessDestroy(running);
-
-        // TODO: This should not return! Instead you need to context switch, but how do we do that
-        //       if I just destroyed the current process? Our context switch functions expect to
-        //       recieve the current pcb. Might have to update them to accept NULL.
         KCSwitch(_uctxt, NULL);
     }
 
