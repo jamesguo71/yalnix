@@ -193,7 +193,7 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
     }
 
     // 8. Mark the terminal as available for reading and return the number of bytes read.
-    terminal->read_pid = 0
+    terminal->read_pid = 0;
     return read_len;
 }
 
