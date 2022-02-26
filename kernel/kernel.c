@@ -207,6 +207,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
+    // . Allocate space for our tty struct, which we use to read and write to tty devices.
+    e_tty = TTYCreate();
+    if (!e_tty) {
+        TracePrintf(1, "[KernelStart] Failed to create e_tty\n");
+        Halt();
+    }
+
     // 6. Allocate space for Region 0 page table (i.e., the kernel's page table).
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (!e_kernel_pt) {

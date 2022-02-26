@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "syscall.h"
 #include "trap.h"
+#include "tty.h"
 
 
 /*!
@@ -293,14 +294,8 @@ int TrapTTYReceive(UserContext *_uctxt) {
     // FEEDBACK: What if someone was blocked waiting for this to conclude?
     // 2. Page 25. states that this gets called once there is input ready for a given tty device
     //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
-    TracePrintf(1, "[TrapTTYReceive] _uctxt->sp: %p\n", _uctxt->sp);
-
-    // 3. Read input from terminal (terminal id is in "code" field of uctxt) into the kernel's
-    //    ttyread buffer. Then check to see if there are any processes blocked on TTYRead for
-    //    the specific tty device. If so, remove them from blocked and add to ready.
-    //
-    // code here for copying terminal contents to kernel buffer...
-    // SchedulerUpdateTTYRead();
+    TracePrintf(1, "[TrapTTYReceive] Reading from terminal: %d\n", _uctxt->code);
+    TTYUpdateReadBuffer(e_tty, _uctxt->code);
     return 0;
 }
 
