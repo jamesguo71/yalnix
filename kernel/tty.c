@@ -1,4 +1,5 @@
 #include <ykernel.h>
+#include "kernel.h"
 #include "process.h"
 #include "pte.h"
 #include "scheduler.h"
@@ -43,7 +44,7 @@ tty_t *TTYCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    for (int i = 0; i < TTY_NUM_LISTS; i++) {
+    for (int i = 0; i < TTY_NUM_TERMINALS; i++) {
         tty->terminals[i] = TTYTerminalCreate();
         if (!tty->terminals[i]) {
             TTYDelete(tty);
@@ -77,10 +78,10 @@ static terminal_t *TTYTerminalCreate() {
     }
 
     // 3. Initialize the other internal members to 0
-    terminal->read_pid        = 0;
-    terminal->write_pid       = 0;
-    terminal->read_remaining  = 0;
-    terminal->write_remaining = 0;
+    terminal->read_pid      = 0;
+    terminal->write_pid     = 0;
+    terminal->read_buf_len  = 0;
+    terminal->write_buf_len = 0;
     return terminal;
 }
 
@@ -97,8 +98,8 @@ int TTYDelete(tty_t *_tty) {
     }
 
     // 2. TODO: Loop over every list and free nodes. Then free tty struct
-    for (int i = 0; i < TTY_NUM_LISTS; i++) {
-        TTYTerminalDelete(tty->terminals[i]);
+    for (int i = 0; i < TTY_NUM_TERMINALS; i++) {
+        TTYTerminalDelete(_tty->terminals[i]);
     }
     free(_tty);
     return 0;
@@ -106,7 +107,7 @@ int TTYDelete(tty_t *_tty) {
 
 static int TTYTerminalDelete(terminal_t *_terminal) {
     if (!_terminal) {
-        TracePrint1(1, "[TTYTerminalDelete] Terminal already deleted\n");
+        TracePrintf(1, "[TTYTerminalDelete] Terminal already deleted\n");
         return ERROR;
     }
 
@@ -132,7 +133,7 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
     // 3. Check that the user output read buffer is within valid memory space. Specifically, every
     //    byte of the buffer should be in the process' region 1 memory space (i.e., in valid pages)
     //    and have write permissions since we are supposed to write the tty data to it.
-    int ret = PTECheckAddress(running->pt,
+    int ret = PTECheckAddress(running_old->pt,
                               _usr_read_buf,
                               _buf_len,
                               PROT_WRITE);
@@ -179,18 +180,14 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
     } else {                                    // enough to fill the user buffer. If the output
         read_len = terminal->read_buf_len;      // buffer is larger, then read all of the bytes in
     }                                           // the tty read buffer.
-    for (int i = 0; i < read_len; i++) {
-        _usr_read_buf[i] = terminal->read_buf[i];
-    }
+    memcpy(_usr_read_buf, terminal->read_buf, read_len);
 
     // 7. Check to see if there are any remaining bytes in our tty read buffer. If so, move the
     //    remaining bytes to the beginning of the read buffer and update the read buffer length.
     //    Otherwise, set the read buffer length to 0 since we read all of the data.
     if (_buf_len < terminal->read_buf_len) {
         int read_remainder = terminal->read_buf_len - _buf_len;
-        memcpy(terminal->read_buf,             // Copy the remaining bytes to the start 
-               terminal->read_buf + _buf_len,  // The remaining bytes begin after the length
-               read_remainder);                // of the user buffer.
+        memcpy(terminal->read_buf, terminal->read_buf + _buf_len, read_remainder);
     } else {
         terminal->read_buf_len = 0;
     }
