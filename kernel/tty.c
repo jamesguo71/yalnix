@@ -2,7 +2,6 @@
 #include "process.h"
 #include "pte.h"
 #include "scheduler.h"
-#include "terminal.h"
 #include "tty.h"
 
 
