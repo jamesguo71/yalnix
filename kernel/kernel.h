@@ -3,6 +3,7 @@
 #include <hardware.h>
 #include "process.h"
 #include "scheduler.h"
+#include "tty.h"
 
 #define KERNEL_BYTE_SIZE           8
 #define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE
@@ -39,34 +40,14 @@ typedef struct pipe {
  *                        they should be able to refer to them normally---no need to define or
  *                        declare them in trap.c/h or syscall.c/h
  */
-extern int e_cvars_len;
-extern int e_locks_len;
-extern int e_pipes_len;
-
-// Used by TTY traps to indicate when Receive/Write hardware operations complete.
-// Initialize to hold NUM_TERMINALS ints (i.e., a flag for each tty device)
-extern int *e_tty_read_ready;
-extern int *e_tty_write_ready;
-
-// Used to track locks and cvars. Is array best way to track these? We will have to
-// realloc everytime we make a new one. Maybe add "next" pointer to lock/cvar struct?
-extern cvar_t *e_cvars;
-extern lock_t *e_locks;
-extern pipe_t *e_pipes;
-
 extern char *e_frames;
 extern int   e_num_frames;
-extern pte_t *e_kernel_pt; // Kernel Page Table
+extern pte_t       *e_kernel_pt; // Kernel Page Table
 extern scheduler_t *e_scheduler;
+extern tty_t       *e_tty;
 
 // Used to determine if the original brk has changed - initialized to og brk value
 extern void *e_kernel_curr_brk;
-
-// I *think* I need these for storing results of tty read/writes since TtyReceive/Transmit require
-// that the buf reside in kernel memory. Initialize to hold NUM_TERMINALS void pointers (i.e., a
-// pointer for each tty device.). Do I need length variables for these too?
-extern void **e_tty_read_buf;
-extern void **e_tty_write_buf;
 
 
 /*!

@@ -6,9 +6,10 @@
 #include "load_program.h"
 #include "kernel.h"
 #include "process.h"
-#include "scheduler.h"
 #include "pte.h"
+#include "scheduler.h"
 #include "syscall.h"
+#include "tty.h"
 
 
 /*!
@@ -108,9 +109,6 @@ int SyscallExec (UserContext *_uctxt, char *_filename, char **_argvec) {
     // 3. Calculate the length of the filename string and then check that it is within valid
     //    region 1 memory space for the current running process. Specifically, check that every
     //    byte is within region 1 and that they are in pages that have valid protections.
-    //
-    //    TODO: How, if at all, should i check protection bits? Technically the filename could be
-    //          in rx memory, or rw memory depending on if its data or on the heap.
     int length = 0;
     while (_filename[length] != '\0') { length++; }
     int ret = PTECheckAddress(running->pt,
@@ -201,10 +199,6 @@ void SyscallExit (UserContext *_uctxt, int _status) {
         TracePrintf(1, "[SyscallExit] Process %d deleted with status %d\n", running->pid, _status);
         SchedulerRemoveProcess(e_scheduler, running->pid);
         ProcessDestroy(running);
-
-        // TODO: This should not return! Instead you need to context switch, but how do we do that
-        //       if I just destroyed the current process? Our context switch functions expect to
-        //       recieve the current pcb. Might have to update them to accept NULL.
         KCSwitch(_uctxt, NULL);
     }
 
@@ -461,7 +455,7 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
  *
  * \return             Number of bytes read on success, ERROR otherwise
  */
-int SyscallTtyRead (UserContext *_uctxt, int tty_id, void *buf, int len) {
+int SyscallTtyRead (UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
     // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
     //           else.... and have the receive trap handler wake up the blocker! and similar
     //           comments for SyscallTtyWrite
@@ -472,40 +466,11 @@ int SyscallTtyRead (UserContext *_uctxt, int tty_id, void *buf, int len) {
     //     return ERROR;
     // }
 
-    // // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
-    // //    memory region 0). I assume that means I should find space and copy the contents
-    // //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
-    // g_tty_read_buf[tty_id] = (void *) Syscallmalloc(len);
-
-    // // 3. Write to the terminal specified by tty_id using the special hardware "operation"
-    // //    TtyTransmit. TODO: The guide states that this function returns immediately but
-    // //    will generate a trap when the write completes. What do I do here to "wait" for
-    // //    the trap? Do I need some sort of global variable that I "spin" on that gets
-    // //    reset in the trap handler?
-    // void *kbuf = g_tty_read_buf[tty_id];
-    // while (1) {
-
-    //     // wait for the read this way?
-    //     while (!g_tty_read_ready[tty_id]);
-
-    //     if (len > TERMINAL_MAX_LINE) {
-    //         TtyReceive(tty_id,
-    //                    kbuf,
-    //                    TERMINAL_MAX_LINE);
-    //         kbuf += TERMINAL_MAX_LINE;
-    //         len  -= TERMINAL_MAX_LINE;
-    //     } else {
-    //         TtyReceive(tty_id,
-    //                    kbuf,
-    //                    len);
-    //         break;
-    //     }
-    // }
-
-    // // Reset this so other processes can use terminal? Also, do I need variable to indicate
-    // // this terminal is in use and other processes should not use it?
-    // g_tty_read_ready[tty_id] = 1;
-    return 0;
+    return TTYRead(e_tty,
+                   _uctxt,
+                   _tty_id,
+                   _buf,
+                   _len);
 }
 
 

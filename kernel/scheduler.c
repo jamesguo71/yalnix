@@ -367,6 +367,18 @@ pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid) {
                        SCHEDULER_TERMINATED_END);
 }
 
+pcb_t *SchedulerGetTTYRead(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerGetTTYRead] Invalid list or pid\n");
+        return NULL;
+    }
+    return SchedulerGet(_scheduler,
+                       _pid,
+                       SCHEDULER_TTY_READ_START,
+                       SCHEDULER_TTY_READ_END);
+}
+
 pcb_t *SchedulerGetWait(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal get.
     if (!_scheduler || _pid < 0) {
@@ -772,11 +784,25 @@ int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
     return 0;
 }
 
-int SchedulerUpdateTTYRead(scheduler_t *_scheduler) {
+int SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdateTTYRead] Invalid list pointer\n");
         return ERROR;
+    }
+
+    // 2. Loop over the TTYRead list to see if any processes are waiting to read from the terminal
+    //    specified by _tty_id. If so, remove the first (and only the first) process waiting to
+    //    read and add it to the ready list.
+    node_t *node = _scheduler->lists[SCHEDULER_TTY_READ_START];
+    while (node) {
+        pcb_t *process = node->process;
+        if (process->tty_id == _tty_id) {
+            TracePrintf(1, "[SchedulerUpdateTTYRead] Moving process: %d to ready\n", process->pid);
+            SchedulerRemoveTTYRead(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return 0;
+        }
     }
     return 0;
 }

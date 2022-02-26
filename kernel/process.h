@@ -9,7 +9,8 @@ typedef struct pcb {
     int  pid;
     int  clock_ticks;
     int  exit_status;       // for saving the process's exit status, See Page 32
-    int  exited;            // if the process has exited?  
+    int  exited;            // if the process has exited?
+    int  tty_id;
     int *held_locks;        // locks held by the current process, used by sync syscalls
 
     struct pcb *parent;     // For keeping track of parent process

@@ -18,6 +18,7 @@ char        *e_frames           = NULL;   // Bit vector to track frames (set in 
 int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
 scheduler_t *e_scheduler        = NULL;
 pte_t       *e_kernel_pt        = NULL;
+tty_t       *e_tty              = NULL;
 void        *e_kernel_curr_brk  = NULL;
 
 
@@ -204,6 +205,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     e_scheduler = SchedulerCreate();
     if (!e_scheduler) {
         TracePrintf(1, "[KernelStart] Failed to create e_scheduler\n");
+        Halt();
+    }
+
+    // . Allocate space for our tty struct, which we use to read and write to tty devices.
+    e_tty = TTYCreate();
+    if (!e_tty) {
+        TracePrintf(1, "[KernelStart] Failed to create e_tty\n");
         Halt();
     }
 
