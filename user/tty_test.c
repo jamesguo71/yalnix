@@ -5,14 +5,14 @@
 int main(void) {
 	int terminal = 0;
 	char buf[MAX_LINE];
-	int ret;
 	int bytes;
+	int delay = 10;
 	while (1) {
 
 		// 1. Read a line from the terminal. TtyRead will block until there is input ready.
 		//    The returned line is not null terminated, so be sure to do that yourself.
 		TracePrintf(1, "[tty_test] About to read from terminal: %d\n", terminal);
-		ret = TtyRead(terminal, buf, MAX_LINE);
+		int ret = TtyRead(terminal, buf, MAX_LINE);
 		if (ret <= 0 || ret > MAX_LINE) {
 			TracePrintf(1, "[tty_test] TtyRead returned bad number of bytes: %d\n", ret);
 			return ret;
@@ -26,6 +26,10 @@ int main(void) {
 		bytes = ret;
 		TracePrintf(1, "[tty_test] Read: %d bytes from terminal: %d\n", bytes, terminal);
 		TracePrintf(1, "[tty_test] buf: %s\n", buf);
+
+		// 3.
+		TracePrintf(1, "[tty_test] Delaying for %d cycles\n", delay);
+		Delay(delay);
 	}
 	return 0;
 }
