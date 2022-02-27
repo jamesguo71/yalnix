@@ -166,7 +166,6 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         running_old->tty_id = _tty_id;
         memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
         SchedulerAddTTYRead(e_scheduler, running_old);
-        SchedulerPrintTTYRead(e_scheduler);
         KCSwitch(_uctxt, running_old);
     }
 
@@ -184,7 +183,6 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         terminal->read_pid  = running_old->pid;
         memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
         SchedulerAddTTYRead(e_scheduler, running_old);
-        SchedulerPrintTTYRead(e_scheduler);
         KCSwitch(_uctxt, running_old);
     }
 
@@ -264,9 +262,7 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     //    to see if we have a process waiting to read from the specified terminal. If so, 
     //    remove them from the TTYRead wait list and add them to the ready list.
     TTYTerminalLineAdd(terminal, read_buf, read_len);
-    // free(read_buf);
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
-    SchedulerPrintTTYRead(e_scheduler);
     return 0;
 }
 
@@ -281,24 +277,19 @@ static int TTYTerminalLineAdd(terminal_t *_terminal, void *_line, int _line_len)
         return ERROR;   
     }
 
-    // 2.
+    // 2. Allocate space for a new line node. Then set its line buffer pointer and line length.
+    //    Note that we only copy the line pointer, not the contents itself, so the caller
+    //    should NOT free the line memory at any point in time---instead TTYTerminalLineRemove
+    //    should be used for free'ing this memory.
     node_t *node = (node_t *) malloc(sizeof(node_t));
     if (!node) {
         TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for node\n");
         Halt();
     }
-
-    // 3.
-    // node->line = (void *) malloc(_line_len);
-    // if (!node->line) {
-    //     TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for line buf\n");
-    //     Halt();        
-    // }
-    // memcpy(node->line, _line, _line_len);
     node->line     = _line;
     node->line_len = _line_len;
 
-    // 4. First check for our base case: the read_buf list is currently empty. If so,
+    // 3. First check for our base case: the read_buf list is currently empty. If so,
     //    add the current line (both as the start and end) to the read_buf list.
     //    Set the line's next and previous pointers to NULL. Return success.
     if (!_terminal->read_buf_start) {
@@ -309,9 +300,9 @@ static int TTYTerminalLineAdd(terminal_t *_terminal, void *_line, int _line_len)
         return 0;
     }
 
-    // 5. Our blocked list is not empty. Our list is doubly linked, so we need to set the
-    //    current end to point to our new process as its "next" and our current process to
-    //    point to our current end as its "prev". Then, set the new process "next" to NULL
+    // 4. Our read_buf list is not empty. Our list is doubly linked, so we need to set the
+    //    current end to point to our new line as its "next" and our current line to
+    //    point to our current end as its "prev". Then, set the new line "next" to NULL
     //    since it is the end of the list and update our end-of-list pointer in the list struct.
     node_t *old_end         = _terminal->read_buf_end;
     old_end->next           = node;
@@ -328,8 +319,8 @@ static int TTYTerminalLineRemove(terminal_t *_terminal) {
         return 0;
     }
 
-    // 3. Check for our base case: there is only 1 process in the ready list.
-    //    If so, set the list start and end pointers to NULL and return the process.
+    // 2. Check for our base case: there is only 1 line in the read_buf list. If so, simply
+    //    set the list start and end pointers to NULL and free the line buffer and node.
     node_t *node = _terminal->read_buf_start;
     if (node == _terminal->read_buf_end) {
         _terminal->read_buf_start = NULL;
@@ -339,9 +330,9 @@ static int TTYTerminalLineRemove(terminal_t *_terminal) {
         return 0;
     }
 
-    // 4. Otherwise, update the start of the list to point to the new head (i.e., proc's
+    // 3. Otherwise, update the start of the list to point to the new head (i.e., lines's
     //    next pointer). Then, clear the new head's prev pointer so it no longer points to
-    //    proc and clear proc's next pointer so it no longer points to the new head.
+    //    line and clear line's next pointer so it no longer points to the new head.
     _terminal->read_buf_start       = node->next;
     _terminal->read_buf_start->prev = NULL;
     free(node->line);
