@@ -6,7 +6,7 @@ int main(void) {
 	int terminal = 0;
 	char buf[MAX_LINE];
 	int bytes;
-	int delay = 10;
+	int delay = 5;
 	while (1) {
 
 		// 1. Read a line from the terminal. TtyRead will block until there is input ready.

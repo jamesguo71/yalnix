@@ -33,16 +33,17 @@ K_INCS = kernel.h       \
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c           \
-         chpt3_test.c     \
-         fork_test.c      \
-         fork_and_exec.c  \
-         fork_and_exit.c  \
-         fork_and_wait.c  \
-         fork_and_wait2.c \
-         trap_math.c      \
-         trap_memory.c    \
-         tty_test.c
+U_SRCS = init.c             \
+         chpt3_test.c       \
+         fork_test.c        \
+         fork_and_exec.c    \
+         fork_and_exit.c    \
+         fork_and_wait.c    \
+         fork_and_wait2.c   \
+         trap_math.c        \
+         trap_memory.c      \
+         tty_test.c         \
+         tty_test_wrapper.c
 U_INCS = 
 
 
