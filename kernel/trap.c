@@ -317,7 +317,7 @@ int TrapTTYTransmit(UserContext *_uctxt) {
     // 2. Check to see if there is a process blocked on TTYWrite for this device. If so,
     //    remove them from blocked and add to ready queue.
     TracePrintf(1, "[TrapTTYTransmit] _uctxt->sp: %p\n", _uctxt->sp);
-    // SchedulerUpdateTTYWrite();
+    TTYUpdateWriter(e_tty, _uctxt, _uctxt->code);
     return 0;
 }
 

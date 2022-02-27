@@ -12,6 +12,7 @@
 typedef struct terminal {
     int   read_pid;
     int   write_pid;
+    pcb_t *write_proc;
     int   read_buf_len;
     int   write_buf_len;
     void  *read_buf;
@@ -80,6 +81,7 @@ static terminal_t *TTYTerminalCreate() {
     // 3. Initialize the other internal members to 0
     terminal->read_pid      = 0;
     terminal->write_pid     = 0;
+    terminal->write_proc    = NULL;
     terminal->read_buf_len  = 0;
     terminal->write_buf_len = 0;
     return terminal;
@@ -197,18 +199,65 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
     return read_len;
 }
 
-int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_write_buf, int _buf_len) {
-    // 1. Validate arguments
+int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
+    // Argument sanity check
+    if (_tty_id < 0 || _tty_id >= NUM_TERMINALS) return ERROR;
+    if (_len < 0) return ERROR;
+    if (_len == 0) return 0;
+    if (_len > 0 && _buf == NULL) return ERROR;
+    if (_uctxt == NULL) Halt();
 
-    // 2. Check that the write buff is pointing to valid memory
+    // Check page validity and permission of the given _buf
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    if (PTECheckAddress(running->pt, _buf, _len, PROT_READ) < 0)
+        return ERROR;
 
-    // 3. Check to see if the terminal is already in use. If so, block the current process
-    // if (_tty->terminals[_tty_id]->write_remaining) {
-    //     // block and context switch here
-    // }
 
-    // 
+    // Make a copy of the _buf in the kernel
+    void *kernel_buf = malloc(_len);
+    if (kernel_buf == NULL) return ERROR;
+    memcpy(kernel_buf, _buf, _len);
+
+    terminal_t *terminal = _tty->terminals[_tty_id];
+    // If there's already a processing writing, block the current one until the terminal is free
+    if (terminal->write_proc != NULL) {
+        SchedulerAddTTYWrite(e_scheduler, running);
+        KCSwitch(_uctxt, running);
+    }
+    // At this point, this terminal is free, so set the current process as the writer
+    terminal->write_proc = running;
+
+    // Here we don't add the process to a blocking list, because this process has to be the first one to unblock
+    // in a TrapTTYTransmit, so we first check the terminal's write_proc to see if we need to unblock a process there
+
+    // If the writer only needs to transmit no more than TERMINAL_MAX_LINE bytes, transmit it in one go and switch out
+    if (_len <= TERMINAL_MAX_LINE) {
+        TtyTransmit(_tty_id, _buf, _len);
+        KCSwitch(_uctxt, running);
+    }
+    // Otherwise, we break them up and transmit multiple times, blocking after each transmit
+    else {
+        for (int rem = _len; rem > 0; rem -= TERMINAL_MAX_LINE) {
+            int offset = _len - rem;
+            TtyTransmit(_tty_id, _buf + offset, rem > TERMINAL_MAX_LINE ? TERMINAL_MAX_LINE : rem);
+            KCSwitch(_uctxt, running);
+        }
+    }
+    terminal->write_proc = NULL;
+    free(kernel_buf);
     return 0;
+}
+
+void TTYUpdateWriter(tty_t *_tty, UserContext *_uctxt, int _tty_id) {
+    terminal_t *terminal = _tty->terminals[_tty_id];
+    // If the terminal is already occupied by a process, add it to ready queue
+    if (terminal->write_proc != NULL) {
+        SchedulerAddReady(e_scheduler, terminal->write_proc);
+    }
+    // Otherwise, we pick one in the waiting list for this terminal and add it to ready queue
+    else {
+        SchedulerUpdateTTYWrite(e_scheduler, _tty_id);
+    }
 }
 
 int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {

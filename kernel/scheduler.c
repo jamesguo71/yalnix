@@ -807,13 +807,21 @@ int SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id) {
     return 0;
 }
 
-int SchedulerUpdateTTYWrite(scheduler_t *_scheduler) {
+void SchedulerUpdateTTYWrite(scheduler_t *_scheduler, int _tty_id) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
-        TracePrintf(1, "[SchedulerUpdateTTYWrite] Invalid list pointer\n");
-        return ERROR;
+        helper_abort("[SchedulerUpdateTTYWrite] Invalid list pointer\n");
     }
-    return 0;
+    for (node_t *node = _scheduler->lists[SCHEDULER_TTY_WRITE_START]; node != NULL; node = node->next) {
+        pcb_t *proc = node->process;
+        if (proc->tty_id == _tty_id) {
+            TracePrintf(1, "[SchedulerUpdateTTYWrite] Moving process: %d to ready\n", proc->pid);
+            SchedulerRemoveTTYWrite(_scheduler, proc->pid);
+            SchedulerAddReady(_scheduler, proc);
+            return;
+        }
+    }
+    helper_abort("[SchedulerUpdateTTYWrite] No such a process waiting for tty_id.\n");
 }
 
 int SchedulerUpdateWait(scheduler_t *_scheduler, int _pid) {

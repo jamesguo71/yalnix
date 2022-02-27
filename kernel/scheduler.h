@@ -89,6 +89,6 @@ int    SchedulerUpdateLock(scheduler_t *_scheduler);
 int    SchedulerUpdatePipe(scheduler_t *_scheduler);
 int    SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent);
 int    SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id);
-int    SchedulerUpdateTTYWrite(scheduler_t *_scheduler);
+void SchedulerUpdateTTYWrite(scheduler_t *_scheduler, int _tty_id);
 int    SchedulerUpdateWait(scheduler_t *_scheduler, int _pid);
 #endif // __SCHEDULER_H

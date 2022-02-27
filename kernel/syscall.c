@@ -484,49 +484,7 @@ int SyscallTtyRead (UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
  * \return            Number of bytes written on success, ERROR otherwise
  */
 int SyscallTtyWrite (UserContext *_uctxt, int tty_id, void *buf, int len) {
-    // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
-    //           else.... and have the receive trap handler wake up the blocker! and similar
-    //           comments for SyscallTtyWrite
-    // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
-    // //    id is valid (2) that buffer is not NULL and (3) length is positive.
-    // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
-    //     return ERROR;
-    // }
-
-    // // 2. Page 25 states that buf should reside in kernel memory (specifically, virtual
-    // //    memory region 0). I assume that means I should find space and copy the contents
-    // //    of buf from the process' memory to the kernel memory here. TODO: How do I do that?
-    // g_tty_write_buf[tty_id] = (void *) Syscallmalloc(len);
-
-    // // 3. Write to the terminal specified by tty_id using the special hardware "operation"
-    // //    TtyTransmit. TODO: The guide states that this function returns immediately but
-    // //    will generate a trap when the write completes. What do I do here to "wait" for
-    // //    the trap? Do I need some sort of global variable that I "spin" on that gets
-    // //    reset in the trap handler?
-    // void *kbuf = g_tty_write_buf[tty_id];
-    // while (1) {
-
-    //     // wait for the write this way?
-    //     while (!g_tty_write_ready[tty_id]);
-
-    //     if (len > TERMINAL_MAX_LINE) {
-    //         TtyTransmit(tty_id,
-    //                     kbuf,
-    //                     TERMINAL_MAX_LINE);
-    //         kbuf += TERMINAL_MAX_LINE;
-    //         len  -= TERMINAL_MAX_LINE;
-    //     } else {
-    //         TtyTransmit(tty_id,
-    //                     kbuf,
-    //                     len);
-    //         break;
-    //     }
-    // }
-
-    // // Reset this so other processes can use terminal? Also, do I need variable to indicate
-    // // this terminal is in use and other processes should not use it?
-    // g_tty_write_ready[tty_id] = 1;
-    return 0;
+    return TTYWrite(e_tty, _uctxt, tty_id, buf, len);
 }
 
 
