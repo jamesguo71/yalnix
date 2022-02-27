@@ -9,13 +9,19 @@
 /*
  * Internal struct definitions
  */
+typedef struct node {
+    void *line;
+    int   line_len;
+    struct node *next;
+    struct node *prev;
+} node_t
+
 typedef struct terminal {
-    int   receive_count;
     int   read_pid;
     int   write_pid;
-    int   read_buf_len;
     int   write_buf_len;
-    void  *read_buf;
+    node_t *read_buf_start;
+    node_t *read_buf_end;
     void  *write_buf;
 } terminal_t;
 
@@ -29,6 +35,8 @@ typedef struct tty {
  */
 static terminal_t *TTYTerminalCreate();
 static int         TTYTerminalDelete(terminal_t *_terminal);
+static int         TTYLineAdd(terminal_t *_terminal, void *_line, int _line_len);
+static int         TTYLineRemove(terminal_t *_terminal);
 
 
 /*!
@@ -64,12 +72,8 @@ static terminal_t *TTYTerminalCreate() {
     }
 
     // 2. Allocate space for our TTY read and write buffers
-    terminal->read_buf = (void *) malloc(TERMINAL_MAX_LINE);
-    if (!terminal->read_buf) {
-        TracePrintf(1, "[TTYTerminalCreate] Error mallocing space for terminal read_buf\n");
-        free(terminal);
-        return NULL;
-    }
+    terminal->read_buf_start = NULL;
+    terminal->read_buf_end   = NULL;
     terminal->write_buf = (void *) malloc(TERMINAL_MAX_LINE);
     if (!terminal->write_buf) {
         TracePrintf(1, "[TTYTerminalCreate] Error mallocing space for terminal write_buf\n");
@@ -79,10 +83,8 @@ static terminal_t *TTYTerminalCreate() {
     }
 
     // 3. Initialize the other internal members to 0
-    terminal->receive_count = 0;
     terminal->read_pid      = 0;
     terminal->write_pid     = 0;
-    terminal->read_buf_len  = 0;
     terminal->write_buf_len = 0;
     return terminal;
 }
@@ -157,51 +159,41 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         KCSwitch(_uctxt, running_old);
     }
 
-    // 5. Check to see if we already have data stored in our terminal read buffer. If not,
-    //    check to see if the hardware has data ready for us to read from the terminal.
-    if (!terminal->read_buf_len) {
-
-        // 5a. We don't have data in our read buffer *and* the hardware does not have any data
-        //     ready at the terminal. So, mark the current process as the next one that should
-        //     get to read from this terminal and block it until the read buf is populated.
-        if (!terminal->receive_count) {
-            TracePrintf(1, "[TTYRead] tty_id: %d read_buf empty. Blocking process: %d\n",
-                                      _tty_id, running_old->pid);
-            running_old->tty_id = _tty_id;
-            terminal->read_pid  = running_old->pid;
-            memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
-            SchedulerAddTTYRead(e_scheduler, running_old);
-            SchedulerPrintTTYRead(e_scheduler);
-            KCSwitch(_uctxt, running_old);
-        } 
-
-        // 5b. We don't have data in our read buffer *but* the hardware does have data ready at the
-        //     terminal. Go ahead and read up to TERMINAL_MAX_LINE bytes into our terminal's read
-        //     buffer and decrement our receive counter. Do not block the process; instead, the
-        //     process should continue on to read the bytes from the newly populated read buff.
-        else {
-            TTYUpdateReadBuffer(_tty, _tty_id);
-        }
+    // 5. Check to see if we already have data ready for the process to read.
+    //    If not, mark the process as the next to read and block it.
+    //
+    //    TODO: Add TTYGetReadLine?
+    if (!terminal->read_buf_start) {
+        TracePrintf(1, "[TTYRead] tty_id: %d read_buf empty. Blocking process: %d\n",
+                                  _tty_id, running_old->pid);
+        running_old->tty_id = _tty_id;
+        terminal->read_pid  = running_old->pid;
+        memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
+        SchedulerAddTTYRead(e_scheduler, running_old);
+        SchedulerPrintTTYRead(e_scheduler);
+        KCSwitch(_uctxt, running_old);
     }
 
     // 6. At this point, the read_buf should be populated with data. Write the tty
     //    data into the user's output buffer, but first figure out how much to read.
     int read_len = 0;
-    if (_buf_len < terminal->read_buf_len) {    // if user output buffer is smaller than the amount
+    node_t *line = terminal->read_buf_start;
+    if (_buf_len < line->line_len) {            // if user output buffer is smaller than the amount
         read_len = _buf_len;                    // of data in our tty read buffer, than only read
     } else {                                    // enough to fill the user buffer. If the output
-        read_len = terminal->read_buf_len;      // buffer is larger, then read all of the bytes in
+        read_len = line->line_len;              // buffer is larger, then read all of the bytes in
     }                                           // the tty read buffer.
-    memcpy(_usr_read_buf, terminal->read_buf, read_len);
+    memcpy(_usr_read_buf, line->line, read_len);
 
     // 7. Check to see if there are any remaining bytes in our tty read buffer. If so, move the
     //    remaining bytes to the beginning of the read buffer and update the read buffer length.
     //    Otherwise, set the read buffer length to 0 since we read all of the data.
-    if (_buf_len < terminal->read_buf_len) {
-        int read_remainder = terminal->read_buf_len - _buf_len;
-        memcpy(terminal->read_buf, terminal->read_buf + _buf_len, read_remainder);
+    if (_buf_len < line->line_len) {
+        int read_remainder = line->line_len - _buf_len;
+        memcpy(line->line, line->line + _buf_len, read_remainder);
+        line->line_len = read_remainder;
     } else {
-        terminal->read_buf_len = 0;
+        TTYLineRemove(terminal);
     }
 
     // 8. Mark the terminal as available for reading and return the number of bytes read.
@@ -228,37 +220,100 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
 
     // 2. Check to see if we already have data in our terminal's read buffer. If so, increment the
     //    receive_count variable to indicate that the hardware has more data for us. Then return.
-    //
-    //    TODO: Do I need to call SchedulerUpdateTTYRead here?
     terminal_t *terminal = _tty->terminals[_tty_id];
-    if (terminal->read_buf_len) {
-        terminal->receive_count++;
-        TracePrintf(1, "[TTYUpdateReadBuffer] Incremented terminal: %d\treceive_count: %d\n",
-                                              _tty_id, terminal->receive_count);
-        return 0;
+    void *read_buf = (void *) malloc(TERMINAL_MAX_LINE);
+    if (!read_buf) {
+        TracePrintf(1, "[TTYUpdateReadBuffer] Error allocating space for read buf\n");
+        Halt();
     }
 
     // 3. If our terminal's read buffer is empty, then go ahead and read from the terminal and
     //    store its output in our read buffer. Update its length to the number of bytes read.
     int read_len = TtyReceive(_tty_id,
-                              terminal->read_buf,
+                              read_buf,
                               TERMINAL_MAX_LINE);
     if (read_len <= 0) {
         TracePrintf(1, "[TTYUpdateReadBuffer] Error TtyReceive returned bytes: %d\n", read_len);
         Halt();
     }
     TracePrintf(1, "[TTYUpdateReadBuffer] TtyReceive returned bytes: %d\n", read_len);
-    terminal->read_buf_len = read_len;
+
+    // 
+    TTYLineAdd(terminal, read_buf, read_len);
+    free(read_buf);
 
     // 4. Check to see if we have a process waiting to read from the specified terminal.
     //    If so, remove them from the TTYRead wait list and add them to the ready list.
-    if (terminal->receive_count) {
-            terminal->receive_count--;
-        TracePrintf(1, "[TTYUpdateReadBuffer] Decremented terminal: %d\treceive_count: %d\n",
-                                              _tty_id, terminal->receive_count);
-    }
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
     SchedulerPrintTTYRead(e_scheduler);
     return 0;
 }
 
+static int TTYLineAdd(terminal_t *_terminal, void *_line, int _line_len) {
+    // 1. Validate arguments
+
+    // 2.
+    node_t *node = (node_t *) malloc(sizeof(node_t));
+    if (!node) {
+        TracePrintf(1, "[TTYLineAdd] Error allocating space for node\n");
+        Halt();
+    }
+
+    // 3.
+    node->line = (void *) malloc(_line_len);
+    if (!node->line) {
+        TracePrintf(1, "[TTYLineAdd] Error allocating space for line buf\n");
+        Halt();        
+    }
+    node->line_len = _line_len;
+
+    // 4. First check for our base case: the read_buf list is currently empty. If so,
+    //    add the current line (both as the start and end) to the read_buf list.
+    //    Set the line's next and previous pointers to NULL. Return success.
+    if (!_terminal->read_buf_start) {
+        _terminal->read_buf_start = node;
+        _terminal->read_buf_end   = node;
+        node->next = NULL;
+        node->prev = NULL;
+        return 0;
+    }
+
+    // 5. Our blocked list is not empty. Our list is doubly linked, so we need to set the
+    //    current end to point to our new process as its "next" and our current process to
+    //    point to our current end as its "prev". Then, set the new process "next" to NULL
+    //    since it is the end of the list and update our end-of-list pointer in the list struct.
+    node_t *old_end         = _terminal->read_buf_end;
+    old_end->next           = node;
+    node->prev              = old_end;
+    node->next              = NULL;
+    _terminal->read_buf_end = node;
+    return 0;
+}
+
+static int TTYLineRemove(terminal_t *_terminal) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_terminal) {
+        TracePrintf(1, "[TTYLineRemove] Invalid list\n");
+        return NULL;
+    }
+
+    // 3. Check for our base case: there is only 1 process in the ready list.
+    //    If so, set the list start and end pointers to NULL and return the process.
+    node_t *node = _terminal->read_buf_start;
+    if (node == _terminal->read_buf_end) {
+        _terminal->read_buf_start = NULL;
+        _terminal->read_buf_end   = NULL;
+        free(node->line);
+        free(node);
+        return 0;
+    }
+
+    // 4. Otherwise, update the start of the list to point to the new head (i.e., proc's
+    //    next pointer). Then, clear the new head's prev pointer so it no longer points to
+    //    proc and clear proc's next pointer so it no longer points to the new head.
+    _terminal->read_buf_start       = node->next;
+    _terminal->read_buf_start->prev = NULL;
+    free(node->line);
+    free(node);
+    return 0;
+}
