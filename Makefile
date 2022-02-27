@@ -42,7 +42,8 @@ U_SRCS = init.c           \
          fork_and_wait2.c \
          trap_math.c      \
          trap_memory.c    \
-         tty_test.c
+         tty_test.c       \
+         tty_write_test.c
 U_INCS = 
 
 
