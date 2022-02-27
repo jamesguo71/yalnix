@@ -803,6 +803,7 @@ int SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id) {
             SchedulerAddReady(_scheduler, process);
             return 0;
         }
+        node = node->next;
     }
     return 0;
 }
