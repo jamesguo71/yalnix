@@ -263,6 +263,7 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     //    remove them from the TTYRead wait list and add them to the ready list.
     TTYTerminalLineAdd(terminal, read_buf, read_len);
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
+    free(read_buf);
     return 0;
 }
 
@@ -277,19 +278,23 @@ static int TTYTerminalLineAdd(terminal_t *_terminal, void *_line, int _line_len)
         return ERROR;   
     }
 
-    // 2. Allocate space for a new line node. Then set its line buffer pointer and line length.
-    //    Note that we only copy the line pointer, not the contents itself, so the caller
-    //    should NOT free the line memory at any point in time---instead TTYTerminalLineRemove
-    //    should be used for free'ing this memory.
+    // 2. Allocate space for a new line node.
     node_t *node = (node_t *) malloc(sizeof(node_t));
     if (!node) {
         TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for node\n");
         Halt();
     }
-    node->line     = _line;
     node->line_len = _line_len;
 
-    // 3. First check for our base case: the read_buf list is currently empty. If so,
+    // 3. Allocate space for the line and copy over the contents.
+    node->line = (void *) malloc(_line_len);
+    if (!node->line) {
+        TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for line buf\n");
+        Halt();        
+    }
+    memcpy(node->line, _line, _line_len);
+
+    // 4. First check for our base case: the read_buf list is currently empty. If so,
     //    add the current line (both as the start and end) to the read_buf list.
     //    Set the line's next and previous pointers to NULL. Return success.
     if (!_terminal->read_buf_start) {
@@ -300,7 +305,7 @@ static int TTYTerminalLineAdd(terminal_t *_terminal, void *_line, int _line_len)
         return 0;
     }
 
-    // 4. Our read_buf list is not empty. Our list is doubly linked, so we need to set the
+    // 5. Our read_buf list is not empty. Our list is doubly linked, so we need to set the
     //    current end to point to our new line as its "next" and our current line to
     //    point to our current end as its "prev". Then, set the new line "next" to NULL
     //    since it is the end of the list and update our end-of-list pointer in the list struct.
