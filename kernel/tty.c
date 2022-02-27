@@ -10,6 +10,7 @@
  * Internal struct definitions
  */
 typedef struct terminal {
+    int   receive_count;
     int   read_pid;
     int   write_pid;
     int   read_buf_len;
@@ -78,6 +79,7 @@ static terminal_t *TTYTerminalCreate() {
     }
 
     // 3. Initialize the other internal members to 0
+    terminal->receive_count = 0;
     terminal->read_pid      = 0;
     terminal->write_pid     = 0;
     terminal->read_buf_len  = 0;
@@ -155,25 +157,36 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         KCSwitch(_uctxt, running_old);
     }
 
-    // 5. Check to see if there is data ready to read. If not, mark the current process as the
-    //    next one that should get to read and block it until the read buf is populated.
+    // 5. Check to see if we already have data stored in our terminal read buffer. If not,
+    //    check to see if the hardware has data ready for us to read from the terminal.
     if (!terminal->read_buf_len) {
-        if (terminal->read_pid) {
-            TracePrintf(1, "[TTYRead] Error there is already a process on tty_id: %d\n", _tty_id);
-            Halt();
+
+        // 5a. We don't have data in our read buffer *and* the hardware does not have any data
+        //     ready at the terminal. So, mark the current process as the next one that should
+        //     get to read from this terminal and block it until the read buf is populated.
+        if (!terminal->receive_count) {
+            TracePrintf(1, "[TTYRead] tty_id: %d read_buf empty. Blocking process: %d\n",
+                                      _tty_id, running_old->pid);
+            running_old->tty_id = _tty_id;
+            terminal->read_pid  = running_old->pid;
+            memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
+            SchedulerAddTTYRead(e_scheduler, running_old);
+            SchedulerPrintTTYRead(e_scheduler);
+            KCSwitch(_uctxt, running_old);
+        } 
+
+        // 5b. We don't have data in our read buffer *but* the hardware does have data ready at the
+        //     terminal. Go ahead and read up to TERMINAL_MAX_LINE bytes into our terminal's read
+        //     buffer and decrement our receive counter. Do not block the process; instead, the
+        //     process should continue on to read the bytes from the newly populated read buff.
+        else {
+            TTYUpdateReadBuffer(_tty, _tty_id);
+            terminal->receive_count--;
         }
-        TracePrintf(1, "[TTYRead] tty_id: %d read_buf empty. Blocking process: %d\n",
-                                  _tty_id, running_old->pid);
-        running_old->tty_id = _tty_id;
-        terminal->read_pid  = running_old->pid;
-        memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
-        SchedulerAddTTYRead(e_scheduler, running_old);
-        SchedulerPrintTTYRead(e_scheduler);
-        KCSwitch(_uctxt, running_old);
     }
 
-    // 6. At this point, the read_buf should be populated with data (populated by TrapTTYReceive).
-    //    Write the tty data into the user's output buffer (first figure out how much to read).
+    // 6. At this point, the read_buf should be populated with data. Write the tty
+    //    data into the user's output buffer, but first figure out how much to read.
     int read_len = 0;
     if (_buf_len < terminal->read_buf_len) {    // if user output buffer is smaller than the amount
         read_len = _buf_len;                    // of data in our tty read buffer, than only read
@@ -214,25 +227,29 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_write_buf
 int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     // 1. Validate arguments
 
-    // TODO: So after reading the guide more I think this is wrong. Specifically, I think our
-    //       internal read buffer needs to be variable length because it is possible that a
-    //       terminal gets written to *many* times before anybody ever reads from it; I thought
-    //       that TERMINAL_MAX_LINE was meant to be the length of our internal buffer, but this
-    //       is actually the maximum characters that a single call to TtyReceive could return, and
-    //       our internal buffer may need to store multiple lines. Thus, update the code here (and
-    //       in TTYRead to)
-    // 2. Read from the specified terminal and store its output in our read buffer
+    // 2. Check to see if we already have data in our terminal's read buffer. If so, increment the
+    //    receive_count variable to indicate that the hardware has more data for us. Then return.
+    //
+    //    TODO: Do I need to call SchedulerUpdateTTYRead here?
     terminal_t *terminal = _tty->terminals[_tty_id];
+    if (terminal->read_buf_len) {
+        terminal->receive_count++;
+        return 0;
+    }
+
+    // 3. If our terminal's read buffer is empty, then go ahead and read from the terminal and
+    //    store its output in our read buffer. Update its length to the number of bytes read.
     int read_len = TtyReceive(_tty_id,
                               terminal->read_buf,
                               TERMINAL_MAX_LINE);
     if (read_len <= 0) {
-        TracePrintf(1, "[TTYUpdateReadBuffer] TtyReceive returned negative bytes: %d\n", read_len);
+        TracePrintf(1, "[TTYUpdateReadBuffer] Error TtyReceive returned bytes: %d\n", read_len);
         Halt();
     }
     terminal->read_buf_len = read_len;
 
-    // 3.
+    // 4. Check to see if we have a process waiting to read from the specified terminal.
+    //    If so, remove them from the TTYRead wait list and add them to the ready list.
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
     return 0;
 }

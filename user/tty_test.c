@@ -1,9 +1,9 @@
 #include <yuser.h>
 
-#define MAX_LINE 10
+#define MAX_LINE 1024
 
 int main(void) {
-	int num_lines = 5;
+	int num_lines = 2;
 	int terminal  = 0;
 	char buf[MAX_LINE];
 	int ret;

@@ -291,7 +291,6 @@ int TrapTTYReceive(UserContext *_uctxt) {
         return ERROR;
     }
 
-    // FEEDBACK: What if someone was blocked waiting for this to conclude?
     // 2. Page 25. states that this gets called once there is input ready for a given tty device
     //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
     TracePrintf(1, "[TrapTTYReceive] Reading from terminal: %d\n", _uctxt->code);
