@@ -14,7 +14,7 @@ typedef struct node {
     int   line_len;
     struct node *next;
     struct node *prev;
-} node_t
+} node_t;
 
 typedef struct terminal {
     int   read_pid;
