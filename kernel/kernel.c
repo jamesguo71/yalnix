@@ -419,6 +419,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     UserContext of the process that it should currently execute.
     SchedulerAddIdle(e_scheduler,    idlePCB);
     SchedulerAddProcess(e_scheduler, initPCB);
+    SchedulerAddReady(e_scheduler,   initPCB);
     SchedulerAddRunning(e_scheduler, idlePCB);
     memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
     WriteRegister(REG_PTBR1,       (unsigned int) idlePCB->pt);         // idle pt address
