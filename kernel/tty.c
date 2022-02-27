@@ -77,7 +77,6 @@ static terminal_t *TTYTerminalCreate() {
     terminal->write_buf = (void *) malloc(TERMINAL_MAX_LINE);
     if (!terminal->write_buf) {
         TracePrintf(1, "[TTYTerminalCreate] Error mallocing space for terminal write_buf\n");
-        free(terminal->read_buf);
         free(terminal);
         return NULL;
     }
