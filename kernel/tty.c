@@ -234,6 +234,8 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     terminal_t *terminal = _tty->terminals[_tty_id];
     if (terminal->read_buf_len) {
         terminal->receive_count++;
+        TracePrintf(1, "[TTYUpdateReadBuffer] Incremented terminal: %d\treceive_count: %d\n",
+                                              _tty_id, terminal->receive_count);
         return 0;
     }
 
@@ -246,11 +248,13 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
         TracePrintf(1, "[TTYUpdateReadBuffer] Error TtyReceive returned bytes: %d\n", read_len);
         Halt();
     }
+    TracePrintf(1, "[TTYUpdateReadBuffer] TtyReceive returned bytes: %d\n", read_len);
     terminal->read_buf_len = read_len;
 
     // 4. Check to see if we have a process waiting to read from the specified terminal.
     //    If so, remove them from the TTYRead wait list and add them to the ready list.
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
+    SchedulerPrintTTYRead(e_scheduler);
     return 0;
 }
 
