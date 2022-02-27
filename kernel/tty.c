@@ -35,8 +35,8 @@ typedef struct tty {
  */
 static terminal_t *TTYTerminalCreate();
 static int         TTYTerminalDelete(terminal_t *_terminal);
-static int         TTYLineAdd(terminal_t *_terminal, void *_line, int _line_len);
-static int         TTYLineRemove(terminal_t *_terminal);
+static int         TTYTerminalLineAdd(terminal_t *_terminal, void *_line, int _line_len);
+static int         TTYTerminalLineRemove(terminal_t *_terminal);
 
 
 /*!
@@ -125,6 +125,18 @@ static int TTYTerminalDelete(terminal_t *_terminal) {
 
 int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, int _buf_len) {
     // 1. Validate arguments
+    if (!_tty || !_uctxt || !_usr_read_buf) {
+        TracePrintf(1, "[TTYRead] One or more invalid argument pointers\n");
+        return ERROR;
+    }
+    if (_tty_id < 0 || _tty_id > TTY_NUM_TERMINALS) {
+        TracePrintf(1, "[TTYRead] Invalid tty_id: %d\n", _tty_id);
+        return ERROR;   
+    }
+    if (_buf_len <= 0) {
+        TracePrintf(1, "[TTYRead] Invalid _buf_len: %d\n", _buf_len);
+        return ERROR;   
+    }
 
     // 2. Get the pcb for the current running process.
     pcb_t *running_old = SchedulerGetRunning(e_scheduler);
@@ -158,10 +170,13 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         KCSwitch(_uctxt, running_old);
     }
 
-    // 5. Check to see if we already have data ready for the process to read.
-    //    If not, mark the process as the next to read and block it.
-    //
-    //    TODO: Add TTYGetReadLine?
+    // 5. Check to see if we already have data ready for the process to read. Note that because a
+    //    user may input many lines into a terminal before a process ever bothers reading, we need
+    //    to buffer all of the user's input lines. Thus, our "read_buf" is actually a linked list
+    //    of node structures, where each node contains a line of input read from the terminal.
+    //    
+    //    If we do not have any lines ready, mark the process as the next to read from this terminal
+    //    and add it to the TTYRead blocked list. Switch to the next ready process.
     if (!terminal->read_buf_start) {
         TracePrintf(1, "[TTYRead] tty_id: %d read_buf empty. Blocking process: %d\n",
                                   _tty_id, running_old->pid);
@@ -173,26 +188,27 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         KCSwitch(_uctxt, running_old);
     }
 
-    // 6. At this point, the read_buf should be populated with data. Write the tty
-    //    data into the user's output buffer, but first figure out how much to read.
+    // 6. At this point, the "read_buf" should be populated with input from the terminal (i.e.,
+    //    there should be at least one node containing a line of input. Copy the line into the
+    //    user's output buffer (or only part of the line depending on the user's buffer size).
     int read_len = 0;
-    node_t *line = terminal->read_buf_start;
-    if (_buf_len < line->line_len) {            // if user output buffer is smaller than the amount
-        read_len = _buf_len;                    // of data in our tty read buffer, than only read
-    } else {                                    // enough to fill the user buffer. If the output
-        read_len = line->line_len;              // buffer is larger, then read all of the bytes in
-    }                                           // the tty read buffer.
-    memcpy(_usr_read_buf, line->line, read_len);
+    node_t *node = terminal->read_buf_start;
+    if (_buf_len < node->line_len) {            // if user output buffer is smaller than the next
+        read_len = _buf_len;                    // line in our read buffer, than only read enough
+    } else {                                    // to fill the user buffer. If the user buffer is
+        read_len = node->line_len;              // larger, then read the entire line
+    }
+    memcpy(_usr_read_buf, node->line, read_len);
 
-    // 7. Check to see if there are any remaining bytes in our tty read buffer. If so, move the
-    //    remaining bytes to the beginning of the read buffer and update the read buffer length.
-    //    Otherwise, set the read buffer length to 0 since we read all of the data.
-    if (_buf_len < line->line_len) {
-        int read_remainder = line->line_len - _buf_len;
-        memcpy(line->line, line->line + _buf_len, read_remainder);
-        line->line_len = read_remainder;
+    // 7. Check to see if there are any remaining bytes in our line. If so, move the remaining
+    //    bytes to the beginning of the line buffer and update the line buffer length.
+    //    Otherwise, remove the line from our read_buf list since we've read all of its data.
+    if (_buf_len < node->line_len) {
+        int line_remainder = node->line_len - _buf_len;
+        memcpy(node->line, node->line + _buf_len, line_remainder);
+        node->line_len = line_remainder;
     } else {
-        TTYLineRemove(terminal);
+        TTYTerminalLineRemove(terminal);
     }
 
     // 8. Mark the terminal as available for reading and return the number of bytes read.
@@ -216,9 +232,16 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_write_buf
 
 int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     // 1. Validate arguments
+    if (!_tty) {
+        TracePrintf(1, "[TTYUpdateReadBuffer] Invalid _tty pointer\n");
+        return ERROR;
+    }
+    if (_tty_id < 0 || _tty_id > TTY_NUM_TERMINALS) {
+        TracePrintf(1, "[TTYUpdateReadBuffer] Invalid tty_id: %d\n", _tty_id);
+        return ERROR;   
+    }
 
-    // 2. Check to see if we already have data in our terminal's read buffer. If so, increment the
-    //    receive_count variable to indicate that the hardware has more data for us. Then return.
+    // 2. Allocate space to hold the input we are about to read from the terminal
     terminal_t *terminal = _tty->terminals[_tty_id];
     void *read_buf = (void *) malloc(TERMINAL_MAX_LINE);
     if (!read_buf) {
@@ -226,8 +249,7 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
         Halt();
     }
 
-    // 3. If our terminal's read buffer is empty, then go ahead and read from the terminal and
-    //    store its output in our read buffer. Update its length to the number of bytes read.
+    // 3. Read the input from the terminal. If it returns an error, halt the machine for now.
     int read_len = TtyReceive(_tty_id,
                               read_buf,
                               TERMINAL_MAX_LINE);
@@ -237,34 +259,43 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
     }
     TracePrintf(1, "[TTYUpdateReadBuffer] TtyReceive returned bytes: %d\n", read_len);
 
-    // 
-    TTYLineAdd(terminal, read_buf, read_len);
-    free(read_buf);
-
-    // 4. Check to see if we have a process waiting to read from the specified terminal.
-    //    If so, remove them from the TTYRead wait list and add them to the ready list.
+    // 4. Add the newly read line to our "read_buf", which is actually a linked list of node
+    //    structures (where each node contains a line of terminal input). Afterwards, check
+    //    to see if we have a process waiting to read from the specified terminal. If so, 
+    //    remove them from the TTYRead wait list and add them to the ready list.
+    TTYTerminalLineAdd(terminal, read_buf, read_len);
+    // free(read_buf);
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
     SchedulerPrintTTYRead(e_scheduler);
     return 0;
 }
 
-static int TTYLineAdd(terminal_t *_terminal, void *_line, int _line_len) {
+static int TTYTerminalLineAdd(terminal_t *_terminal, void *_line, int _line_len) {
     // 1. Validate arguments
+    if (!_terminal || !_line) {
+        TracePrintf(1, "[TTYTerminalLineAdd] One or more invalid argument pointers\n");
+        return ERROR;
+    }
+    if (_line_len < 0) {
+        TracePrintf(1, "[TTYTerminalLineAdd] Invalid _line_len: %d\n", _line_len);
+        return ERROR;   
+    }
 
     // 2.
     node_t *node = (node_t *) malloc(sizeof(node_t));
     if (!node) {
-        TracePrintf(1, "[TTYLineAdd] Error allocating space for node\n");
+        TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for node\n");
         Halt();
     }
 
     // 3.
-    node->line = (void *) malloc(_line_len);
-    if (!node->line) {
-        TracePrintf(1, "[TTYLineAdd] Error allocating space for line buf\n");
-        Halt();        
-    }
-    memcpy(node->line, _line, _line_len);
+    // node->line = (void *) malloc(_line_len);
+    // if (!node->line) {
+    //     TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for line buf\n");
+    //     Halt();        
+    // }
+    // memcpy(node->line, _line, _line_len);
+    node->line     = _line;
     node->line_len = _line_len;
 
     // 4. First check for our base case: the read_buf list is currently empty. If so,
@@ -290,10 +321,10 @@ static int TTYLineAdd(terminal_t *_terminal, void *_line, int _line_len) {
     return 0;
 }
 
-static int TTYLineRemove(terminal_t *_terminal) {
+static int TTYTerminalLineRemove(terminal_t *_terminal) {
     // 1. Check arguments. Return error if invalid.
     if (!_terminal) {
-        TracePrintf(1, "[TTYLineRemove] Invalid list\n");
+        TracePrintf(1, "[TTYTerminalLineRemove] Invalid list\n");
         return 0;
     }
 
