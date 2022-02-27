@@ -243,21 +243,23 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
             KCSwitch(_uctxt, running);
         }
     }
+    // The process finished writing, clear it and unblock a waiting process if any
     terminal->write_proc = NULL;
     free(kernel_buf);
-    return 0;
+
+    SchedulerUpdateTTYWrite(e_scheduler, _tty_id);
+
+    return _len;
 }
 
+// This is called in TrapTTYTransmit, and is used to add the current terminal writer to ready queue
 void TTYUpdateWriter(tty_t *_tty, UserContext *_uctxt, int _tty_id) {
     terminal_t *terminal = _tty->terminals[_tty_id];
-    // If the terminal is already occupied by a process, add it to ready queue
-    if (terminal->write_proc != NULL) {
-        SchedulerAddReady(e_scheduler, terminal->write_proc);
+    // Upon the TrapTTYTransmit, the terminal should be occupied by a process, so add it to ready queue
+    if (terminal->write_proc == NULL) {
+        helper_abort("[TTYUpdateWriter] error: terminal->write_proc is NULL\n");
     }
-    // Otherwise, we pick one in the waiting list for this terminal and add it to ready queue
-    else {
-        SchedulerUpdateTTYWrite(e_scheduler, _tty_id);
-    }
+    SchedulerAddReady(e_scheduler, terminal->write_proc);
 }
 
 int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {

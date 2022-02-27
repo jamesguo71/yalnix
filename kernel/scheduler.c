@@ -821,7 +821,7 @@ void SchedulerUpdateTTYWrite(scheduler_t *_scheduler, int _tty_id) {
             return;
         }
     }
-    helper_abort("[SchedulerUpdateTTYWrite] No such a process waiting for tty_id.\n");
+    TracePrintf(1, "[SchedulerUpdateTTYWrite] No process waiting for tty_id = %d\n", _tty_id);
 }
 
 int SchedulerUpdateWait(scheduler_t *_scheduler, int _pid) {
