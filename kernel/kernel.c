@@ -387,7 +387,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
     WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
     WriteRegister(REG_PTLR0,       (unsigned int) MAX_PT_LEN);          // num entries
-    WriteRegister(REG_PTBR1,       (unsigned int) idlePCB->pt);         // idle pt address
+    WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // idle pt address
     WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
     WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);   // IV address
     WriteRegister(REG_VM_ENABLE, 1);
@@ -421,6 +421,9 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     SchedulerAddProcess(e_scheduler, initPCB);
     SchedulerAddRunning(e_scheduler, idlePCB);
     memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
+    WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // idle pt address
+    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 
     // 20. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
