@@ -135,7 +135,6 @@ int TrapClock(UserContext *_uctxt) {
     //    loop over blocked list and decrement the clock_count for any processes delaying.
     //    If their count hits zero, they get added to the ready queue.
     SchedulerUpdateDelay(e_scheduler);
-    SchedulerPrintDelay(e_scheduler);
 
     // 3. Get the pcb for the current running process and the next process to run. If there is
     //    not process in the ready queue, simply return and don't bother context switching.
@@ -149,7 +148,6 @@ int TrapClock(UserContext *_uctxt) {
     //    list. Then call our context switch function to switch to the next ready process.
     memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
     SchedulerAddReady(e_scheduler, running_old);
-    SchedulerPrintReady(e_scheduler);
     return KCSwitch(_uctxt, running_old);
 }
 
@@ -291,7 +289,6 @@ int TrapTTYReceive(UserContext *_uctxt) {
         return ERROR;
     }
 
-    // FEEDBACK: What if someone was blocked waiting for this to conclude?
     // 2. Page 25. states that this gets called once there is input ready for a given tty device
     //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
     TracePrintf(1, "[TrapTTYReceive] Reading from terminal: %d\n", _uctxt->code);

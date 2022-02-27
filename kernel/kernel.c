@@ -249,16 +249,21 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //    We don't have to set init's UserContext because it gets configured later in LoadProgram.
     idlePCB->uctxt.pc = DoIdle;
     idlePCB->uctxt.sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+    idlePCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    if (!idlePCB->kctxt) {
+        TracePrintf(1, "[KernelStart] Malloc for idlePCB kctxt failed\n");
+        Halt();
+    }
 
     // 9. Allocate space for init's KernelContext, but leave idle's NULL. This is because we
     //    plan to run the init program first and have idle clone into init later during a
     //    context switch. More specifically, our context switching code will see that idle's
     //    KC is NULL and call KCCopy to copy the KernelContext of the current running process.
-    initPCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
-    if (!initPCB->kctxt) {
-        TracePrintf(1, "[KernelStart] Malloc for initPCB kctxt failed\n");
-        Halt();
-    }
+    // initPCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
+    // if (!initPCB->kctxt) {
+    //     TracePrintf(1, "[KernelStart] Malloc for initPCB kctxt failed\n");
+    //     Halt();
+    // }
 
     // 10. Now that we have finished all of our dynamic memory allocation, we can configure the
     //     kernel's page table (previously, it may have changed due to malloc changing the brk).
@@ -317,10 +322,10 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     currently used by the kernel for its stack to inits kernel stack page table.
     //     Since virtual memory is not yet enabled, we know that the kernel stack starting
     //     address maps to the actual frame (and not a virtual page).
-    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init: %d\n", initPCB->pid);
+    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle: %d\n", idlePCB->pid);
     int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
-        PTESet(initPCB->ks,                         // page table pointer
+        PTESet(idlePCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                i + kernel_stack_start_page_num);    // frame number
@@ -332,14 +337,14 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
 
     // 14. Find some free frames for idle's kernel stack and map them to the pages in its kernel
     //    stack page table.
-    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle: %d\n", idlePCB->pid);
+    TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init: %d\n", initPCB->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         int frame = FrameFindAndSet();
         if (frame == ERROR) {
-            TracePrintf(1, "[KernelStart] Failed to find a frame for idle kernel stack\n");
+            TracePrintf(1, "[KernelStart] Failed to find a frame for init kernel stack\n");
             Halt();
         }
-        PTESet(idlePCB->ks,                         // page table pointer
+        PTESet(initPCB->ks,                         // page table pointer
                i,                                   // page number
                PROT_READ | PROT_WRITE,              // page protection bits
                frame);                              // frame number
@@ -370,19 +375,19 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     the current running process. Thus, whenever we switch processes we need to remember to
     //     copy the process' kernel stack page table into the kernel's master page table.
     //
-    //     Since we plan to run init first, we should copy its kernel stack ptes into the master
+    //     Since we plan to run idle first, we should copy its kernel stack ptes into the master
     //     kernel page table.
-    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the init proc's page entries
-           initPCB->ks,                                    // for its kernel stack into the master
+    memcpy(&e_kernel_pt[kernel_stack_start_page_num],      // Copy the idle proc's page entries
+           idlePCB->ks,                                    // for its kernel stack into the master
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
 
-    // 17. Tell the CPU where to find our kernel's page table, init's region 1 page table, and our
+    // 17. Tell the CPU where to find our kernel's page table, idle's region 1 page table, and our
     //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
     //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
     WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
     WriteRegister(REG_PTLR0,       (unsigned int) MAX_PT_LEN);          // num entries
-    WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // init pt address
+    WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // idle pt address
     WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
     WriteRegister(REG_VECTOR_BASE, (unsigned int) g_interrupt_table);   // IV address
     WriteRegister(REG_VM_ENABLE, 1);
@@ -414,8 +419,12 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //     UserContext of the process that it should currently execute.
     SchedulerAddIdle(e_scheduler,    idlePCB);
     SchedulerAddProcess(e_scheduler, initPCB);
-    SchedulerAddRunning(e_scheduler, initPCB);
+    SchedulerAddReady(e_scheduler,   initPCB);
+    SchedulerAddRunning(e_scheduler, idlePCB);
     memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
+    WriteRegister(REG_PTBR1,       (unsigned int) idlePCB->pt);         // idle pt address
+    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
+    WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 
     // 20. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
