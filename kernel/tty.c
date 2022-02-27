@@ -264,6 +264,7 @@ static int TTYLineAdd(terminal_t *_terminal, void *_line, int _line_len) {
         TracePrintf(1, "[TTYLineAdd] Error allocating space for line buf\n");
         Halt();        
     }
+    memcpy(node->line, _line, _line_len);
     node->line_len = _line_len;
 
     // 4. First check for our base case: the read_buf list is currently empty. If so,
