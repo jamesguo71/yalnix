@@ -181,7 +181,6 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         //     process should continue on to read the bytes from the newly populated read buff.
         else {
             TTYUpdateReadBuffer(_tty, _tty_id);
-            terminal->receive_count--;
         }
     }
 
@@ -253,6 +252,11 @@ int TTYUpdateReadBuffer(tty_t *_tty, int _tty_id) {
 
     // 4. Check to see if we have a process waiting to read from the specified terminal.
     //    If so, remove them from the TTYRead wait list and add them to the ready list.
+    if (terminal->receive_count) {
+            terminal->receive_count--;
+        TracePrintf(1, "[TTYUpdateReadBuffer] Decremented terminal: %d\treceive_count: %d\n",
+                                              _tty_id, terminal->receive_count);
+    }
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
     SchedulerPrintTTYRead(e_scheduler);
     return 0;
