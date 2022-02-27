@@ -8,9 +8,9 @@ int main() {
             Pause();
         }
     } else {
-        char *program   = "./user/chpt3_test";
+        char *program   = "./user/tty_test";
         char *argvec[1];
-        argvec[0]       = "./user/chpt3_test";
+        argvec[0]       = "./user/tty_test";
         TracePrintf(1, "[fork_and_exec] Child about to exec: %s \n", program);
         Exec(program, argvec);
         while (1) {
