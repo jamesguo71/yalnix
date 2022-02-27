@@ -115,9 +115,9 @@ static int TTYTerminalDelete(terminal_t *_terminal) {
         return ERROR;
     }
 
-    if (_terminal->read_buf) {
-        free(_terminal->read_buf);
-    }
+    // if (_terminal->read_buf) {
+    //     free(_terminal->read_buf);
+    // }
     if (_terminal->write_buf) {
         free(_terminal->write_buf);
     }
@@ -294,7 +294,7 @@ static int TTYLineRemove(terminal_t *_terminal) {
     // 1. Check arguments. Return error if invalid.
     if (!_terminal) {
         TracePrintf(1, "[TTYLineRemove] Invalid list\n");
-        return NULL;
+        return 0;
     }
 
     // 3. Check for our base case: there is only 1 process in the ready list.
