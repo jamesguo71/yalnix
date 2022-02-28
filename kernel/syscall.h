@@ -33,41 +33,6 @@ int SyscallBrk (UserContext *_uctxt, void *_brk);
 
 int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
 
-
-/*!
- * \desc                 Creates a new pipe.
- * 
- * \param[out] pipe_idp  The address where the newly created pipe's id should be stored
- * 
- * \return               0 on success, ERROR otherwise
- */
-int SyscallPipeInit (int *pipe_idp);
-
-
-/*!
- * \desc                Reads len number of bytes from the pipe indicated by pipe_id into buf.
- * 
- * \param[in]  pipe_id  The id of the pipe to read from
- * \param[out] buf      An output buffer to store the bytes read from the pipe
- * \param[in]  len      The length of the output buffer
- * 
- * \return              Number of bytes read on success, ERROR otherwise
- */
-int SyscallPipeRead (int pipe_id, void *buf, int len);
-
-
-/*!
- * \desc               Writes the contents of the buffer to the pipe indicated by pipe_id.
- * 
- * \param[in] pipe_id  The id of the terminal to write to
- * \param[in] buf      An input buffer containing the bytes to write to the pipe
- * \param[in] len      The length of the input buffer
- * 
- * \return             Number of bytes written on success, ERROR otherwise
- */
-int SyscallPipeWrite (int pipe_id, void *buf, int len);
-
-
 /*!
  * \desc                 Creates a new lock.
  * 
