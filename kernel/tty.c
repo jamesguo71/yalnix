@@ -40,9 +40,9 @@ static int         TTYLineRemove(terminal_t *_terminal);
 
 
 /*!
- * \desc    Initializes memory for a new tty_t struct
+ * \desc    CREATE - Functions for creating tty_t and terminal_t structs
  *
- * \return  An initialized tty_t struct, NULL otherwise.
+ * \return  An initialized tty_t or terminal_t struct, NULL otherwise.
  */
 tty_t *TTYCreate() {
     // 1. Allocate space for our terminal struct. Print message and return NULL upon error
@@ -81,10 +81,12 @@ static terminal_t *TTYTerminalCreate() {
     return terminal;
 }
 
+
 /*!
- * \desc                  Frees the memory associated with a tty_t struct
+ * \desc                 DELETE - Functions for freeing tty and terminal struct memory
  *
- * \param[in] _tty  A tty_t struct that the caller wishes to free
+ * \param[in] _tty       A tty_t struct that the caller wishes to free
+ * \param[in] _terminal  A terminal_t struct that the caller wishes to free
  */
 int TTYDelete(tty_t *_tty) {
     // 1. Check arguments. Return error if invalid.

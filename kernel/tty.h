@@ -16,7 +16,7 @@ tty_t *TTYCreate();
 
 
 /*!
- * \desc                  Frees the memory associated with a tty_t struct
+ * \desc            Frees the memory associated with a tty_t struct
  *
  * \param[in] _tty  A tty_t struct that the caller wishes to free
  */
