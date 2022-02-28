@@ -1,6 +1,6 @@
 #include "yuser.h"
 
-#define READ_LEN  500
+#define READ_LEN  100
 #define WRITE_LEN 1000
 
 int main() {
