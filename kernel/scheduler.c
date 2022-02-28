@@ -827,7 +827,7 @@ int SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id) {
     return 0;
 }
 
-int SchedulerUpdatePipeWrite(scheduler_t *_scheduler, int _pipe_id) {
+int SchedulerUpdatePipeWrite(scheduler_t *_scheduler, int _pipe_id, int _write_pid) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdatePipeWrite] Invalid list pointer\n");
@@ -835,12 +835,25 @@ int SchedulerUpdatePipeWrite(scheduler_t *_scheduler, int _pipe_id) {
     }
 
     // 2. Loop over the PipeWrite list to see if any processes are waiting to write to the pipe
-    //    specified by _pipe_id. If so, remove the first (and only the first) process waiting to
-    //    read and add it to the ready list.
+    //    specified by _pipe_id. This differs slightly from UpdatePipeRead in that writes may
+    //    take multiple "rounds" if the user wishes to write more bytes than a pipe has space
+    //    for. Thus, we also need to check if there is currently a process writing to the
+    //    specified pipe (indicated by write_pid). If so, make sure we return that process.
     node_t *node = _scheduler->lists[SCHEDULER_PIPE_WRITE_START];
     while (node) {
+
+        // If write_pid = 0, then there is not currently a process writing to the pipe.
+        // So, we should just return the first process with a matching pipe_id
         pcb_t *process = node->process;
-        if (process->pipe_id == _pipe_id) {
+        if (process->pipe_id == _pipe_id && _write_pid == 0) {
+            TracePrintf(1, "[SchedulerUpdatePipeWrite] Moving process: %d to ready\n", process->pid);
+            SchedulerRemovePipeWrite(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return 0;
+        }
+
+        // If write_pid is set, then we should only return the process with a matching pid
+        if (process->pid == _write_id) {
             TracePrintf(1, "[SchedulerUpdatePipeWrite] Moving process: %d to ready\n", process->pid);
             SchedulerRemovePipeWrite(_scheduler, process->pid);
             SchedulerAddReady(_scheduler, process);
