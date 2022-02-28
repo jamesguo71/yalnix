@@ -1,12 +1,12 @@
 #include "yuser.h"
 
-#define READ_LEN 100
+#define READ_LEN 500
 
-char *write_string = "Write the len bytes starting at buf to the named pipe.\n(As the pipe is a"
-                     "FIFO buffer, these bytes should be appended to the sequence of unread bytes"
-                     "currently in the pipe.)\nReturn as soon as you get the bytes into the buffer"
-                     ".\nIn case of any error, the value ERROR is returned.\nOtherwise, return the"
-                     "number of bytes written.";
+char *write_string = "Write the len bytes starting at buf to the named pipe. (As the pipe is a"
+                     " FIFO buffer, these bytes should be appended to the sequence of unread bytes"
+                     " currently in the pipe.) Return as soon as you get the bytes into the buffer"
+                     ". In case of any error, the value ERROR is returned. Otherwise, return the"
+                     " number of bytes written.";
 
 int main() {
     // 1. Declare a buffer for reading/writing and initialize a pipe
