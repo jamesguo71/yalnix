@@ -421,7 +421,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     SchedulerAddProcess(e_scheduler, initPCB);
     SchedulerAddReady(e_scheduler,   initPCB);
     SchedulerAddRunning(e_scheduler, idlePCB);
-    memcpy(_uctxt, &initPCB->uctxt, sizeof(UserContext));
+    memcpy(_uctxt, &idlePCB->uctxt, sizeof(UserContext));
     WriteRegister(REG_PTBR1,       (unsigned int) idlePCB->pt);         // idle pt address
     WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
