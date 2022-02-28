@@ -1,18 +1,11 @@
 #include "yuser.h"
 
-#define READ_LEN 500
-
-char *write_string = "Write the len bytes starting at buf to the named pipe. (As the pipe is a"
-                     " FIFO buffer, these bytes should be appended to the sequence of unread bytes"
-                     " currently in the pipe.) Return as soon as you get the bytes into the buffer"
-                     ". In case of any error, the value ERROR is returned. Otherwise, return the"
-                     " number of bytes written.";
+#define READ_LEN  500
+#define WRITE_LEN 1000
 
 int main() {
-    // 1. Declare a buffer for reading/writing and initialize a pipe
-    int  pipe = PipeInit(&pipe);
-
-    // 2. Fork and have the parent/child take turns reading and writing to one another.
+    // 1. Fork and have the parent/child take turns reading and writing to one another.
+    int pipe = PipeInit(&pipe);
     int pid  = Fork();
     if (pid) {
         char read_buf[READ_LEN];
@@ -24,10 +17,15 @@ int main() {
             Pause();
         }
     } else {
+        char write_buf[WRITE_LEN];
+        for (int i = 0; i < WRITE_LEN; i++) {
+            write_buf[i] = (i % 26) + 97;
+        }
+        write_buf[WRITE_LEN - 1] = '\0';
         while (1) {
             TracePrintf(1, "[pipe_test] Child writing to pipe: %d \n", pipe);
-            PipeWrite(pipe, (void *) write_string, strlen(write_string));
-            TracePrintf(1, "[pipe_test] Child wrote: %s\n", write_string);
+            PipeWrite(pipe, (void *) write_buf, WRITE_LEN);
+            TracePrintf(1, "[pipe_test] Child wrote: %s\n", write_buf);
             Pause();
         }
     }
