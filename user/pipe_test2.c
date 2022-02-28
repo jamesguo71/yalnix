@@ -18,12 +18,14 @@ int main() {
             TracePrintf(1, "[pipe_test] Parent reading from pipe: %d \n", pipe);
             PipeRead(pipe, (void *) buf, BUF_LEN / 2);
             TracePrintf(1, "[pipe_test] Parent read: %s\n", buf);
+            Pause();
         }
     } else {
         while (1) {
             TracePrintf(1, "[pipe_test] Child writing to pipe: %d \n", pipe);
             PipeWrite(pipe, (void *) buf, BUF_LEN);
             TracePrintf(1, "[pipe_test] Child wrote: %s\n", buf);
+            Pause();
         }
     }
     return 0;
