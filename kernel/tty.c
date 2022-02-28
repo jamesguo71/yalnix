@@ -106,13 +106,6 @@ static int TTYTerminalDelete(terminal_t *_terminal) {
         TracePrintf(1, "[TTYTerminalDelete] Terminal already deleted\n");
         return ERROR;
     }
-
-    // if (_terminal->read_buf) {
-    //     free(_terminal->read_buf);
-    // }
-    if (_terminal->write_buf) {
-        free(_terminal->write_buf);
-    }
     free(_terminal);
 }
 
