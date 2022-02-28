@@ -231,6 +231,8 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
     if (PTECheckAddress(running->pt, _buf, _len, PROT_READ) < 0)
         return ERROR;
 
+    // Update the current UserContext
+    memcpy(&running->uctxt, _uctxt, sizeof(UserContext));
 
     // Make a copy of the _buf in the kernel
     void *kernel_buf = malloc(_len);
