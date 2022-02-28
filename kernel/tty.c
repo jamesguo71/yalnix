@@ -35,8 +35,8 @@ typedef struct tty {
  */
 static terminal_t *TTYTerminalCreate();
 static int         TTYTerminalDelete(terminal_t *_terminal);
-static int         TTYTerminalLineAdd(terminal_t *_terminal, void *_buf, int _buf_len);
-static int         TTYTerminalLineRemove(terminal_t *_terminal);
+static int         TTYLineAdd(terminal_t *_terminal, void *_buf, int _buf_len);
+static int         TTYLineRemove(terminal_t *_terminal);
 
 
 /*!
@@ -110,6 +110,16 @@ static int TTYTerminalDelete(terminal_t *_terminal) {
     free(_terminal);
 }
 
+
+/*!
+ * \desc               Reads the next line of input from the terminal indicated by tty_id.
+ *
+ * \param[in]  tty_id  The id of the terminal to read from
+ * \param[out] buf     An output buffer to store the bytes read from the terminal
+ * \param[in]  len     The length of the output buffer
+ *
+ * \return             Number of bytes read on success, ERROR otherwise
+ */
 int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, int _buf_len) {
     // 1. Validate arguments
     if (!_tty || !_uctxt || !_usr_read_buf) {
@@ -193,7 +203,7 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
         memcpy(line->buf, line->buf + _buf_len, line_remainder);
         line->buf_len = line_remainder;
     } else {
-        TTYTerminalLineRemove(terminal);
+        TTYLineRemove(terminal);
     }
 
     // 8. Mark the terminal as available for reading and return the number of bytes read.
@@ -201,6 +211,16 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
     return read_len;
 }
 
+
+/*!
+ * \desc              Writes the contents of the buffer to the terminal indicated by tty_id.
+ *
+ * \param[in] tty_id  The id of the terminal to write to
+ * \param[in] buf     An input buffer containing the bytes to write to the terminal
+ * \param[in] len     The length of the input buffer
+ *
+ * \return            Number of bytes written on success, ERROR otherwise
+ */
 int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
     // Argument sanity check
     if (_tty_id < 0 || _tty_id >= NUM_TERMINALS) return ERROR;
@@ -299,27 +319,27 @@ int TTYUpdateReader(tty_t *_tty, int _tty_id) {
     //    structures (where each node contains a line of terminal input). Afterwards, check
     //    to see if we have a process waiting to read from the specified terminal. If so,
     //    remove them from the TTYRead wait list and add them to the ready list.
-    TTYTerminalLineAdd(terminal, read_buf, read_len);
+    TTYLineAdd(terminal, read_buf, read_len);
     SchedulerUpdateTTYRead(e_scheduler, _tty_id);
     free(read_buf);
     return 0;
 }
 
-static int TTYTerminalLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
+static int TTYLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
     // 1. Validate arguments
     if (!_terminal || !_buf) {
-        TracePrintf(1, "[TTYTerminalLineAdd] One or more invalid argument pointers\n");
+        TracePrintf(1, "[TTYLineAdd] One or more invalid argument pointers\n");
         return ERROR;
     }
     if (_buf_len < 0) {
-        TracePrintf(1, "[TTYTerminalLineAdd] Invalid _buf_len: %d\n", _buf_len);
+        TracePrintf(1, "[TTYLineAdd] Invalid _buf_len: %d\n", _buf_len);
         return ERROR;
     }
 
     // 2. Allocate space for a new line node.
     line_t *line = (line_t *) malloc(sizeof(line_t));
     if (!line) {
-        TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for line\n");
+        TracePrintf(1, "[TTYLineAdd] Error allocating space for line\n");
         Halt();
     }
     line->buf_len = _buf_len;
@@ -327,7 +347,7 @@ static int TTYTerminalLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
     // 3. Allocate space for the line and copy over the contents.
     line->buf = (void *) malloc(_buf_len);
     if (!line->buf) {
-        TracePrintf(1, "[TTYTerminalLineAdd] Error allocating space for line buf\n");
+        TracePrintf(1, "[TTYLineAdd] Error allocating space for line buf\n");
         Halt();
     }
     memcpy(line->buf, _buf, _buf_len);
@@ -355,10 +375,10 @@ static int TTYTerminalLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
     return 0;
 }
 
-static int TTYTerminalLineRemove(terminal_t *_terminal) {
+static int TTYLineRemove(terminal_t *_terminal) {
     // 1. Check arguments. Return error if invalid.
     if (!_terminal) {
-        TracePrintf(1, "[TTYTerminalLineRemove] Invalid list\n");
+        TracePrintf(1, "[TTYLineRemove] Invalid list\n");
         return 0;
     }
 
