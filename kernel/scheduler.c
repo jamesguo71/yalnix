@@ -853,7 +853,7 @@ int SchedulerUpdatePipeWrite(scheduler_t *_scheduler, int _pipe_id, int _write_p
         }
 
         // If write_pid is set, then we should only return the process with a matching pid
-        if (process->pid == _write_id) {
+        if (process->pid == _write_pid) {
             TracePrintf(1, "[SchedulerUpdatePipeWrite] Moving process: %d to ready\n", process->pid);
             SchedulerRemovePipeWrite(_scheduler, process->pid);
             SchedulerAddReady(_scheduler, process);
