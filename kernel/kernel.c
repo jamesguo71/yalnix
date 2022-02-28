@@ -3,7 +3,7 @@
 #include <ykernel.h>
 
 #include "frame.h"
-#include "ipc.h"
+#include "pipe.h"
 #include "kernel.h"
 #include "load_program.h"
 #include "scheduler.h"
@@ -17,7 +17,7 @@
  */
 char        *e_frames           = NULL;   // Bit vector to track frames (set in KernelStart)
 int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
-ipc_t       *e_ipc              = NULL;
+pipe_list_t *e_pipe_list        = NULL;
 scheduler_t *e_scheduler        = NULL;
 pte_t       *e_kernel_pt        = NULL;
 tty_t       *e_tty              = NULL;
@@ -202,9 +202,9 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     }
 
     // . Allocate space for our ipc struct, which we use to read and write to pipes.
-    e_ipc = IPCCreate();
-    if (!e_ipc) {
-        TracePrintf(1, "[KernelStart] Failed to create e_ipc\n");
+    e_pipe_list = PipeListCreate();
+    if (!e_pipe_list) {
+        TracePrintf(1, "[KernelStart] Failed to create e_pipe_list\n");
         Halt();
     }
 

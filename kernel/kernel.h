@@ -1,7 +1,7 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include <hardware.h>
-#include "ipc.h"
+#include "pipe.h"
 #include "process.h"
 #include "scheduler.h"
 #include "tty.h"
@@ -33,7 +33,7 @@ typedef struct lock {
  */
 extern char        *e_frames;
 extern int          e_num_frames;
-extern ipc_t       *e_ipc;
+extern pipe_list_t *e_pipe_list;
 extern pte_t       *e_kernel_pt; // Kernel Page Table
 extern scheduler_t *e_scheduler;
 extern tty_t       *e_tty;

@@ -9,7 +9,6 @@
 #include "pte.h"
 #include "scheduler.h"
 #include "syscall.h"
-#include "tty.h"
 
 
 /*!
