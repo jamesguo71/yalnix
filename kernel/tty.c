@@ -17,12 +17,12 @@ typedef struct node {
 } node_t;
 
 typedef struct terminal {
-    int   read_pid;
-    int   write_pid;
-    pcb_t *write_proc;
-    int   read_buf_len;
+    int     read_pid;
+    int     write_pid;
+    int     read_buf_len;
     node_t *read_buf_start;
     node_t *read_buf_end;
+    pcb_t  *write_proc;
 } terminal_t;
 
 typedef struct tty {
@@ -72,20 +72,12 @@ static terminal_t *TTYTerminalCreate() {
     }
 
     // 2. Allocate space for our TTY read and write buffers
+    terminal->read_pid       = 0;
+    terminal->write_pid      = 0;
+    terminal->read_buf_len   = 0;
     terminal->read_buf_start = NULL;
     terminal->read_buf_end   = NULL;
-    terminal->write_buf = (void *) malloc(TERMINAL_MAX_LINE);
-    if (!terminal->write_buf) {
-        TracePrintf(1, "[TTYTerminalCreate] Error mallocing space for terminal write_buf\n");
-        free(terminal);
-        return NULL;
-    }
-
-    // 3. Initialize the other internal members to 0
-    terminal->read_pid      = 0;
-    terminal->write_pid     = 0;
-    terminal->write_proc    = NULL;
-    terminal->read_buf_len  = 0;
+    terminal->write_proc     = NULL;
     return terminal;
 }
 
