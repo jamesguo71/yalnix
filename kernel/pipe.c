@@ -23,8 +23,8 @@ typedef struct pipe {
 
 typedef struct pipe_list {
     int num_pipes;
-    pipe_t *first;
-    pipe_t *last;
+    pipe_t *start;
+    pipe_t *end;
 } pipe_list_t;
 
 
@@ -41,7 +41,7 @@ static int     PipeRemove(pipe_list_t *_pl, int _pipe_id);
  *
  * \return  An initialized pipe_t struct, NULL otherwise.
  */
-pipe_t *PipeListCreate() {
+pipe_list_t *PipeListCreate() {
     // 1. Allocate space for our pipe list struct. Print message and return NULL upon error
     pipe_list_t *pl = (pipe_list_t *) malloc(sizeof(pipe_list_t));
     if (!pl) {
@@ -51,8 +51,8 @@ pipe_t *PipeListCreate() {
 
     // 2. Initialize the list start and end pointers to NULL
     pl->num_pipes = 0;
-    pl->first     = NULL;
-    pl->last      = NULL;
+    pl->start     = NULL;
+    pl->end       = NULL;
     return pl;
 }
 
@@ -70,13 +70,13 @@ int PipeListDelete(pipe_list_t *_pl) {
     }
 
     // 2. TODO: Loop over every list and free pipes. Then free pipe struct
-    pipe_t *pipe = _pl->first;
+    pipe_t *pipe = _pl->start;
     while (pipe) {
         pipe_t *next = pipe->next;
         free(pipe);
         pipe = next;
     }
-    free(_pipe);
+    free(pipe);
     return 0;
 }
 
@@ -99,7 +99,7 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     pipe_t *pipe = (pipe_t *) malloc(sizeof(pipe_t));
     if (!pipe) {
         TracePrintf(1, "[PipeInit] Error mallocing space for pipe struct\n");
-        return NULL;
+        return ERROR;
     }
 
     // 3. Initialize internal members and increment the total number of pipes
@@ -135,7 +135,7 @@ int PipeRead(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, in
         return ERROR;
     }
     if (_pipe_id < 0 || _pipe_id >= _pl->num_pipes) {
-        TracePrintf(1, "[PipeRead] Invalid _pipe_id: %d\n" _pipe_id);
+        TracePrintf(1, "[PipeRead] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
     if (_buf_len < 0) {
@@ -245,7 +245,7 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
         return ERROR;
     }
     if (_pipe_id < 0 || _pipe_id >= _pl->num_pipes) {
-        TracePrintf(1, "[PipeWrite] Invalid _pipe_id: %d\n" _pipe_id);
+        TracePrintf(1, "[PipeWrite] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
     if (_buf_len < 0) {
@@ -422,7 +422,7 @@ static int PipeRemove(pipe_list_t *_pl, int _pipe_id) {
         return ERROR;
     }
     if (_pipe_id < 0 || _pipe_id >= _pl->num_pipes) {
-        TracePrintf(1, "[PipeRemove] Invalid _pipe_id: %d\n" _pipe_id);
+        TracePrintf(1, "[PipeRemove] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
 
