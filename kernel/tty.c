@@ -21,10 +21,8 @@ typedef struct terminal {
     int   write_pid;
     pcb_t *write_proc;
     int   read_buf_len;
-    int   write_buf_len;
     node_t *read_buf_start;
     node_t *read_buf_end;
-    void  *write_buf;
 } terminal_t;
 
 typedef struct tty {
@@ -88,7 +86,6 @@ static terminal_t *TTYTerminalCreate() {
     terminal->write_pid     = 0;
     terminal->write_proc    = NULL;
     terminal->read_buf_len  = 0;
-    terminal->write_buf_len = 0;
     return terminal;
 }
 
