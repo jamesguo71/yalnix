@@ -370,7 +370,7 @@ static int TTYLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
     //    current end to point to our new line as its "next" and our current line to
     //    point to our current end as its "prev". Then, set the new line "next" to NULL
     //    since it is the end of the list and update our end-of-list pointer in the list struct.
-    node_t *old_end         = _terminal->read_buf_end;
+    line_t *old_end         = _terminal->read_buf_end;
     old_end->next           = line;
     line->prev              = old_end;
     line->next              = NULL;
