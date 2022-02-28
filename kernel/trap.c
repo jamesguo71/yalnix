@@ -57,16 +57,18 @@ int TrapKernel(UserContext *_uctxt) {
             _uctxt->regs[0] = SyscallDelay(_uctxt, (int ) _uctxt->regs[0]);
             break;
         case YALNIX_TTY_READ:
-            _uctxt->regs[0] = SyscallTtyRead(_uctxt,
-                                    (int )   _uctxt->regs[0],
-                                    (void *) _uctxt->regs[1],
-                                    (int)    _uctxt->regs[2]);
+            _uctxt->regs[0] = TTYRead(e_tty,                // tty struct declared in kernel.h
+                                      _uctxt,               // current process' UserContext
+                             (int )   _uctxt->regs[0],      // tty device id
+                             (void *) _uctxt->regs[1],      // output buffer to store read bytes
+                             (int)    _uctxt->regs[2]);     // length of output buffer
             break;
         case YALNIX_TTY_WRITE:
-            _uctxt->regs[0] = SyscallTtyWrite(_uctxt,
-                                     (int)    _uctxt->regs[0],
-                                     (void *) _uctxt->regs[1],
-                                     (int)    _uctxt->regs[2]);
+            _uctxt->regs[0] = TTYWrite(e_tty,               // tty struct declared in kernel.h
+                                       _uctxt,              // current process' UserContext
+                              (int)    _uctxt->regs[0],     // tty device id
+                              (void *) _uctxt->regs[1],     // input buffer with bytes to write
+                              (int)    _uctxt->regs[2]);    // length of input buffer
             break;
         case YALNIX_PIPE_INIT:
             _uctxt->regs[0] = SyscallPipeInit((int *) _uctxt->regs[0]);
@@ -291,8 +293,7 @@ int TrapTTYReceive(UserContext *_uctxt) {
 
     // 2. Page 25. states that this gets called once there is input ready for a given tty device
     //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
-    TracePrintf(1, "[TrapTTYReceive] Reading from terminal: %d\n", _uctxt->code);
-    TTYUpdateReadBuffer(e_tty, _uctxt->code);
+    TTYUpdateReader(e_tty, _uctxt->code);
     return 0;
 }
 
@@ -313,7 +314,6 @@ int TrapTTYTransmit(UserContext *_uctxt) {
 
     // 2. Check to see if there is a process blocked on TTYWrite for this device. If so,
     //    remove them from blocked and add to ready queue.
-    TracePrintf(1, "[TrapTTYTransmit] _uctxt->sp: %p\n", _uctxt->sp);
     TTYUpdateWriter(e_tty, _uctxt, _uctxt->code);
     return 0;
 }
