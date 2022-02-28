@@ -13,6 +13,7 @@ K_SRC_DIR = ./kernel
 K_SRCS = kernel.c       \
          frame.c        \
          load_program.c \
+         pipe.c         \
          process.c      \
          pte.c          \
          scheduler.c    \
@@ -22,6 +23,7 @@ K_SRCS = kernel.c       \
 K_INCS = kernel.h       \
          frame.h        \
          load_program.h \
+         pipe.h         \
          process.h      \
          pte.h          \
          scheduler.h    \
@@ -40,6 +42,8 @@ U_SRCS = init.c           \
          fork_and_exit.c  \
          fork_and_wait.c  \
          fork_and_wait2.c \
+         pipe_test.c      \
+         pipe_test2.c     \
          trap_math.c      \
          trap_memory.c    \
          tty_test.c       \
