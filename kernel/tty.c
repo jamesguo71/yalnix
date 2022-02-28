@@ -235,14 +235,14 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
 
     // If the writer only needs to transmit no more than TERMINAL_MAX_LINE bytes, transmit it in one go and switch out
     if (_len <= TERMINAL_MAX_LINE) {
-        TtyTransmit(_tty_id, _buf, _len);
+        TtyTransmit(_tty_id, kernel_buf, _len);
         KCSwitch(_uctxt, running);
     }
     // Otherwise, we break them up and transmit multiple times, blocking after each transmit
     else {
         for (int rem = _len; rem > 0; rem -= TERMINAL_MAX_LINE) {
             int offset = _len - rem;
-            TtyTransmit(_tty_id, _buf + offset, rem > TERMINAL_MAX_LINE ? TERMINAL_MAX_LINE : rem);
+            TtyTransmit(_tty_id, kernel_buf + offset, rem > TERMINAL_MAX_LINE ? TERMINAL_MAX_LINE : rem);
             KCSwitch(_uctxt, running);
         }
     }
