@@ -1,6 +1,7 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include <hardware.h>
+#include "ipc.h"
 #include "process.h"
 #include "scheduler.h"
 #include "tty.h"
@@ -24,30 +25,19 @@ typedef struct lock {
     int *waiting;   // which processes are waiting for the lock?
 } lock_t;
 
-typedef struct pipe {
-    int  id;
-    int  plen;
-    int  read;
-    int  write;
-    int  *waiting_readers;
-    int  *waiting_writers;
-    void *buf;
-} pipe_t;
-
 
 /*
  * Variable definitions - Declare these globally in kernel.c, but not in trap.c or syscalls.c;
  *                        they should be able to refer to them normally---no need to define or
  *                        declare them in trap.c/h or syscall.c/h
  */
-extern char *e_frames;
-extern int   e_num_frames;
+extern char        *e_frames;
+extern int          e_num_frames;
+extern ipc_t       *e_ipc;
 extern pte_t       *e_kernel_pt; // Kernel Page Table
 extern scheduler_t *e_scheduler;
 extern tty_t       *e_tty;
-
-// Used to determine if the original brk has changed - initialized to og brk value
-extern void *e_kernel_curr_brk;
+extern void        *e_kernel_curr_brk;
 
 
 /*!
@@ -69,6 +59,14 @@ int SetKernelBrk(void *_brk);
  */
 void KernelStart (char **cmd_args, unsigned int pmem_size, UserContext *uctxt);
 
+
+/*!
+ * \desc                 TODO
+ * 
+ * \param[in] cmd_args   TODO
+ * \param[in] pmem_size  TODO
+ * \param[in] uctxt      TODO
+ */
 int KCSwitch(UserContext *_uctxt, pcb_t *_running_old);
 
 

@@ -3,6 +3,7 @@
 #include <ykernel.h>
 
 #include "frame.h"
+#include "ipc.h"
 #include "kernel.h"
 #include "load_program.h"
 #include "scheduler.h"
@@ -16,6 +17,7 @@
  */
 char        *e_frames           = NULL;   // Bit vector to track frames (set in KernelStart)
 int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
+ipc_t       *e_ipc              = NULL;
 scheduler_t *e_scheduler        = NULL;
 pte_t       *e_kernel_pt        = NULL;
 tty_t       *e_tty              = NULL;
@@ -80,8 +82,6 @@ int SetKernelBrk(void *_kernel_new_brk) {
     //          brk values are those that fall on page boundaries, so the kernel may end up with
     //          *more* memory than it asked for. It should never end up freeing more memory than
     //          it specified, however, because we round up.
-    //
-    //    TODO: Do I need to round up? I need to think about this more...
     _kernel_new_brk = (void *) UP_TO_PAGE(_kernel_new_brk);
 
     // 3. If virtual memory has not yet been enabled, then simply save the proposed brk.
@@ -198,6 +198,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     e_frames = (char *) calloc(frames_len, sizeof(char));
     if (!e_frames) {
         TracePrintf(1, "Calloc for e_frames failed!\n");
+        Halt();
+    }
+
+    // . Allocate space for our ipc struct, which we use to read and write to pipes.
+    e_ipc = IPCCreate();
+    if (!e_ipc) {
+        TracePrintf(1, "[KernelStart] Failed to create e_ipc\n");
         Halt();
     }
 
