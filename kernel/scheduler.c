@@ -803,20 +803,50 @@ int SchedulerUpdateLock(scheduler_t *_scheduler) {
     return 0;
 }
 
-int SchedulerUpdatePipeRead(scheduler_t *_scheduler) {
+int SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdatePipeRead] Invalid list pointer\n");
         return ERROR;
     }
+
+    // 2. Loop over the PipeRead list to see if any processes are waiting to read from the pipe
+    //    specified by _pipe_id. If so, remove the first (and only the first) process waiting to
+    //    read and add it to the ready list.
+    node_t *node = _scheduler->lists[SCHEDULER_PIPE_READ_START];
+    while (node) {
+        pcb_t *process = node->process;
+        if (process->pipe_id == _pipe_id) {
+            TracePrintf(1, "[SchedulerUpdatePipeRead] Moving process: %d to ready\n", process->pid);
+            SchedulerRemovePipeRead(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return 0;
+        }
+        node = node->next;
+    }
     return 0;
 }
 
-int SchedulerUpdatePipeWrite(scheduler_t *_scheduler) {
+int SchedulerUpdatePipeWrite(scheduler_t *_scheduler, int _pipe_id) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdatePipeWrite] Invalid list pointer\n");
         return ERROR;
+    }
+
+    // 2. Loop over the PipeWrite list to see if any processes are waiting to write to the pipe
+    //    specified by _pipe_id. If so, remove the first (and only the first) process waiting to
+    //    read and add it to the ready list.
+    node_t *node = _scheduler->lists[SCHEDULER_PIPE_WRITE_START];
+    while (node) {
+        pcb_t *process = node->process;
+        if (process->pipe_id == _pipe_id) {
+            TracePrintf(1, "[SchedulerUpdatePipeWrite] Moving process: %d to ready\n", process->pid);
+            SchedulerRemovePipeWrite(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return 0;
+        }
+        node = node->next;
     }
     return 0;
 }
