@@ -240,9 +240,10 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
     memcpy(&running->uctxt, _uctxt, sizeof(UserContext));
 
     // Make a copy of the _buf in the kernel
-    void *kernel_buf = malloc(_len);
+    int kernel_buf_len = _len;
+    void *kernel_buf = malloc(kernel_buf_len);
     if (kernel_buf == NULL) return ERROR;
-    memcpy(kernel_buf, _buf, _len);
+    memcpy(kernel_buf, _buf, kernel_buf_len);
 
     terminal_t *terminal = _tty->terminals[_tty_id];
     // If there's already a processing writing, block the current one until the terminal is free
@@ -257,14 +258,14 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
     // in a TrapTTYTransmit, so we first check the terminal's write_proc to see if we need to unblock a process there
 
     // If the writer only needs to transmit no more than TERMINAL_MAX_LINE bytes, transmit it in one go and switch out
-    if (_len <= TERMINAL_MAX_LINE) {
-        TtyTransmit(_tty_id, kernel_buf, _len);
+    if (kernel_buf_len <= TERMINAL_MAX_LINE) {
+        TtyTransmit(_tty_id, kernel_buf, kernel_buf_len);
         KCSwitch(_uctxt, running);
     }
     // Otherwise, we break them up and transmit multiple times, blocking after each transmit
     else {
-        for (int rem = _len; rem > 0; rem -= TERMINAL_MAX_LINE) {
-            int offset = _len - rem;
+        for (int rem = kernel_buf_len; rem > 0; rem -= TERMINAL_MAX_LINE) {
+            int offset = kernel_buf_len - rem;
             TtyTransmit(_tty_id, kernel_buf + offset, rem > TERMINAL_MAX_LINE ? TERMINAL_MAX_LINE : rem);
             KCSwitch(_uctxt, running);
         }
@@ -275,7 +276,7 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
 
     SchedulerUpdateTTYWrite(e_scheduler, _tty_id);
 
-    return _len;
+    return kernel_buf_len;
 }
 
 // This is called in TrapTTYTransmit, and is used to add the current terminal writer to ready queue
