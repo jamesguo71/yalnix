@@ -446,48 +446,6 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
 
 
 /*!
- * \desc               Reads the next line of input from the terminal indicated by tty_id.
- *
- * \param[in]  tty_id  The id of the terminal to read from
- * \param[out] buf     An output buffer to store the bytes read from the terminal
- * \param[in]  len     The length of the output buffer
- *
- * \return             Number of bytes read on success, ERROR otherwise
- */
-int SyscallTtyRead (UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
-    // FEEDBACK: yes, kernel malloc would work! - for waiting... block the caller and run someone
-    //           else.... and have the receive trap handler wake up the blocker! and similar
-    //           comments for SyscallTtyWrite
-
-    // // 1. Check arguments. Return ERROR if invalid. Make sure that (1) the terminal
-    // //    id is valid (2) that buffer is not NULL and (3) length is positive.
-    // if (tty_id < 0 || tty_id > 3 || !buf || len < 1) {
-    //     return ERROR;
-    // }
-
-    return TTYRead(e_tty,
-                   _uctxt,
-                   _tty_id,
-                   _buf,
-                   _len);
-}
-
-
-/*!
- * \desc              Writes the contents of the buffer to the terminal indicated by tty_id.
- *
- * \param[in] tty_id  The id of the terminal to write to
- * \param[in] buf     An input buffer containing the bytes to write to the terminal
- * \param[in] len     The length of the input buffer
- *
- * \return            Number of bytes written on success, ERROR otherwise
- */
-int SyscallTtyWrite (UserContext *_uctxt, int tty_id, void *buf, int len) {
-    return TTYWrite(e_tty, _uctxt, tty_id, buf, len);
-}
-
-
-/*!
  * \desc                 Creates a new pipe.
  *
  * \param[out] pipe_idp  The address where the newly created pipe's id should be stored

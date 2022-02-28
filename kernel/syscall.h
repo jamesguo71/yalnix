@@ -35,30 +35,6 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
 
 
 /*!
- * \desc               Reads the next line of input from the terminal indicated by tty_id.
- * 
- * \param[in]  tty_id  The id of the terminal to read from
- * \param[out] buf     An output buffer to store the bytes read from the terminal
- * \param[in]  len     The length of the output buffer
- * 
- * \return             Number of bytes read on success, ERROR otherwise
- */
-int SyscallTtyRead (UserContext *_uctxt, int tty_id, void *buf, int len);
-
-
-/*!
- * \desc              Writes the contents of the buffer to the terminal indicated by tty_id.
- * 
- * \param[in] tty_id  The id of the terminal to write to
- * \param[in] buf     An input buffer containing the bytes to write to the terminal
- * \param[in] len     The length of the input buffer
- * 
- * \return            Number of bytes written on success, ERROR otherwise
- */
-int SyscallTtyWrite (UserContext *_uctxt, int tty_id, void *buf, int len);
-
-
-/*!
  * \desc                 Creates a new pipe.
  * 
  * \param[out] pipe_idp  The address where the newly created pipe's id should be stored
