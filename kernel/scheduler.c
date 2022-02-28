@@ -138,16 +138,28 @@ int SchedulerAddLock(scheduler_t *_scheduler, pcb_t *_process) {
                        SCHEDULER_LOCK_END);
 }
 
-int SchedulerAddPipe(scheduler_t *_scheduler, pcb_t *_process) {
+int SchedulerAddPipeRead(scheduler_t *_scheduler, pcb_t *_process) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal add.
     if (!_scheduler || !_process) {
-        TracePrintf(1, "[SchedulerAddPipe] Invalid list or process pointer\n");
+        TracePrintf(1, "[SchedulerAddPipeRead] Invalid list or process pointer\n");
         return ERROR;
     }
     return SchedulerAdd(_scheduler,
                        _process,
-                       SCHEDULER_PIPE_START,
-                       SCHEDULER_PIPE_END);
+                       SCHEDULER_PIPE_READ_START,
+                       SCHEDULER_PIPE_READ_END);
+}
+
+int SchedulerAddPipeWrite(scheduler_t *_scheduler, pcb_t *_process) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal add.
+    if (!_scheduler || !_process) {
+        TracePrintf(1, "[SchedulerAddPipeWrite] Invalid list or process pointer\n");
+        return ERROR;
+    }
+    return SchedulerAdd(_scheduler,
+                       _process,
+                       SCHEDULER_PIPE_WRITE_START,
+                       SCHEDULER_PIPE_WRITE_END);
 }
 
 int SchedulerAddProcess(scheduler_t *_scheduler, pcb_t *_process) {
@@ -301,6 +313,30 @@ pcb_t *SchedulerGetIdle(scheduler_t *_scheduler) {
     return _scheduler->lists[SCHEDULER_IDLE]->process;
 }
 
+pcb_t *SchedulerGetPipeRead(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerGetPipeRead] Invalid list or pid\n");
+        return NULL;
+    }
+    return SchedulerGet(_scheduler,
+                       _pid,
+                       SCHEDULER_PIPE_READ_START,
+                       SCHEDULER_PIPE_READ_END);
+}
+
+pcb_t *SchedulerGetPipeWrite(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerGetPipeWrite] Invalid list or pid\n");
+        return NULL;
+    }
+    return SchedulerGet(_scheduler,
+                       _pid,
+                       SCHEDULER_PIPE_WRITE_START,
+                       SCHEDULER_PIPE_WRITE_END);
+}
+
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal get.
     if (!_scheduler || _pid < 0) {
@@ -436,14 +472,24 @@ int SchedulerPrintLock(scheduler_t *_scheduler) {
     return SchedulerPrint(_scheduler, SCHEDULER_LOCK_START);
 }
 
-int SchedulerPrintPipe(scheduler_t *_scheduler) {
+int SchedulerPrintPipeRead(scheduler_t *_scheduler) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal print.
     if (!_scheduler) {
-        TracePrintf(1, "[SchedulerPrintPipe] Invalid list pointer\n");
+        TracePrintf(1, "[SchedulerPrintPipeRead] Invalid list pointer\n");
         return ERROR;
     }
-    TracePrintf(1, "[SchedulerPrintPipe] Pipe List:\n");
-    return SchedulerPrint(_scheduler, SCHEDULER_PIPE_START);
+    TracePrintf(1, "[SchedulerPrintPipeRead] Pipe Read List:\n");
+    return SchedulerPrint(_scheduler, SCHEDULER_PIPE_READ_START);
+}
+
+int SchedulerPrintPipeWrite(scheduler_t *_scheduler) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal print.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerPrintPipeWrite] Invalid list pointer\n");
+        return ERROR;
+    }
+    TracePrintf(1, "[SchedulerPrintPipeWrite] Pipe Write List:\n");
+    return SchedulerPrint(_scheduler, SCHEDULER_PIPE_WRITE_START);
 }
 
 int SchedulerPrintProcess(scheduler_t *_scheduler) {
@@ -553,16 +599,28 @@ int SchedulerRemoveLock(scheduler_t *_scheduler, int _pid) {
                           SCHEDULER_LOCK_END);
 }
 
-int SchedulerRemovePipe(scheduler_t *_scheduler, int _pid) {
+int SchedulerRemovePipeRead(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal remove.
     if (!_scheduler || _pid < 0) {
-        TracePrintf(1, "[SchedulerRemovePipe] Invalid list or pid\n");
+        TracePrintf(1, "[SchedulerRemovePipeRead] Invalid list or pid\n");
         return ERROR;
     }
     return SchedulerRemove(_scheduler,
                           _pid,
-                          SCHEDULER_PIPE_START,
-                          SCHEDULER_PIPE_END);
+                          SCHEDULER_PIPE_READ_START,
+                          SCHEDULER_PIPE_READ_END);
+}
+
+int SchedulerRemovePipeWrite(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal remove.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerRemovePipeWrite] Invalid list or pid\n");
+        return ERROR;
+    }
+    return SchedulerRemove(_scheduler,
+                          _pid,
+                          SCHEDULER_PIPE_WRITE_START,
+                          SCHEDULER_PIPE_WRITE_END);
 }
 
 int SchedulerRemoveProcess(scheduler_t *_scheduler, int _pid) {
@@ -745,10 +803,19 @@ int SchedulerUpdateLock(scheduler_t *_scheduler) {
     return 0;
 }
 
-int SchedulerUpdatePipe(scheduler_t *_scheduler) {
+int SchedulerUpdatePipeRead(scheduler_t *_scheduler) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
-        TracePrintf(1, "[SchedulerUpdatePipe] Invalid list pointer\n");
+        TracePrintf(1, "[SchedulerUpdatePipeRead] Invalid list pointer\n");
+        return ERROR;
+    }
+    return 0;
+}
+
+int SchedulerUpdatePipeWrite(scheduler_t *_scheduler) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerUpdatePipeWrite] Invalid list pointer\n");
         return ERROR;
     }
     return 0;
