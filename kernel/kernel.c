@@ -631,10 +631,10 @@ KernelContext *MyKCS(KernelContext *_kctxt, void *_curr_pcb_p, void *_next_pcb_p
     // 5. Tell the CPU where to find the page table for our new running process.
     //    Remember to flush the TLB so we dont map to the previous process' frames!
     if (running_old) {
-        TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n",
+        TracePrintf(1, "[MyKCS] Switching from pid: %d to pid: %d\n\n",
                                 running_old->pid, running_new->pid);
     } else {
-        TracePrintf(1, "[MyKCS] Switching from deleted process to pid: %d\n",
+        TracePrintf(1, "[MyKCS] Switching from deleted process to pid: %d\n\n",
                                 running_new->pid);
     } 
     WriteRegister(REG_PTBR1, (unsigned int) running_new->pt);    // pt address
