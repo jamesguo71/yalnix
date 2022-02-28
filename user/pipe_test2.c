@@ -1,6 +1,7 @@
 #include "yuser.h"
 
-#define BUF_LEN 1024
+#define BUF_LEN  1024
+#define READ_LEN 100
 
 int main() {
     // 1. Declare a buffer for reading/writing and initialize a pipe
@@ -16,7 +17,8 @@ int main() {
     if (pid) {
         while (1) {
             TracePrintf(1, "[pipe_test] Parent reading from pipe: %d \n", pipe);
-            PipeRead(pipe, (void *) buf, BUF_LEN / 2);
+            PipeRead(pipe, (void *) buf, READ_LEN);
+            buf[READ_LEN - 1] = '\0';
             TracePrintf(1, "[pipe_test] Parent read: %s\n", buf);
             Pause();
         }
