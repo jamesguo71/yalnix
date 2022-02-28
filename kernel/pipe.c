@@ -322,7 +322,8 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
     // 7. If the caller wishes to write more bytes than the pipe currently has space for, we need
     //    to loop where we (1) write as many bytes as we can (2) unblock the next process (if any)
     //    that is waiting to read the pipe and (3) block ourselves until the pipe has space again.
-    int bytes_remaining = kernel_buf_len;
+    int   bytes_remaining  = kernel_buf_len;
+    void *kernel_buf_start = kernel_buf;
     while (bytes_remaining) {
 
         // 7a. Calculate how much space is left in the pipe buffer. If the number of bytes left to
@@ -360,6 +361,7 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
     pipe->write_pid = 0;
     SchedulerUpdatePipeWrite(e_scheduler, _pipe_id, pipe->write_pid);
     SchedulerUpdatePipeRead(e_scheduler, _pipe_id);
+    free(kernel_buf_start);
     return kernel_buf_len;
 }
 
