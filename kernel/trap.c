@@ -71,17 +71,22 @@ int TrapKernel(UserContext *_uctxt) {
                               (int)    _uctxt->regs[2]);    // length of input buffer
             break;
         case YALNIX_PIPE_INIT:
-            _uctxt->regs[0] = SyscallPipeInit((int *) _uctxt->regs[0]);
+            _uctxt->regs[0] = IPCPipeInit(e_ipc,            // ipc struct declared in kernel.h 
+                                  (int *) _uctxt->regs[0]); // pointer to store new pipe id
             break;
         case YALNIX_PIPE_READ:
-            _uctxt->regs[0] = SyscallPipeRead((int)    _uctxt->regs[0],
-                                              (void *) _uctxt->regs[1],
-                                              (int)    _uctxt->regs[2]);
+            _uctxt->regs[0] = IPCPipeRead(e_ipc,             // ipc struct declared in kernel.h
+                                          _uctxt,            // current process' UserContext
+                                 (int)    _uctxt->regs[0],   // pipe id
+                                 (void *) _uctxt->regs[1],   // output buffer to store read bytes
+                                 (int)    _uctxt->regs[2]);  // length of output buffer
             break;
         case YALNIX_PIPE_WRITE:
-            _uctxt->regs[0] = SyscallPipeWrite((int)    _uctxt->regs[0],
-                                               (void *) _uctxt->regs[1],
-                                               (int)    _uctxt->regs[2]);
+            _uctxt->regs[0] = IPCPipeWrite(e_ipc,            // ipc struct declared in kernel.h
+                                           _uctxt,           // current process' UserContext
+                                  (int)    _uctxt->regs[0],  // pipe id
+                                  (void *) _uctxt->regs[1],  // input buffer with bytes to write
+                                  (int)    _uctxt->regs[2]); // length of input buffer
             break;
         case YALNIX_LOCK_INIT:
             _uctxt->regs[0] = SyscallLockInit((int *) _uctxt->regs[0]);
