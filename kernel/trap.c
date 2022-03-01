@@ -3,6 +3,7 @@
 #include <ykernel.h>
 #include <ylib.h>
 
+#include "cvar.h"
 #include "frame.h"
 #include "lock.h"
 #include "kernel.h"
