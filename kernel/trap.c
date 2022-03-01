@@ -105,19 +105,19 @@ int TrapKernel(UserContext *_uctxt) {
                                     (int) _uctxt->regs[0]); // lock id
             break;
         case YALNIX_CVAR_INIT:
-            _uctxt->regs[0] = CvarInit(e_cvar_list,           // cvar_list struct
+            _uctxt->regs[0] = CVarInit(e_cvar_list,           // cvar_list struct
                                (int *) _uctxt->regs[0]);      // pointer to store new cvar id
             break;
         case YALNIX_CVAR_SIGNAL:
-            _uctxt->regs[0] = CvarSignal(e_cvar_list,         // cvar_list struct
+            _uctxt->regs[0] = CVarSignal(e_cvar_list,         // cvar_list struct
                                   (int ) _uctxt->regs[0]);    // cvar id
             break;
         case YALNIX_CVAR_BROADCAST:
-            _uctxt->regs[0] = CvarBroadcast(e_cvar_list,      // cvar_list struct
+            _uctxt->regs[0] = CVarBroadcast(e_cvar_list,      // cvar_list struct
                                      (int ) _uctxt->regs[0]); // cvar id
             break;
         case YALNIX_CVAR_WAIT:
-            _uctxt->regs[0] = CvarWait(e_cvar_list,           // cvar_list struct
+            _uctxt->regs[0] = CVarWait(e_cvar_list,           // cvar_list struct
                                        _uctxt,                // current process' UserContext
                                 (int ) _uctxt->regs[0],       // cvar id
                                 (int ) _uctxt->regs[1]);      // lock id
