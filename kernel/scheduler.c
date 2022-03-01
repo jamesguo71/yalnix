@@ -772,7 +772,7 @@ int SchedulerUpdateCVar(scheduler_t *_scheduler, int _cvar_id) {
         pcb_t *process = node->process;
         if (process->cvar_id == _cvar_id) {
             TracePrintf(1, "[SchedulerUpdateCVar] Moving process: %d to ready\n", process->pid);
-            SchedulerRemoveCvar(_scheduler, process->pid);
+            SchedulerRemoveCVar(_scheduler, process->pid);
             SchedulerAddReady(_scheduler, process);
             return 0;
         }
