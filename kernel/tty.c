@@ -56,7 +56,7 @@ tty_list_t *TTYListCreate() {
     for (int i = 0; i < TTY_NUM_TERMINALS; i++) {
         tty->terminals[i] = TTYCreate();
         if (!tty->terminals[i]) {
-            TTYDelete(tty);
+            TTYListDelete(tty);
             return NULL;
         }
     }
