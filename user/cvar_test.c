@@ -4,15 +4,17 @@
 
 int main() {
     // 1. Create a new cvar and lock. Exit upon error.
-    int cvar = CvarInit(&cvar);
-    if (cvar < 0) {
+    int cvar;
+    int ret = CvarInit(&cvar);
+    if (ret < 0) {
         TracePrintf(1, "[cvar_test] Error initializing cvar. Exiting...\n");
-        return cvar;
+        return ret;
     }
-    int lock = LockInit(&lock);
-    if (lock < 0) {
+    int lock;
+    ret = LockInit(&lock);
+    if (ret < 0) {
         TracePrintf(1, "[cvar_test] Error initializing lock. Exiting...\n");
-        return lock;
+        return ret;
     }
 
     // 2. Spawn a number of child processes, where the child processes delay and then attempt to
