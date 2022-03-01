@@ -91,13 +91,18 @@ int TrapKernel(UserContext *_uctxt) {
                                (int)    _uctxt->regs[2]); // length of input buffer
             break;
         case YALNIX_LOCK_INIT:
-            _uctxt->regs[0] = LockInit(e_lock_list, (int *) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockInit(e_lock_list,       // lock_list struct declared in kernel.h
+                               (int *) _uctxt->regs[0]);  // pointer to store new lock id
             break;
         case YALNIX_LOCK_ACQUIRE:
-            _uctxt->regs[0] = LockAcquire(e_lock_list, (int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockAcquire(e_lock_list,      // lock_list struct declared in kernel.h
+                                          _uctxt,           // current process' UserContext
+                                   (int ) _uctxt->regs[0]); // lock id
             break;
         case YALNIX_LOCK_RELEASE:
-            _uctxt->regs[0] = LockRelease(e_lock_list, (int) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockRelease(e_lock_list,      // lock_list struct declared in kernel.h
+                                          _uctxt,           // current process' UserContext
+                                    (int) _uctxt->regs[0]); // lock id
             break;
         case YALNIX_CVAR_INIT:
             _uctxt->regs[0] = SyscallCvarInit((int *) _uctxt->regs[0]);
