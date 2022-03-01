@@ -804,7 +804,7 @@ int SchedulerUpdateLock(scheduler_t *_scheduler, int _lock_id) {
     // 2. Loop over the Lock list to see if any processes are waiting to read from the pipe
     //    specified by _pipe_id. If so, remove the first (and only the first) process waiting to
     //    read and add it to the ready list.
-    node_t *node = _scheduler->lists[SCHEDULER_LOCK_READ_START];
+    node_t *node = _scheduler->lists[SCHEDULER_LOCK_START];
     while (node) {
         pcb_t *process = node->process;
         if (process->lock_id == _lock_id) {
