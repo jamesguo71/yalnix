@@ -123,16 +123,15 @@ int TrapKernel(UserContext *_uctxt) {
                                 (int ) _uctxt->regs[1]);      // lock id
             break;
         case YALNIX_RECLAIM:
-            int id = _uctxt->regs[0];
-            if (id >= CVAR_ID_START && id < e_cvar_list->num_cvars) {
-                _uctxt->regs[0] = CVarReclaim(e_cvar_list, id);
-            } else if (id >= LOCK_ID_START && id < e_lock_list->num_locks) {
-                _uctxt->regs[0] = LockReclaim(e_lock_list, id);
-            } else if (id >= PIPE_ID_START && id < e_pipe_list->num_pipes) {
-                _uctxt->regs[0] = PipeReclaim(e_pipe_list, id);
-            } else {
-                TracePrintf(1, "[TrapKernelReclaim] Id: %d not recognized.\n", id);
-                _uctxt->regs[0] = ERROR;
+            if (_uctxt->regs[0] < LOCK_ID_START) {              // id order is cvar < lock < pipe 
+                _uctxt->regs[0] = CVarReclaim(e_cvar_list,      // so if the id < lock_start then
+                                              _uctxt->regs[0]); // it must be cvar. Follow this
+            } else if (_uctxt->regs[0] < PIPE_ID_START) {       // pattern to determine if the id
+                _uctxt->regs[0] = LockReclaim(e_lock_list,      // is for a cvar, lock, or pipe
+                                              _uctxt->regs[0]); // struct and call the appropriate
+            } else {                                            // reclaim function
+                _uctxt->regs[0] = PipeReclaim(e_pipe_list,
+                                              _uctxt->regs[0]);
             }
             break;
         default: break;
