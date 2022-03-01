@@ -60,14 +60,14 @@ int TrapKernel(UserContext *_uctxt) {
             _uctxt->regs[0] = SyscallDelay(_uctxt, (int ) _uctxt->regs[0]);
             break;
         case YALNIX_TTY_READ:
-            _uctxt->regs[0] = TTYRead(e_tty,                // tty struct declared in kernel.h
+            _uctxt->regs[0] = TTYRead(e_tty_list,           // tty struct declared in kernel.h
                                       _uctxt,               // current process' UserContext
                              (int )   _uctxt->regs[0],      // tty device id
                              (void *) _uctxt->regs[1],      // output buffer to store read bytes
                              (int)    _uctxt->regs[2]);     // length of output buffer
             break;
         case YALNIX_TTY_WRITE:
-            _uctxt->regs[0] = TTYWrite(e_tty,               // tty struct declared in kernel.h
+            _uctxt->regs[0] = TTYWrite(e_tty_list,          // tty struct declared in kernel.h
                                        _uctxt,              // current process' UserContext
                               (int)    _uctxt->regs[0],     // tty device id
                               (void *) _uctxt->regs[1],     // input buffer with bytes to write
@@ -311,7 +311,7 @@ int TrapTTYReceive(UserContext *_uctxt) {
 
     // 2. Page 25. states that this gets called once there is input ready for a given tty device
     //    Furthermore, page 36 states that the id of the tty device will be in the "code" field.
-    TTYUpdateReader(e_tty, _uctxt->code);
+    TTYUpdateReader(e_tty_list, _uctxt->code);
     return 0;
 }
 
@@ -332,7 +332,7 @@ int TrapTTYTransmit(UserContext *_uctxt) {
 
     // 2. Check to see if there is a process blocked on TTYWrite for this device. If so,
     //    remove them from blocked and add to ready queue.
-    TTYUpdateWriter(e_tty, _uctxt, _uctxt->code);
+    TTYUpdateWriter(e_tty_list, _uctxt, _uctxt->code);
     return 0;
 }
 

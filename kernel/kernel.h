@@ -24,7 +24,7 @@ extern lock_list_t *e_lock_list;
 extern pipe_list_t *e_pipe_list;
 extern pte_t       *e_kernel_pt; // Kernel Page Table
 extern scheduler_t *e_scheduler;
-extern tty_t       *e_tty;
+extern tty_list_t  *e_tty_list;
 extern void        *e_kernel_curr_brk;
 
 

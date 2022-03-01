@@ -24,7 +24,7 @@ lock_list_t *e_lock_list        = NULL;
 pipe_list_t *e_pipe_list        = NULL;
 scheduler_t *e_scheduler        = NULL;
 pte_t       *e_kernel_pt        = NULL;
-tty_t       *e_tty              = NULL;
+tty_list_t  *e_tty_list         = NULL;
 void        *e_kernel_curr_brk  = NULL;
 
 
@@ -234,9 +234,9 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     }
 
     // . Allocate space for our tty struct, which we use to read and write to tty devices.
-    e_tty = TTYCreate();
-    if (!e_tty) {
-        TracePrintf(1, "[KernelStart] Failed to create e_tty\n");
+    e_tty_list = TTYListCreate();
+    if (!e_tty_list) {
+        TracePrintf(1, "[KernelStart] Failed to create e_tty_list\n");
         Halt();
     }
 

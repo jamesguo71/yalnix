@@ -16,45 +16,45 @@ typedef struct line {
     struct line *prev;
 } line_t;
 
-typedef struct terminal {
+typedef struct tty {
     int     read_pid;
     int     write_pid;
     int     read_buf_len;
     line_t *read_buf_start;
     line_t *read_buf_end;
     pcb_t  *write_proc;
-} terminal_t;
+} tty_t;
 
 typedef struct tty {
-    terminal_t *terminals[TTY_NUM_TERMINALS];
-} tty_t;
+    tty_t *terminals[TTY_NUM_TERMINALS];
+} tty_list_t;
 
 
 /*
  * Local Function Definitions
  */
-static terminal_t *TTYTerminalCreate();
-static int         TTYTerminalDelete(terminal_t *_terminal);
-static int         TTYLineAdd(terminal_t *_terminal, void *_buf, int _buf_len);
-static int         TTYLineRemove(terminal_t *_terminal);
+static tty_t *TTYCreate();
+static int    TTYDelete(tty_t *_terminal);
+static int    TTYLineAdd(tty_t *_terminal, void *_buf, int _buf_len);
+static int    TTYLineRemove(tty_t *_terminal);
 
 
 /*!
- * \desc    CREATE - Functions for creating tty_t and terminal_t structs
+ * \desc    CREATE - Functions for creating tty_list_t and tty_t structs
  *
- * \return  An initialized tty_t or terminal_t struct, NULL otherwise.
+ * \return  An initialized tty_list_t or tty_t struct, NULL otherwise.
  */
-tty_t *TTYCreate() {
+tty_list_t *TTYListCreate() {
     // 1. Allocate space for our terminal struct. Print message and return NULL upon error
-    tty_t *tty = (tty_t *) malloc(sizeof(tty_t));
+    tty_list_t *tty = (tty_list_t *) malloc(sizeof(tty_list_t));
     if (!tty) {
-        TracePrintf(1, "[TTYCreate] Error mallocing space for terminal struct\n");
+        TracePrintf(1, "[TTYListCreate] Error mallocing space for terminal struct\n");
         return NULL;
     }
 
     // 2. Initialize the list start and end pointers to NULL
     for (int i = 0; i < TTY_NUM_TERMINALS; i++) {
-        tty->terminals[i] = TTYTerminalCreate();
+        tty->terminals[i] = TTYCreate();
         if (!tty->terminals[i]) {
             TTYDelete(tty);
             return NULL;
@@ -63,11 +63,11 @@ tty_t *TTYCreate() {
     return tty;
 }
 
-static terminal_t *TTYTerminalCreate() {
+static tty_t *TTYCreate() {
     // 1. Allocate space for a new terminal struct
-    terminal_t *terminal = (terminal_t *) malloc(sizeof(terminal_t));
+    tty_t *terminal = (tty_t *) malloc(sizeof(tty_t));
     if (!terminal) {
-        TracePrintf(1, "[TTYTerminalCreate] Error mallocing space for terminal struct\n");
+        TracePrintf(1, "[TTYCreate] Error mallocing space for terminal struct\n");
         return NULL;
     }
 
@@ -85,27 +85,27 @@ static terminal_t *TTYTerminalCreate() {
 /*!
  * \desc                 DELETE - Functions for freeing tty and terminal struct memory
  *
- * \param[in] _tty       A tty_t struct that the caller wishes to free
- * \param[in] _terminal  A terminal_t struct that the caller wishes to free
+ * \param[in] _tl       A tty_list_t struct that the caller wishes to free
+ * \param[in] _terminal  A tty_t struct that the caller wishes to free
  */
-int TTYDelete(tty_t *_tty) {
+int TTYDelete(tty_list_t *_tl) {
     // 1. Check arguments. Return error if invalid.
-    if (!_tty) {
+    if (!_tl) {
         TracePrintf(1, "[TTYDelete] Invalid list pointer\n");
         return ERROR;
     }
 
     // 2. TODO: Loop over every list and free lines. Then free tty struct
     for (int i = 0; i < TTY_NUM_TERMINALS; i++) {
-        TTYTerminalDelete(_tty->terminals[i]);
+        TTYDelete(_tl->terminals[i]);
     }
-    free(_tty);
+    free(_tl);
     return 0;
 }
 
-static int TTYTerminalDelete(terminal_t *_terminal) {
+static int TTYDelete(tty_t *_terminal) {
     if (!_terminal) {
-        TracePrintf(1, "[TTYTerminalDelete] Terminal already deleted\n");
+        TracePrintf(1, "[TTYDelete] Terminal already deleted\n");
         return ERROR;
     }
     // TODO: Free line structs
@@ -122,9 +122,9 @@ static int TTYTerminalDelete(terminal_t *_terminal) {
  *
  * \return             Number of bytes read on success, ERROR otherwise
  */
-int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, int _buf_len) {
+int TTYRead(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, int _buf_len) {
     // 1. Validate arguments
-    if (!_tty || !_uctxt || !_usr_read_buf) {
+    if (!_tl || !_uctxt || !_usr_read_buf) {
         TracePrintf(1, "[TTYRead] One or more invalid argument pointers\n");
         return ERROR;
     }
@@ -158,7 +158,7 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
 
     // 4. Check to see if the terminal is already in use. If so, save the process' UserContext
     //    in its pcb, add it to our TTYRead blocked list, and switch to the next ready process.
-    terminal_t *terminal = _tty->terminals[_tty_id];
+    tty_t *terminal = _tl->terminals[_tty_id];
     if (terminal->read_pid) {
         TracePrintf(1, "[TTYRead] tty_id: %d already in use by process: %d. Blocking process: %d\n",
                                   _tty_id, terminal->read_pid, running_old->pid);
@@ -223,7 +223,7 @@ int TTYRead(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_usr_read_buf, 
  *
  * \return            Number of bytes written on success, ERROR otherwise
  */
-int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
+int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
     // Argument sanity check
     if (_tty_id < 0 || _tty_id >= NUM_TERMINALS) return ERROR;
     if (_len < 0) return ERROR;
@@ -245,7 +245,7 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
     if (kernel_buf == NULL) return ERROR;
     memcpy(kernel_buf, _buf, kernel_buf_len);
 
-    terminal_t *terminal = _tty->terminals[_tty_id];
+    tty_t *terminal = _tl->terminals[_tty_id];
     // If there's already a processing writing, block the current one until the terminal is free
     if (terminal->write_proc != NULL) {
         SchedulerAddTTYWrite(e_scheduler, running);
@@ -280,8 +280,8 @@ int TTYWrite(tty_t *_tty, UserContext *_uctxt, int _tty_id, void *_buf, int _len
 }
 
 // This is called in TrapTTYTransmit, and is used to add the current terminal writer to ready queue
-void TTYUpdateWriter(tty_t *_tty, UserContext *_uctxt, int _tty_id) {
-    terminal_t *terminal = _tty->terminals[_tty_id];
+void TTYUpdateWriter(tty_list_t *_tl, UserContext *_uctxt, int _tty_id) {
+    tty_t *terminal = _tl->terminals[_tty_id];
     // Upon the TrapTTYTransmit, the terminal should be occupied by a process, so add it to ready queue
     if (terminal->write_proc == NULL) {
         helper_abort("[TTYUpdateWriter] error: terminal->write_proc is NULL\n");
@@ -289,10 +289,10 @@ void TTYUpdateWriter(tty_t *_tty, UserContext *_uctxt, int _tty_id) {
     SchedulerAddReady(e_scheduler, terminal->write_proc);
 }
 
-int TTYUpdateReader(tty_t *_tty, int _tty_id) {
+int TTYUpdateReader(tty_list_t *_tl, int _tty_id) {
     // 1. Validate arguments
-    if (!_tty) {
-        TracePrintf(1, "[TTYUpdateReader] Invalid _tty pointer\n");
+    if (!_tl) {
+        TracePrintf(1, "[TTYUpdateReader] Invalid _tl pointer\n");
         return ERROR;
     }
     if (_tty_id < 0 || _tty_id > TTY_NUM_TERMINALS) {
@@ -301,7 +301,7 @@ int TTYUpdateReader(tty_t *_tty, int _tty_id) {
     }
 
     // 2. Allocate space to hold the input we are about to read from the terminal
-    terminal_t *terminal = _tty->terminals[_tty_id];
+    tty_t *terminal = _tl->terminals[_tty_id];
     void *read_buf = (void *) malloc(TERMINAL_MAX_LINE);
     if (!read_buf) {
         TracePrintf(1, "[TTYUpdateReader] Error allocating space for read buf\n");
@@ -328,7 +328,7 @@ int TTYUpdateReader(tty_t *_tty, int _tty_id) {
     return 0;
 }
 
-static int TTYLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
+static int TTYLineAdd(tty_t *_terminal, void *_buf, int _buf_len) {
     // 1. Validate arguments
     if (!_terminal || !_buf) {
         TracePrintf(1, "[TTYLineAdd] One or more invalid argument pointers\n");
@@ -378,7 +378,7 @@ static int TTYLineAdd(terminal_t *_terminal, void *_buf, int _buf_len) {
     return 0;
 }
 
-static int TTYLineRemove(terminal_t *_terminal) {
+static int TTYLineRemove(tty_t *_terminal) {
     // 1. Check arguments. Return error if invalid.
     if (!_terminal) {
         TracePrintf(1, "[TTYLineRemove] Invalid list\n");
