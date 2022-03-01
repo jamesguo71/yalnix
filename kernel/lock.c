@@ -92,7 +92,14 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
         return ERROR;
     }
 
-    // 2. Check that the user output variable for the lock id is within valid memory space.
+    // 2. Get the pcb for the current running process.
+    pcb_t *running_old = SchedulerGetRunning(e_scheduler);
+    if (!running_old) {
+        TracePrintf(1, "[LockInit] e_scheduler returned no running process\n");
+        Halt();
+    }
+
+    // 3. Check that the user output variable for the lock id is within valid memory space.
     //    Specifically, every byte of the int should be in the process' region 1 memory space
     //    (i.e., in valid pages) with write permissions so we can write the lock id there.
     int ret = PTECheckAddress(running_old->pt,
@@ -104,21 +111,21 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
         return ERROR;
     }
 
-    // 3. Allocate space for a new lock struct
+    // 4. Allocate space for a new lock struct
     lock_t *lock = (lock_t *) malloc(sizeof(lock_t));
     if (!lock) {
         TracePrintf(1, "[LockInit] Error mallocing space for lock struct\n");
         return ERROR;
     }
 
-    // 4. Initialize internal members and increment the total number of locks
+    // 5. Initialize internal members and increment the total number of locks
     lock->lock_id   = _ll->num_locks;
     lock->lock_pid  = 0;
     lock->next      = NULL;
     lock->prev      = NULL;
     _ll->num_locks++;
 
-    // 5. Add the new lock to our lock list and save the lock id in the caller's outgoing pointer
+    // 6. Add the new lock to our lock list and save the lock id in the caller's outgoing pointer
     LockAdd(_ll, lock);
     *_lock_id = lock->lock_id;
     return 0;
@@ -151,7 +158,7 @@ int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
     }
 
     // 3. Grab the struct for the lock specified by lock_id. If its not found, return ERROR.
-    lock_t *lock = LockGet(_pl, _lock_id);
+    lock_t *lock = LockGet(_ll, _lock_id);
     if (!lock) {
         TracePrintf(1, "[LockAcquire] Lock: %d not found in ll list\n", _lock_id);
         return ERROR;
@@ -211,7 +218,7 @@ int LockRelease(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
     }
 
     // 3. Grab the struct for the lock specified by lock_id. If its not found, return ERROR.
-    lock_t *lock = LockGet(_pl, _lock_id);
+    lock_t *lock = LockGet(_ll, _lock_id);
     if (!lock) {
         TracePrintf(1, "[LockRelease] Lock: %d not found in ll list\n", _lock_id);
         return ERROR;
