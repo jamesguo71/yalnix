@@ -95,14 +95,26 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
         return ERROR;
     }
 
-    // 2. Allocate space for a new pipe struct
+    // 2. Check that the user output variable for the pipe id is within valid memory space.
+    //    Specifically, every byte of the int should be in the process' region 1 memory space
+    //    (i.e., in valid pages) with write permissions so we can write the pipe id there.
+    int ret = PTECheckAddress(running_old->pt,
+                              _pipe_id,
+                              sizeof(int),
+                              PROT_WRITE);
+    if (ret < 0) {
+        TracePrintf(1, "[PipeRead] _pipe_id pointer is not within valid address space\n");
+        return ERROR;
+    }
+
+    // 3. Allocate space for a new pipe struct
     pipe_t *pipe = (pipe_t *) malloc(sizeof(pipe_t));
     if (!pipe) {
         TracePrintf(1, "[PipeInit] Error mallocing space for pipe struct\n");
         return ERROR;
     }
 
-    // 3. Initialize internal members and increment the total number of pipes
+    // 4. Initialize internal members and increment the total number of pipes
     pipe->buf_len   = 0;
     pipe->pipe_id   = _pl->num_pipes;
     pipe->read_pid  = 0;
@@ -111,10 +123,20 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     pipe->prev      = NULL;
     _pl->num_pipes++;
 
-    // 4. Add the new pipe to our pipe list and save the pipe id in the caller's outgoing pointer
+    // 5. Add the new pipe to our pipe list and save the pipe id in the caller's outgoing pointer
     PipeAdd(_pl, pipe);
     *_pipe_id = pipe->pipe_id;
     return 0;
+}
+
+
+// TODO: We only want to destroy the pipe if no other process is blocked on it
+int PipeReclaim(pipe_list_t *_pl, int _pipe_id) {
+    // 1. Validate arguments
+
+    // 2. Check to see if any other processes are blocked on the pipe. If so, return error
+
+    // 3. Remove the pipe from the list and free its resources
 }
 
 
