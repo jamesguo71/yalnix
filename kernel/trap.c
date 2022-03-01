@@ -123,8 +123,17 @@ int TrapKernel(UserContext *_uctxt) {
                                 (int ) _uctxt->regs[1]);      // lock id
             break;
         case YALNIX_RECLAIM:
-            _uctxt->regs[0] = LockReclaim(e_lock_list,
-                                   (int ) _uctxt->regs[0]);
+            int id = _uctxt->regs[0];
+            if (id >= CVAR_ID_START && id < e_cvar_list->num_cvars) {
+                _uctxt->regs[0] = CVarReclaim(e_cvar_list, id);
+            } else if (id >= LOCK_ID_START && id < e_lock_list->num_locks) {
+                _uctxt->regs[0] = LockReclaim(e_lock_list, id);
+            } else if (id >= PIPE_ID_START && id < e_pipe_list->num_pipes) {
+                _uctxt->regs[0] = PipeReclaim(e_pipe_list, id);
+            } else {
+                TracePrintf(1, "[TrapKernelReclaim] Id: %d not recognized.\n", id);
+                _uctxt->regs[0] = ERROR;
+            }
             break;
         default: break;
     }
