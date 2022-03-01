@@ -4,6 +4,7 @@
 #include <ylib.h>
 
 #include "frame.h"
+#include "lock.h"
 #include "kernel.h"
 #include "pipe.h"
 #include "process.h"
@@ -90,13 +91,13 @@ int TrapKernel(UserContext *_uctxt) {
                                (int)    _uctxt->regs[2]); // length of input buffer
             break;
         case YALNIX_LOCK_INIT:
-            _uctxt->regs[0] = SyscallLockInit((int *) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockInit(e_lock_list, (int *) _uctxt->regs[0]);
             break;
         case YALNIX_LOCK_ACQUIRE:
-            _uctxt->regs[0] = SyscallAcquire((int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockAcquire(e_lock_list, (int ) _uctxt->regs[0]);
             break;
         case YALNIX_LOCK_RELEASE:
-            _uctxt->regs[0] = SyscallRelease((int) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockRelease(e_lock_list, (int) _uctxt->regs[0]);
             break;
         case YALNIX_CVAR_INIT:
             _uctxt->regs[0] = SyscallCvarInit((int *) _uctxt->regs[0]);
@@ -112,7 +113,7 @@ int TrapKernel(UserContext *_uctxt) {
                                                      _uctxt->regs[1]);
             break;
         case YALNIX_RECLAIM:
-            _uctxt->regs[0] = SyscallReclaim((int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockReclaim(e_lock_list, (int ) _uctxt->regs[0]);
             break;
         default: break;
     }

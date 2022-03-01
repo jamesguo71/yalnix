@@ -33,35 +33,6 @@ int SyscallBrk (UserContext *_uctxt, void *_brk);
 
 int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
 
-/*!
- * \desc                 Creates a new lock.
- * 
- * \param[out] lock_idp  The address where the newly created lock's id should be stored
- * 
- * \return               0 on success, ERROR otherwise
- */
-int SyscallLockInit (int *lock_idp);
-
-
-/*!
- * \desc               Acquires the lock identified by lock_id
- * 
- * \param[in] lock_id  The id of the lock to be acquired
- * 
- * \return             0 on success, ERROR otherwise
- */
-int SyscallAcquire (int lock_id);
-
-
-/*!
- * \desc               Releases the lock identified by lock_id
- * 
- * \param[in] lock_id  The id of the lock to be released
- * 
- * \return             0 on success, ERROR otherwise
- */
-int SyscallRelease (int lock_id);
-
 
 /*!
  * \desc                 Creates a new condition variable.
@@ -85,7 +56,4 @@ int SyscallCvarSignal (int cvar_id);
 int SyscallCvarBroadcast (int);
 
 int SyscallCvarWait (int, int);
-
-int SyscallReclaim (int);
-
 #endif

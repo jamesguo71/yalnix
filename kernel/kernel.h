@@ -1,6 +1,7 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include <hardware.h>
+#include "lock.h"
 #include "pipe.h"
 #include "process.h"
 #include "scheduler.h"
@@ -11,28 +12,13 @@
 
 
 /*
- * Struct definitions - transparent to any file that includes "kernel.h". Do we want to make
- *                      them opaque?
- */
-typedef struct cvar {
-    int  id;
-    int *waiting;   // which processes are waiting for the cvar?
-} cvar_t;
-
-typedef struct lock {
-    int  id;     
-    int  owner;     // which process currently owns the lock?
-    int *waiting;   // which processes are waiting for the lock?
-} lock_t;
-
-
-/*
  * Variable definitions - Declare these globally in kernel.c, but not in trap.c or syscalls.c;
  *                        they should be able to refer to them normally---no need to define or
  *                        declare them in trap.c/h or syscall.c/h
  */
 extern char        *e_frames;
 extern int          e_num_frames;
+extern lock_list_t *e_lock_list;
 extern pipe_list_t *e_pipe_list;
 extern pte_t       *e_kernel_pt; // Kernel Page Table
 extern scheduler_t *e_scheduler;

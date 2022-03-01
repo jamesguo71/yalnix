@@ -445,89 +445,6 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
 
 
 /*!
- * \desc                 Creates a new lock.
- *
- * \param[out] lock_idp  The address where the newly created lock's id should be stored
- *
- * \return               0 on success, ERROR otherwise
- */
-int SyscallLockInit (int *lock_idp) {
-    // // 1. Check arguments. Return ERROR if invalid.
-    // if (!lock_idp) {
-    //     return ERROR;
-    // }
-
-    // // 2. Initialize a new lock structure
-    // lock_t *newlock  = (lock_t *) Syscallmalloc(sizeof(lock_t));
-    // newlock->id      = g_locks_len++;
-    // newlock->owner   = 0;
-    // newlock->waiting = NULL;
-
-    // // 3. Add new lock to our global locks array/table/structure to keep track
-
-    // // 4. Save the lock id to the output variable
-    // *lock_idp = newlock->id;
-    return 0;
-}
-
-
-/*!
- * \desc               Acquires the lock identified by lock_id
- *
- * \param[in] lock_id  The id of the lock to be acquired
- *
- * \return             0 on success, ERROR otherwise
- */
-int SyscallAcquire (int lock_id) {
-    // // 1. Check arguments. Return ERROR if invalid. The lock id should
-    // //    be within 0 and the total number of initialized locks.
-    // if (lock_id < 0 || lock_id > g_locks_len) {
-    //     return ERROR;
-    // }
-
-    // // 2. Check to see if the lock is already owned. If so, add the
-    // //    current process to the waiting queue and return ERROR.
-    // lock_t *lock = g_locks[lock_id];
-    // if (lock->owner) {
-    //     lock->waiting = g_current->pid;
-    //     return ERROR;
-    // }
-
-    // // 3. Mark the current process as the owner of the lock
-    // lock->owner = g_current->pid;
-    return 0;
-}
-
-
-/*!
- * \desc               Releases the lock identified by lock_id
- *
- * \param[in] lock_id  The id of the lock to be released
- *
- * \return             0 on success, ERROR otherwise
- */
-int SyscallRelease (int lock_id) {
-    // FEEDBACK: What if someone was blocked waiting for this lock?
-    // // 1. Check arguments. Return ERROR if invalid. The lock id should
-    // //    be within 0 and the total number of initialized locks.
-    // if (lock_id < 0 || lock_id > g_locks_len) {
-    //     return ERROR;
-    // }
-
-    // // 2. Check to see that the current process actually owns the lock.
-    // //    If not, do nothing and return ERROR.
-    // lock_t *lock = g_locks[lock_id];
-    // if (lock->owner != g_current->pid) {
-    //     return ERROR;
-    // }
-
-    // // 3. Mark the lock as free (use 0 to indicate free and PID as taken)
-    // lock->owner = 0;
-    return 0;
-}
-
-
-/*!
  * \desc                 Creates a new condition variable.
  *
  * \param[out] cvar_idp  The address where the newly created cvar's id should be stored
@@ -604,19 +521,5 @@ int SyscallCvarWait (int cvar_id, int lock_id) {
     // Ask the scheduler to choose a process from the ready queue and KernelContextSwitch to it
     // The above steps probably can be wrapped in a function `Suspend`, See Textbook Page 243
     // Acquire the lock of `lock_id`
-    return 0;
-}
-
-/*!
- * \desc               Destroy the lock, condition variable, or pipe indentified by id, and release any associated resources. 
- *
- * \param[in] cvar_id  The id of the lock, cvar or pipe
- *
- * \return             0 on success, ERROR otherwise
- */
-
-int SyscallReclaim (int id) {
-    // Check which type of primitive the `id` is of
-    // Free its malloc'ed memory
     return 0;
 }

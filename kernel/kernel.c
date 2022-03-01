@@ -3,6 +3,7 @@
 #include <ykernel.h>
 
 #include "frame.h"
+#include "lock.h"
 #include "pipe.h"
 #include "kernel.h"
 #include "load_program.h"
@@ -201,7 +202,14 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // . Allocate space for our ipc struct, which we use to read and write to pipes.
+    // . Allocate space for our lock list struct, which we use to manage our locks.
+    e_lock_list = LockListCreate();
+    if (!e_lock_list) {
+        TracePrintf(1, "[KernelStart] Failed to create e_lock_list\n");
+        Halt();
+    }
+
+    // . Allocate space for our pipe list struct, which we use to read and write to pipes.
     e_pipe_list = PipeListCreate();
     if (!e_pipe_list) {
         TracePrintf(1, "[KernelStart] Failed to create e_pipe_list\n");

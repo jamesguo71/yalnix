@@ -794,11 +794,26 @@ int SchedulerUpdateDelay(scheduler_t *_scheduler) {
     return 0;
 }
 
-int SchedulerUpdateLock(scheduler_t *_scheduler) {
+int SchedulerUpdateLock(scheduler_t *_scheduler, int _lock_id) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
-        TracePrintf(1, "[SchedulerUpdateDelay] Invalid list pointer\n");
+        TracePrintf(1, "[SchedulerUpdateLock] Invalid list pointer\n");
         return ERROR;
+    }
+
+    // 2. Loop over the Lock list to see if any processes are waiting to read from the pipe
+    //    specified by _pipe_id. If so, remove the first (and only the first) process waiting to
+    //    read and add it to the ready list.
+    node_t *node = _scheduler->lists[SCHEDULER_LOCK_READ_START];
+    while (node) {
+        pcb_t *process = node->process;
+        if (process->lock_id == _lock_id) {
+            TracePrintf(1, "[SchedulerUpdateLock] Moving process: %d to ready\n", process->pid);
+            SchedulerRemoveLock(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return 0;
+        }
+        node = node->next;
     }
     return 0;
 }
