@@ -2,6 +2,8 @@
 #define __CVAR_H
 #include <hardware.h>
 
+#define CVAR_ID_START 0
+
 typedef struct cvar_list cvar_list_t;
 
 

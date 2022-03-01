@@ -2,6 +2,8 @@
 #define __LOCK_H
 #include <hardware.h>
 
+#define LOCK_ID_START 1000000
+
 typedef struct lock_list lock_list_t;
 
 

@@ -47,7 +47,7 @@ lock_list_t *LockListCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    pl->num_locks = 0;
+    pl->num_locks = LOCK_ID_START;
     pl->start     = NULL;
     pl->end       = NULL;
     return pl;
@@ -145,7 +145,7 @@ int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
         TracePrintf(1, "[LockAcquire] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_lock_id < 0 || _lock_id >= _ll->num_locks) {
+    if (_lock_id < LOCK_ID_START || _lock_id >= _ll->num_locks) {
         TracePrintf(1, "[LockAcquire] Invalid _lock_id: %d\n", _lock_id);
         return ERROR;
     }
@@ -205,7 +205,7 @@ int LockRelease(lock_list_t *_ll, int _lock_id) {
         TracePrintf(1, "[LockRelease] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_lock_id < 0 || _lock_id >= _ll->num_locks) {
+    if (_lock_id < LOCK_ID_START || _lock_id >= _ll->num_locks) {
         TracePrintf(1, "[LockRelease] Invalid _lock_id: %d\n", _lock_id);
         return ERROR;
     }
@@ -312,7 +312,7 @@ static int LockRemove(lock_list_t *_ll, int _lock_id) {
         TracePrintf(1, "[LockRemove] List is empty\n");
         return ERROR;
     }
-    if (_lock_id < 0 || _lock_id >= _ll->num_locks) {
+    if (_lock_id < LOCK_ID_START || _lock_id >= _ll->num_locks) {
         TracePrintf(1, "[LockRemove] Invalid _lock_id: %d\n", _lock_id);
         return ERROR;
     }

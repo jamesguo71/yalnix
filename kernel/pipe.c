@@ -50,7 +50,7 @@ pipe_list_t *PipeListCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    pl->num_pipes = 0;
+    pl->num_pipes = PIPE_ID_START;
     pl->start     = NULL;
     pl->end       = NULL;
     return pl;
@@ -163,7 +163,7 @@ int PipeRead(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, in
         TracePrintf(1, "[PipeRead] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_pipe_id < 0 || _pipe_id >= _pl->num_pipes) {
+    if (_pipe_id < PIPE_ID_START || _pipe_id >= _pl->num_pipes) {
         TracePrintf(1, "[PipeRead] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
@@ -273,7 +273,7 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
         TracePrintf(1, "[PipeWrite] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_pipe_id < 0 || _pipe_id >= _pl->num_pipes) {
+    if (_pipe_id < PIPE_ID_START || _pipe_id >= _pl->num_pipes) {
         TracePrintf(1, "[PipeWrite] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
@@ -452,7 +452,7 @@ static int PipeRemove(pipe_list_t *_pl, int _pipe_id) {
         TracePrintf(1, "[PipeRemove] List is empty\n");
         return ERROR;
     }
-    if (_pipe_id < 0 || _pipe_id >= _pl->num_pipes) {
+    if (_pipe_id < PIPE_ID_START || _pipe_id >= _pl->num_pipes) {
         TracePrintf(1, "[PipeRemove] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }

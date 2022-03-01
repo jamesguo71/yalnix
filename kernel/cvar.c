@@ -46,7 +46,7 @@ cvar_list_t *CVarListCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    pl->num_cvars = 0;
+    pl->num_cvars = CVAR_ID_START;
     pl->start     = NULL;
     pl->end       = NULL;
     return pl;
@@ -143,7 +143,7 @@ int CVarSignal(cvar_list_t *_cl, int _cvar_id) {
         TracePrintf(1, "[CVarSignal] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_cvar_id < 0 || _cvar_id >= _cl->num_cvars) {
+    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
         TracePrintf(1, "[CVarSignal] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
@@ -174,7 +174,7 @@ int CVarBroadcast(cvar_list_t *_cl, int _cvar_id) {
         TracePrintf(1, "[CVarBroadcast] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_cvar_id < 0 || _cvar_id >= _cl->num_cvars) {
+    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
         TracePrintf(1, "[CVarBroadcast] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
@@ -204,7 +204,7 @@ int CVarWait(cvar_list_t *_cl, UserContext *_uctxt, int _cvar_id, int _lock_id) 
         TracePrintf(1, "[CVarWait] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_cvar_id < 0 || _cvar_id >= _cl->num_cvars) {
+    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
         TracePrintf(1, "[CVarWait] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
@@ -312,7 +312,7 @@ static int CVarRemove(cvar_list_t *_cl, int _cvar_id) {
         TracePrintf(1, "[CVarRemove] List is empty\n");
         return ERROR;
     }
-    if (_cvar_id < 0 || _cvar_id >= _cl->num_cvars) {
+    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
         TracePrintf(1, "[CVarRemove] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
