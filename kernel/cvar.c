@@ -13,7 +13,6 @@
  */
 typedef struct cvar {
     int cvar_id;
-    int cvar_pid;
     struct cvar *next;
     struct cvar *prev;
 } cvar_t;
@@ -120,7 +119,6 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
 
     // 5. Initialize internal members and increment the total number of cvars
     cvar->cvar_id   = _cl->num_cvars;
-    cvar->cvar_pid  = 0;
     cvar->next      = NULL;
     cvar->prev      = NULL;
     _cl->num_cvars++;
