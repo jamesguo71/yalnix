@@ -12,7 +12,7 @@ typedef struct tty_list tty_list_t;
  *
  * \return  An initialized tty_list_t struct, NULL otherwise.
  */
-tty_list_t *TTYCreate();
+tty_list_t *TTYListCreate();
 
 
 /*!
@@ -20,7 +20,7 @@ tty_list_t *TTYCreate();
  *
  * \param[in] _tl  A tty_list_t struct that the caller wishes to free
  */
-int  TTYDelete(tty_list_t *_tl);
+int  TTYListDelete(tty_list_t *_tl);
 int  TTYRead(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_usr_write_buf, int _buf_len);
 int  TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int _len);
 void TTYUpdateWriter(tty_list_t *_tl, UserContext *_uctxt, int _tty_id);

@@ -25,7 +25,7 @@ typedef struct tty {
     pcb_t  *write_proc;
 } tty_t;
 
-typedef struct tty {
+typedef struct tty_list {
     tty_t *terminals[TTY_NUM_TERMINALS];
 } tty_list_t;
 
