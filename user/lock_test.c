@@ -22,7 +22,7 @@ int main() {
             TracePrintf(1, "[lock_test] Child %d delaying for %d cycles\n", pid, delay);
             Delay(delay);
 
-            Aquire(lock);
+            Acquire(lock);
             TracePrintf(1, "[lock_test] Child %d aquired lock %d\n", pid, lock);
             Release(lock);
             return delay;
