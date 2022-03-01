@@ -88,7 +88,7 @@ static tty_t *TTYCreate() {
  * \param[in] _tl       A tty_list_t struct that the caller wishes to free
  * \param[in] _terminal  A tty_t struct that the caller wishes to free
  */
-int TTYDelete(tty_list_t *_tl) {
+int TTYListDelete(tty_list_t *_tl) {
     // 1. Check arguments. Return error if invalid.
     if (!_tl) {
         TracePrintf(1, "[TTYDelete] Invalid list pointer\n");
