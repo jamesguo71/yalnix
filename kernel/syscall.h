@@ -32,28 +32,4 @@ int SyscallGetPid (void);
 int SyscallBrk (UserContext *_uctxt, void *_brk);
 
 int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
-
-
-/*!
- * \desc                 Creates a new condition variable.
- * 
- * \param[out] cvar_idp  The address where the newly created cvar's id should be stored
- * 
- * \return               0 on success, ERROR otherwise
- */
-int SyscallCvarInit (int *cvar_idp);
-
-
-/*!
- * \desc               Signal the condition variable identified by cvar_id
- * 
- * \param[in] cvar_id  The id of the cvar to be signaled
- * 
- * \return             0 on success, ERROR otherwise
- */
-int SyscallCvarSignal (int cvar_id);
-
-int SyscallCvarBroadcast (int);
-
-int SyscallCvarWait (int, int);
 #endif
