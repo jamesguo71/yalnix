@@ -59,9 +59,12 @@ static void DoIdle(void);
 
 
 /*!
- * \desc            Sets the kernel's brk (i.e., the address right above the kernel heap)
+ * \desc            Grows or shrinks the kernel's heap depending on the current and new values of
+ *                  brk. This involves finding and mapping new frames to the kernel's page table
+ *                  when growing, or releasing frames and invalidating pages when shrinking.
+ *                  The TLB is flushed after page table changes to ensure fresh entries.
  * 
- * \param[in] _brk  The address of the new brk
+ * \param[in] _brk  The address of the new brk (i.e., end of the heap)
  * 
  * \return          0 on success, ERROR otherwise.
  */
@@ -162,14 +165,14 @@ int SetKernelBrk(void *_kernel_new_brk) {
 
 
 /*!
- * \desc                 Initializes kernel variables and structures needs to track processes,
- *                       locks, cvars, locks, and other OS related functionalities. Additionally,
- *                       we setup the kernel's page table and a dummy "DoIdle" process to run
- *                       when no other processes are available.
+ * \desc                  Initializes kernel variables and structures needs to track processes,
+ *                        locks, cvars, locks, and other OS related functionalities. Additionally,
+ *                        we setup the kernel's page table and a dummy "DoIdle" process to run
+ *                        when no other processes are available.
  * 
- * \param[in] cmd_args   Not used for checkpoint 2
- * \param[in] pmem_size  The size of the physical memory availabe to our system (in bytes)
- * \param[in] uctxt      An initialized usercontext struct for the DoIdle process
+ * \param[in] _cmd_args   Not used for checkpoint 2
+ * \param[in] _pmem_size  The size of the physical memory availabe to our system (in bytes)
+ * \param[in] _uctxt      An initialized usercontext struct for the DoIdle process
  */
 void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt) {
     // 1. Make sure our user context struct is not NULL and that we
@@ -205,53 +208,53 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // . Allocate space for our lock list struct, which we use to manage our locks.
+    // 5. Allocate space for our lock list struct, which we use to manage our locks.
     e_cvar_list = CVarListCreate();
     if (!e_cvar_list) {
         TracePrintf(1, "[KernelStart] Failed to create e_cvar_list\n");
         Halt();
     }
 
-    // . Allocate space for our lock list struct, which we use to manage our locks.
+    // 6. Allocate space for our lock list struct, which we use to manage our locks.
     e_lock_list = LockListCreate();
     if (!e_lock_list) {
         TracePrintf(1, "[KernelStart] Failed to create e_lock_list\n");
         Halt();
     }
 
-    // . Allocate space for our pipe list struct, which we use to read and write to pipes.
+    // 7. Allocate space for our pipe list struct, which we use to read and write to pipes.
     e_pipe_list = PipeListCreate();
     if (!e_pipe_list) {
         TracePrintf(1, "[KernelStart] Failed to create e_pipe_list\n");
         Halt();
     }
 
-    // 5. Allocate space for our scheduler struct, which we will use to track processes.
+    // 8. Allocate space for our scheduler struct, which we will use to track processes.
     e_scheduler = SchedulerCreate();
     if (!e_scheduler) {
         TracePrintf(1, "[KernelStart] Failed to create e_scheduler\n");
         Halt();
     }
 
-    // . Allocate space for our tty struct, which we use to read and write to tty devices.
+    // 9. Allocate space for our tty struct, which we use to read and write to tty devices.
     e_tty_list = TTYListCreate();
     if (!e_tty_list) {
         TracePrintf(1, "[KernelStart] Failed to create e_tty_list\n");
         Halt();
     }
 
-    // 6. Allocate space for Region 0 page table (i.e., the kernel's page table).
+    // 10. Allocate space for Region 0 page table (i.e., the kernel's page table).
     e_kernel_pt = (pte_t *) calloc(MAX_PT_LEN, sizeof(pte_t));
     if (!e_kernel_pt) {
         TracePrintf(1, "Calloc for e_kernel_pt failed!\n");
         Halt();
     }
 
-    // 7. Create pcbs for our idle and init processes. ProcessCreateIdle will allocate memory for
-    //    the Region 1 page table, Region 0 kernel stack page table, and the UserContext. Note that
-    //    we do not use ProcessCreate here because it also finds free frames for the process'
-    //    kernel stack. Since we have not yet configured our kernel page table, however, this would
-    //    find "free" frames that are actually being used for kernel text/data/heap.
+    // 11. Create pcbs for our idle and init processes. ProcessCreateIdle will allocate memory for
+    //     the Region 1 page table, Region 0 kernel stack page table, and the UserContext. Note that
+    //     we do not use ProcessCreate here because it also finds free frames for the process'
+    //     kernel stack. Since we have not yet configured our kernel page table, however, this would
+    //     find "free" frames that are actually being used for kernel text/data/heap.
     pcb_t *idlePCB = ProcessCreateIdle();
     if (!idlePCB) {
         TracePrintf(1, "[KernelStart] Failed to create idlePCB\n");
@@ -263,34 +266,29 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // 8. Configure the UserContext for our idle process. Set its program counter to point to the
-    //    DoIdle function and its stack pointer to point to the end of Region 1. The stack grows
-    //    downwards, which is why we set the stack pointer to the end of Region 1, BUT be sure to
-    //    leave enough room to store a pointer; DoIdle actually gets called by an "init" function
-    //    which places a return address on the DoIdle stack---if we set the sp to point to the
-    //    last valid byte of Region 1 then when the return address is placed on the stack we will
-    //    get a memory fault.
+    // 12. Configure the UserContext for our idle process. Set its program counter to point to the
+    //     DoIdle function and its stack pointer to point to the end of Region 1. The stack grows
+    //     downwards, which is why we set the stack pointer to the end of Region 1, BUT be sure to
+    //     leave enough room to store a pointer; DoIdle actually gets called by an "init" function
+    //     which places a return address on the DoIdle stack---if we set the sp to point to the
+    //     last valid byte of Region 1 then when the return address is placed on the stack we will
+    //     get a memory fault.
     //
-    //    We don't have to set init's UserContext because it gets configured later in LoadProgram.
+    //     We don't have to set init's UserContext because it gets configured later in LoadProgram.
     idlePCB->uctxt.pc = DoIdle;
     idlePCB->uctxt.sp = (void *) VMEM_1_LIMIT - sizeof(void *);
+
+    // 13. Allocate space for idle's KernelContext, but leave init's NULL. This is because we
+    //     plan to run the idle program first and have init clone into idle later during a
+    //     context switch. More specifically, our context switching code will see that init's
+    //     KC is NULL and call KCCopy to copy the KernelContext of the current running process.
     idlePCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
     if (!idlePCB->kctxt) {
         TracePrintf(1, "[KernelStart] Malloc for idlePCB kctxt failed\n");
         Halt();
     }
 
-    // 9. Allocate space for init's KernelContext, but leave idle's NULL. This is because we
-    //    plan to run the init program first and have idle clone into init later during a
-    //    context switch. More specifically, our context switching code will see that idle's
-    //    KC is NULL and call KCCopy to copy the KernelContext of the current running process.
-    // initPCB->kctxt = (KernelContext *) malloc(sizeof(KernelContext));
-    // if (!initPCB->kctxt) {
-    //     TracePrintf(1, "[KernelStart] Malloc for initPCB kctxt failed\n");
-    //     Halt();
-    // }
-
-    // 10. Now that we have finished all of our dynamic memory allocation, we can configure the
+    // 14. Now that we have finished all of our dynamic memory allocation, we can configure the
     //     kernel's page table (previously, it may have changed due to malloc changing the brk).
     //     
     //     Calculate the number of pages being used to store the kernel text, which begins at the
@@ -304,7 +302,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     //
     //     Configure the page table entries for the text pages with read and execute permissions
     //     (as text contains code), and mark the corresponding physical frames as in use.
-    int kernel_text_end_page_num = ((int ) _kernel_data_start) >> PAGESHIFT;
+    int kernel_text_end_page_num = PTEAddressToPage(_kernel_data_start);
     for(int i = 0; i < kernel_text_end_page_num; i++) {
         PTESet(e_kernel_pt,              // page table pointer
                i,                        // page number
@@ -313,13 +311,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         FrameSet(i);
     }
 
-    // 11. Calculate the number of pages being used to store the kernel data. Again, since the
+    // 15. Calculate the number of pages being used to store the kernel data. Again, since the
     //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
     //
     //     Configure the page table entries for the data pages with read and write permissions,
     //     and mark the corresponding physical frames as taken. The data section is above text,
     //     so offset the page/frame numbers by the last text page number.
-    int kernel_data_end_page_num = ((int ) _kernel_data_end) >> PAGESHIFT;
+    int kernel_data_end_page_num = PTEAddressToPage(_kernel_data_end);
     for (int i = kernel_text_end_page_num; i < kernel_data_end_page_num; i++) {
         PTESet(e_kernel_pt,               // page table pointer
                i,                         // page number
@@ -328,13 +326,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         FrameSet(i);
     }
 
-    // 12. Calculate the number of pages being used to store the kernel heap. Again, since the
+    // 16. Calculate the number of pages being used to store the kernel heap. Again, since the
     //     kernel is laid out sequentially in physical memory the page and frame numbers are equal.
     //
     //     Configure the page table entries for the heap pages with read and write permissions,
     //     and mark the corresponding physical frames as taken. The heap section is above data,
     //     so offset the page/frame numbers by the last data page number.
-    int kernel_heap_end_page_num = ((int ) e_kernel_curr_brk) >> PAGESHIFT;
+    int kernel_heap_end_page_num = PTEAddressToPage(e_kernel_curr_brk);
     for (int i = kernel_data_end_page_num; i < kernel_heap_end_page_num; i++) {
         PTESet(e_kernel_pt,               // page table pointer
                i,                         // page number
@@ -343,12 +341,12 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         FrameSet(i);
     }
 
-    // 13. Since we plan on running init first, we need to ensure that we map the frames
+    // 17. Since we plan on running idle first, we need to ensure that we map the frames
     //     currently used by the kernel for its stack to inits kernel stack page table.
     //     Since virtual memory is not yet enabled, we know that the kernel stack starting
     //     address maps to the actual frame (and not a virtual page).
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for idle: %d\n", idlePCB->pid);
-    int kernel_stack_start_page_num = KERNEL_STACK_BASE >> PAGESHIFT;
+    int kernel_stack_start_page_num = PTEAddressToPage((void *) KERNEL_STACK_BASE);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
         PTESet(idlePCB->ks,                         // page table pointer
                i,                                   // page number
@@ -360,7 +358,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
                     i + kernel_stack_start_page_num);
     }
 
-    // 14. Find some free frames for idle's kernel stack and map them to the pages in its kernel
+    // 18. Find some free frames for init's kernel stack and map them to the pages in its kernel
     //    stack page table.
     TracePrintf(1, "[KernelStart] Mapping kernel stack pages for init: %d\n", initPCB->pid);
     for (int i = 0; i < KERNEL_NUMBER_STACK_FRAMES; i++) {
@@ -376,16 +374,16 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         TracePrintf(1, "[KernelStart] Mapping page: %d to frame: %d\n", i, frame);
     }
 
-    // 15. Find some free frames for idle's userland stack and map them to the pages in its
+    // 19. Find some free frames for idle's userland stack and map them to the pages in its
     //     region 1 page table. Calculate the number of the page that its sp is currently pointing
     //     to, but make sure to subtract MAX_PT_LEN from the result *before* using it to index into
     //     a page table. This is because addresses in region 1 produce page numbers from 128-255,
     //     but our page tables are indexed 0-127.
     //  
-    //     Note that LoadProgram would normally LoadProgram perform this step, but we must do it
-    //     by hand since DoIdle is not a true userland process---indeed its code lives in the
+    //     Note that LoadProgram would normally perform this step, but we must do it by hand
+    //     since DoIdle is not a true userland process---indeed its code lives in the
     //     kernel text (i.e., Region 0)!
-    int user_stack_page_num  = (((int ) idlePCB->uctxt.sp) >> PAGESHIFT) - MAX_PT_LEN;
+    int user_stack_page_num  = PTEAddressToPage(idlePCB->uctxt.sp) - MAX_PT_LEN;
     int user_stack_frame_num = FrameFindAndSet();
     if (user_stack_frame_num == ERROR) {
         TracePrintf(1, "[KernelStart] Unable to find free frame for DoIdle userstack!\n");
@@ -396,7 +394,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
            PROT_READ | PROT_WRITE,    // page protection bits
            user_stack_frame_num);     // frame number
 
-    // 16. Note that *every* process has a kernel stack, but the kernel only ever uses the one for
+    // 20. Note that *every* process has a kernel stack, but the kernel only ever uses the one for
     //     the current running process. Thus, whenever we switch processes we need to remember to
     //     copy the process' kernel stack page table into the kernel's master page table.
     //
@@ -407,9 +405,15 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
            KERNEL_NUMBER_STACK_FRAMES * sizeof(pte_t));    // kernel page table
 
 
-    // 17. Tell the CPU where to find our kernel's page table, idle's region 1 page table, and our
-    //     interrupt vector. Finally, tell the CPU to enable virtual memory and set our virtual
-    //     memory flag so that SetKernalBrk knows to treat addresses as virtual from now on.
+    // 21. Tell the CPU where to find our kernel's page table and our interrupt vector. Note that
+    //     we set the userland page table (i.e., Region 1) to *init's* page table because we still
+    //     need to call LoadProgram to read init into memory and configure its UserContext. Since
+    //     LoadProgram loads the program into the Region 1 memory, we want to be sure that it is
+    //     currently pointing to init's pages. After we load and configur init, we can change the
+    //     page table back to idle's.
+    //
+    //     Finally, tell the CPU to enable virtual memory and set our virtual memory flag so that
+    //     SetKernalBrk knows to treat addresses as virtual from now on.
     WriteRegister(REG_PTBR0,       (unsigned int) e_kernel_pt);         // kernel pt address
     WriteRegister(REG_PTLR0,       (unsigned int) MAX_PT_LEN);          // num entries
     WriteRegister(REG_PTBR1,       (unsigned int) initPCB->pt);         // idle pt address
@@ -418,7 +422,7 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     WriteRegister(REG_VM_ENABLE, 1);
     g_virtual_memory = 1;
 
-    // 18. We have allocated a pcb and kernel stack for init, but we have not yet loaded it into
+    // 22. We have allocated a pcb and kernel stack for init, but we have not yet loaded it into
     //     memory. If the caller does not specify one, load our default init executable.
     //
     //     LoadProgram will map frames for the region 1 address space and update the process' page
@@ -435,23 +439,25 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
         Halt();
     }
 
-    // 19. Before we run, add our idle and init pcbs to our scheduler struct, which maintains a 
+    // 23. Before we run, add our idle and init pcbs to our scheduler struct, which maintains a 
     //     number of internal lists used to track running, ready, blocked, and other processes.
-    //     Mark init as our current running process and add idle to the ready queue.
+    //     Mark idle as our current running process and add init to the ready queue.
     //
-    //     Afterwards, copy init's UserContext (now configured thanks to LoadProgram) to the
-    //     address indicated by _uctxt; this address is where Yalnix will look for the
-    //     UserContext of the process that it should currently execute.
+    //     Afterwards, copy idle's UserContext to the address indicated by _uctxt---this address
+    //     is where Yalnix will look for the UserContext of the currently executing process.
     SchedulerAddIdle(e_scheduler,    idlePCB);
     SchedulerAddProcess(e_scheduler, initPCB);
     SchedulerAddReady(e_scheduler,   initPCB);
     SchedulerAddRunning(e_scheduler, idlePCB);
     memcpy(_uctxt, &idlePCB->uctxt, sizeof(UserContext));
-    WriteRegister(REG_PTBR1,       (unsigned int) idlePCB->pt);         // idle pt address
-    WriteRegister(REG_PTLR1,       (unsigned int) MAX_PT_LEN);          // num entries
+
+    // 24. Finally, now that we have loaded init, reset the TLB region 1 page table to use idle's
+    //     page table entries since idle is the process that is about to run.
+    WriteRegister(REG_PTBR1,    (unsigned int) idlePCB->pt);    // idle pt address
+    WriteRegister(REG_PTLR1,    (unsigned int) MAX_PT_LEN);     // num entries
     WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 
-    // 20. Print some debugging information for good measure.
+    // 25. Print some debugging information for good measure.
     TracePrintf(1, "[KernelStart] e_num_frames:                %d\n", e_num_frames);
     TracePrintf(1, "[KernelStart] e_frames:                    %p\n", e_frames);
     TracePrintf(1, "[KernelStart] e_kernel_pt:                 %p\n", e_kernel_pt);
@@ -471,14 +477,16 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
 
 
 /*!
- * \desc                 Small wrapper for Kernel Context Switching that will first call KCCopy if
- *                       the new process does not yet have a KernelContext.
+ * \desc                    Small wrapper for context switching to check if the next process we
+ *                          are going to switch to is the same as the current process. If so,
+ *                          we simply return without performing the context switch. Otherwise, it
+ *                          calls MyKCS which updates the kernel stack and TLB to the new process.
+ *                          Finally, we set the UserContext to the new process we are going to run.
  * 
- * \param[in] kc_in       a pointer to a temporary copy of the current kernel context of the caller
- * \param[in] curr_pcb_p  a void pointer to current process's pcb
- * \param[in] next_pcb_p  a void pointer to the next process's pcb
+ * \param[in] _uctxt        The UserContext for the current running process
+ * \param[in] _running_old  The pcb for the current running process
  * 
- * \return               Returns the kc_in pointer
+ * \return                  0 on success, halts otherwise
  */
 int KCSwitch(UserContext *_uctxt, pcb_t *_running_old) {
     // 1. Check if arguments are valid. If not, print message and halt.
@@ -597,9 +605,10 @@ KernelContext *KCCopy(KernelContext *_kctxt, void *_new_pcb_p, void *_not_used) 
 
 
 /*!
- * \desc                  A
- *                       
- *                       
+ * \desc                  Saves the KernelContext for the current running process and reconfigures
+ *                        the kernel page table and stack context to match those of the new
+ *                        process. If the new process has never been run before (i.e., does not
+ *                        have an initialized KernelContext) KCCopy is first called.
  * 
  * \param[in] kc_in       a pointer to a temporary copy of the current kernel context of the caller
  * \param[in] curr_pcb_p  a void pointer to current process's pcb
