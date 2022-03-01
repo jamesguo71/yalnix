@@ -18,6 +18,7 @@
  */
 char        *e_frames           = NULL;   // Bit vector to track frames (set in KernelStart)
 int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
+lock_list_t *e_lock_list        = NULL;
 pipe_list_t *e_pipe_list        = NULL;
 scheduler_t *e_scheduler        = NULL;
 pte_t       *e_kernel_pt        = NULL;
