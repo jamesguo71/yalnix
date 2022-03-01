@@ -101,24 +101,29 @@ int TrapKernel(UserContext *_uctxt) {
             break;
         case YALNIX_LOCK_RELEASE:
             _uctxt->regs[0] = LockRelease(e_lock_list,      // lock_list struct declared in kernel.h
-                                          _uctxt,           // current process' UserContext
                                     (int) _uctxt->regs[0]); // lock id
             break;
         case YALNIX_CVAR_INIT:
-            _uctxt->regs[0] = SyscallCvarInit((int *) _uctxt->regs[0]);
+            _uctxt->regs[0] = CvarInit(e_cvar_list,           // cvar_list struct
+                               (int *) _uctxt->regs[0]);      // pointer to store new cvar id
             break;
         case YALNIX_CVAR_SIGNAL:
-            _uctxt->regs[0] = SyscallCvarSignal((int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = CvarSignal(e_cvar_list,         // cvar_list struct
+                                  (int ) _uctxt->regs[0]);    // cvar id
             break;
         case YALNIX_CVAR_BROADCAST:
-            _uctxt->regs[0] = SyscallCvarBroadcast((int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = CvarBroadcast(e_cvar_list,      // cvar_list struct
+                                     (int ) _uctxt->regs[0]); // cvar id
             break;
         case YALNIX_CVAR_WAIT:
-            _uctxt->regs[0] = SyscallCvarWait((int ) _uctxt->regs[0],
-                                                     _uctxt->regs[1]);
+            _uctxt->regs[0] = CvarWait(e_cvar_list,           // cvar_list struct
+                                       _uctxt,                // current process' UserContext
+                                (int ) _uctxt->regs[0],       // cvar id
+                                (int ) _uctxt->regs[1]);      // lock id
             break;
         case YALNIX_RECLAIM:
-            _uctxt->regs[0] = LockReclaim(e_lock_list, (int ) _uctxt->regs[0]);
+            _uctxt->regs[0] = LockReclaim(e_lock_list,
+                                   (int ) _uctxt->regs[0]);
             break;
         default: break;
     }

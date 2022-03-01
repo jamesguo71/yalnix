@@ -18,6 +18,7 @@
  */
 extern char        *e_frames;
 extern int          e_num_frames;
+extern cvar_list_t *e_cvar_list;
 extern lock_list_t *e_lock_list;
 extern pipe_list_t *e_pipe_list;
 extern pte_t       *e_kernel_pt; // Kernel Page Table

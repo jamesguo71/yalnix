@@ -10,6 +10,7 @@ typedef struct pcb {
     int  clock_ticks;
     int  exit_status;       // for saving the process's exit status, See Page 32
     int  exited;            // if the process has exited?
+    int  cvar_id;
     int  lock_id;
     int  pipe_id;
     int  tty_id;

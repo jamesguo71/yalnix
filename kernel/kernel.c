@@ -18,6 +18,7 @@
  */
 char        *e_frames           = NULL;   // Bit vector to track frames (set in KernelStart)
 int          e_num_frames       = 0;      // Number of frames           (set in KernelStart)
+cvar_list_t *e_cvar_list        = NULL;
 lock_list_t *e_lock_list        = NULL;
 pipe_list_t *e_pipe_list        = NULL;
 scheduler_t *e_scheduler        = NULL;
@@ -200,6 +201,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     e_frames = (char *) calloc(frames_len, sizeof(char));
     if (!e_frames) {
         TracePrintf(1, "Calloc for e_frames failed!\n");
+        Halt();
+    }
+
+    // . Allocate space for our lock list struct, which we use to manage our locks.
+    e_cvar_list = CVarListCreate();
+    if (!e_cvar_list) {
+        TracePrintf(1, "[KernelStart] Failed to create e_cvar_list\n");
         Halt();
     }
 

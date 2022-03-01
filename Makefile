@@ -11,6 +11,7 @@ K_SRC_DIR = ./kernel
 
 # What are the kernel c and include files?
 K_SRCS = kernel.c       \
+         cvar.c         \
          frame.c        \
          load_program.c \
          lock.c         \
@@ -22,6 +23,7 @@ K_SRCS = kernel.c       \
          trap.c         \
          tty.c
 K_INCS = kernel.h       \
+         cvar.h         \
          frame.h        \
          load_program.h \
          lock.h         \
@@ -39,6 +41,7 @@ U_SRC_DIR = ./user
 # What are the user c and include files?
 U_SRCS = init.c           \
          chpt3_test.c     \
+         cvar_test.c      \
          fork_test.c      \
          fork_and_exec.c  \
          fork_and_exit.c  \

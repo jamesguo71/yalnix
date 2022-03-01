@@ -104,6 +104,18 @@ int SchedulerDelete(scheduler_t *_scheduler) {
  * 
  * \return                0 on success, ERROR otherwise.
  */
+int SchedulerAddCVar(scheduler_t *_scheduler, pcb_t *_process) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal add.
+    if (!_scheduler || !_process) {
+        TracePrintf(1, "[SchedulerAddCVar] Invalid list or process pointer\n");
+        return ERROR;
+    }
+    return SchedulerAdd(_scheduler,
+                       _process,
+                       SCHEDULER_CVAR_START,
+                       SCHEDULER_CVAR_END);
+}
+
 int SchedulerAddDelay(scheduler_t *_scheduler, pcb_t *_process) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal add.
     if (!_scheduler || !_process) {
@@ -313,30 +325,6 @@ pcb_t *SchedulerGetIdle(scheduler_t *_scheduler) {
     return _scheduler->lists[SCHEDULER_IDLE]->process;
 }
 
-pcb_t *SchedulerGetPipeRead(scheduler_t *_scheduler, int _pid) {
-    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
-    if (!_scheduler || _pid < 0) {
-        TracePrintf(1, "[SchedulerGetPipeRead] Invalid list or pid\n");
-        return NULL;
-    }
-    return SchedulerGet(_scheduler,
-                       _pid,
-                       SCHEDULER_PIPE_READ_START,
-                       SCHEDULER_PIPE_READ_END);
-}
-
-pcb_t *SchedulerGetPipeWrite(scheduler_t *_scheduler, int _pid) {
-    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
-    if (!_scheduler || _pid < 0) {
-        TracePrintf(1, "[SchedulerGetPipeWrite] Invalid list or pid\n");
-        return NULL;
-    }
-    return SchedulerGet(_scheduler,
-                       _pid,
-                       SCHEDULER_PIPE_WRITE_START,
-                       SCHEDULER_PIPE_WRITE_END);
-}
-
 pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal get.
     if (!_scheduler || _pid < 0) {
@@ -402,18 +390,6 @@ pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid) {
                        SCHEDULER_TERMINATED_END);
 }
 
-pcb_t *SchedulerGetTTYRead(scheduler_t *_scheduler, int _pid) {
-    // 1. Check arguments and return error if invalid. Otherwise, call internal get.
-    if (!_scheduler || _pid < 0) {
-        TracePrintf(1, "[SchedulerGetTTYRead] Invalid list or pid\n");
-        return NULL;
-    }
-    return SchedulerGet(_scheduler,
-                       _pid,
-                       SCHEDULER_TTY_READ_START,
-                       SCHEDULER_TTY_READ_END);
-}
-
 pcb_t *SchedulerGetWait(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal get.
     if (!_scheduler || _pid < 0) {
@@ -449,6 +425,16 @@ static pcb_t *SchedulerGet(scheduler_t *_scheduler, int _pid, int _start, int _e
  * 
  * \return                0 on success, ERROR otherwise.
  */
+int SchedulerPrintCVar(scheduler_t *_scheduler) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal print.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerPrintCVar] Invalid list pointer\n");
+        return ERROR;
+    }
+    TracePrintf(1, "[SchedulerPrintCVar] CVar List:\n");
+    return SchedulerPrint(_scheduler, SCHEDULER_CVAR_START);
+}
+
 int SchedulerPrintDelay(scheduler_t *_scheduler) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal print.
     if (!_scheduler) {
@@ -572,6 +558,18 @@ static int SchedulerPrint(scheduler_t *_scheduler, int _start) {
  * 
  * \return                0 on success, ERROR otherwise.
  */
+int SchedulerRemoveCVar(scheduler_t *_scheduler, int _pid) {
+    // 1. Check arguments and return error if invalid. Otherwise, call internal remove.
+    if (!_scheduler || _pid < 0) {
+        TracePrintf(1, "[SchedulerRemoveCVar] Invalid list or pid\n");
+        return ERROR;
+    }
+    return SchedulerRemove(_scheduler,
+                          _pid,
+                          SCHEDULER_CVAR_START,
+                          SCHEDULER_CVAR_END);
+}
+
 int SchedulerRemoveDelay(scheduler_t *_scheduler, int _pid) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal remove.
     if (!_scheduler || _pid < 0) {
@@ -759,6 +757,30 @@ static int SchedulerRemove(scheduler_t *_scheduler, int _pid, int _start, int _e
  * 
  * \return                0 on success, ERROR otherwise.
  */
+int SchedulerUpdateCVar(scheduler_t *_scheduler, int _cvar_id) {
+    // 1. Check arguments. Return error if invalid.
+    if (!_scheduler) {
+        TracePrintf(1, "[SchedulerUpdateCVar] Invalid list pointer\n");
+        return ERROR;
+    }
+
+    // 2. Loop over the Lock list to see if any processes are waiting to read from the pipe
+    //    specified by _pipe_id. If so, remove the first (and only the first) process waiting to
+    //    read and add it to the ready list.
+    node_t *node = _scheduler->lists[SCHEDULER_CVAR_START];
+    while (node) {
+        pcb_t *process = node->process;
+        if (process->cvar_id == _cvar_id) {
+            TracePrintf(1, "[SchedulerUpdateCVar] Moving process: %d to ready\n", process->pid);
+            SchedulerRemoveCvar(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return 0;
+        }
+        node = node->next;
+    }
+    return ERROR;
+}
+
 int SchedulerUpdateDelay(scheduler_t *_scheduler) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
