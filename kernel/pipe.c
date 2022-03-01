@@ -37,9 +37,9 @@ static int     PipeRemove(pipe_list_t *_pl, int _pipe_id);
 
 
 /*!
- * \desc    Initializes memory for a new pipe_t struct
+ * \desc    Initializes memory for a new pipe_list_t struct, which maintains a list of pipes.
  *
- * \return  An initialized pipe_t struct, NULL otherwise.
+ * \return  An initialized pipe_list_t struct, NULL otherwise.
  */
 pipe_list_t *PipeListCreate() {
     // 1. Allocate space for our pipe list struct. Print message and return NULL upon error
@@ -58,9 +58,9 @@ pipe_list_t *PipeListCreate() {
 
 
 /*!
- * \desc                  Frees the memory associated with a pipe_t struct
+ * \desc           Frees the memory associated with a pipe_list_t struct
  *
- * \param[in] _pipe  A pipe_t struct that the caller wishes to free
+ * \param[in] _pl  A pipe_list_t struct that the caller wishes to free
  */
 int PipeListDelete(pipe_list_t *_pl) {
     // 1. Check arguments. Return error if invalid.
@@ -82,9 +82,10 @@ int PipeListDelete(pipe_list_t *_pl) {
 
 
 /*!
- * \desc                 Creates a new pipe.
- * 
- * \param[out] pipe_idp  The address where the newly created pipe's id should be stored
+ * \desc                 Creates a new pipe and saves the id at the caller specified address.
+ *
+ * \param[in]  _pl       An initialized pipe_list_t struct
+ * \param[out] _pipe_id  The address where the newly created pipe's id should be stored
  * 
  * \return               0 on success, ERROR otherwise
  */
@@ -133,11 +134,20 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     // 6. Add the new pipe to our pipe list and save the pipe id in the caller's outgoing pointer
     PipeAdd(_pl, pipe);
     *_pipe_id = pipe->pipe_id;
-    return pipe->pipe_id;
+    return 0;
 }
 
 
-// TODO: We only want to destroy the pipe if no other process is blocked on it
+/*!
+ * \desc                Removes the pipe from our pipe list and frees its memory, but *only* if no
+ *                      other processes are currenting waiting on it. Otherwise, we return ERROR
+ *                      and do not free the pipe.
+ * 
+ * \param[in] _pl       An initialized pipe_list_t struct
+ * \param[in] _pipe_id  The id of the pipe that the caller wishes to free
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 int PipeReclaim(pipe_list_t *_pl, int _pipe_id) {
     // 1. Validate arguments
 
@@ -149,13 +159,20 @@ int PipeReclaim(pipe_list_t *_pl, int _pipe_id) {
 
 
 /*!
- * \desc                Reads len number of bytes from the pipe indicated by pipe_id into buf.
+ * \desc                 Reads from the pipe and stores the bytes in the caller's output buffer.
+ *                       The caller is not guaranteed to get _buf_len bytes back, however, if
+ *                       there are not enough bytes in the pipe---we simply return whatever is
+ *                       in the pipe at the time. If there are no bytes or another process is
+ *                       currently reading from the pipe, however, the caller is blocked until
+ *                       the pipe is free and/or has bytes to read.
  * 
- * \param[in]  pipe_id  The id of the pipe to read from
- * \param[out] buf      An output buffer to store the bytes read from the pipe
- * \param[in]  len      The length of the output buffer
+ * \param[in]  _pl       An initialized pipe_list_t struct
+ * \param[in]  _uctxt    The UserContext for the current running process
+ * \param[in]  _pipe_id  The id of the pipe that the caller wishes to read from
+ * \param[out] _buf      The output buffer for storing the bytes read from the pipe
+ * \param[in]  _buf_len  The length of the output buffer
  * 
- * \return              Number of bytes read on success, ERROR otherwise
+ * \return               Number of bytes read on success, ERROR otherwise
  */
 int PipeRead(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, int _buf_len) {
     // 1. Validate arguments. Our pointers should not be NULL, and our pipe id and output buffer
@@ -259,13 +276,19 @@ int PipeRead(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, in
 
 
 /*!
- * \desc               Writes the contents of the buffer to the pipe indicated by pipe_id.
+ * \desc                Writes the bytes from the caller's input buffer into the the pipe.
+ *                      Unlike read, this function guarantees to write *all* bytes from the
+ *                      input buffer into the pipe, though it may require blocking a number of
+ *                      times if the input buffer is (1) larger than the available space in the
+ *                      pipe or (2) if others are currently writing to the pipe.
  * 
- * \param[in] pipe_id  The id of the terminal to write to
- * \param[in] buf      An input buffer containing the bytes to write to the pipe
- * \param[in] len      The length of the input buffer
+ * \param[in] _pl       An initialized pipe_list_t struct
+ * \param[in] _uctxt    The UserContext for the current running process
+ * \param[in] _pipe_id  The id of the pipe that the caller wishes to write to
+ * \param[in] _buf      The input buffer containing bytes to write to the pipe
+ * \param[in] _buf_len  The length of the input buffer
  * 
- * \return             Number of bytes written on success, ERROR otherwise
+ * \return               Number of bytes read on success, ERROR otherwise
  */
 int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, int _buf_len) {
     // 1. Validate arguments. Our pointers should not be NULL, and our pipe id and input buffer
@@ -395,6 +418,15 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
     return kernel_buf_len;
 }
 
+
+/*!
+ * \desc             Internal function for adding a pipe struct to the end of our pipe list.
+ * 
+ * \param[in] _pl    An initialized lock_list_t struct that we wish to add the pipe to
+ * \param[in] _pipe  The pipe struct that we wish to add to the pipe list
+ * 
+ * \return           0 on success, ERROR otherwise
+ */
 static int PipeAdd(pipe_list_t *_pl, pipe_t *_pipe) {
     // 1. Validate arguments
     if (!_pl || !_pipe) {
@@ -426,6 +458,15 @@ static int PipeAdd(pipe_list_t *_pl, pipe_t *_pipe) {
 }
 
 
+/*!
+ * \desc                Internal function for retrieving a pipe struct from our pipe list. Note
+ *                      that this function does not modify the list---it simply returns a pointer.
+ * 
+ * \param[in] _pl       An initialized lock_list_t struct containing the pipe we wish to retrieve
+ * \param[in] _pipe_id  The id of the pipe that we wish to retrieve from the list
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 static pipe_t *PipeGet(pipe_list_t *_pl, int _pipe_id) {
     // 1. Loop over the pipe list in search of the pipe specified by _pipe_id.
     //    If found, return the pointer to the pipe's pipe_t struct.
@@ -443,6 +484,17 @@ static pipe_t *PipeGet(pipe_list_t *_pl, int _pipe_id) {
 }
 
 
+/*!
+ * \desc                Internal function for remove a pipe struct from our pipe list. Note that
+ *                      this function does modify the list, but does not return a pointer to the
+ *                      pipe. Thus, the caller should use CVarGet first if they still need a
+ *                      reference to the pipe
+ * 
+ * \param[in] _pl       An initialized lock_list_t struct containing the pipe we wish to remove
+ * \param[in] _pipe_id  The id of the pipe that we wish to remove from the list
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 static int PipeRemove(pipe_list_t *_pl, int _pipe_id) {
     // 1. Valid arguments.
     if (!_pl) {

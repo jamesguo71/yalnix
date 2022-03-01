@@ -34,9 +34,9 @@ static int     LockRemove(lock_list_t *_ll, int _lock_id);
 
 
 /*!
- * \desc    Initializes memory for a new lock_t struct
+ * \desc    Initializes memory for a new lock_list_t struct, which maintains a list of locks.
  *
- * \return  An initialized lock_t struct, NULL otherwise.
+ * \return  An initialized lock_list_t struct, NULL otherwise.
  */
 lock_list_t *LockListCreate() {
     // 1. Allocate space for our lock list struct. Print message and return NULL upon error
@@ -55,9 +55,9 @@ lock_list_t *LockListCreate() {
 
 
 /*!
- * \desc                  Frees the memory associated with a lock_t struct
+ * \desc           Frees the memory associated with a lock_list_t struct
  *
- * \param[in] _lock  A lock_t struct that the caller wishes to free
+ * \param[in] _ll  A lock_list_t struct that the caller wishes to free
  */
 int LockListDelete(lock_list_t *_ll) {
     // 1. Check arguments. Return error if invalid.
@@ -79,9 +79,10 @@ int LockListDelete(lock_list_t *_ll) {
 
 
 /*!
- * \desc                 Creates a new lock.
- * 
- * \param[out] lock_idp  The address where the newly created lock's id should be stored
+ * \desc                 Creates a new lock and saves the id at the caller specified address.
+ *
+ * \param[in]  _ll       An initialized lock_list_t struct
+ * \param[out] _lock_id  The address where the newly created lock's id should be stored
  * 
  * \return               0 on success, ERROR otherwise
  */
@@ -128,16 +129,20 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     // 6. Add the new lock to our lock list and save the lock id in the caller's outgoing pointer
     LockAdd(_ll, lock);
     *_lock_id = lock->lock_id;
-    return lock->lock_id;
+    return 0;
 }
 
 
 /*!
- * \desc               Acquires the lock identified by lock_id
+ * \desc                Acquires the lock for the caller. If the lock is currently taken, it will
+ *                      block the caller and will not run again until a call to LockRelease moves
+ *                      it back to the ready queue.
  * 
- * \param[in] lock_id  The id of the lock to be acquired
+ * \param[in] _ll       An initialized lock_list_t struct
+ * \param[in] _uctxt    The UserContext for the current running process
+ * \param[in] _lock_id  The id of the lock that the caller wishes to acquire
  * 
- * \return             0 on success, ERROR otherwise
+ * \return              0 on success, ERROR otherwise
  */
 int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
     // 1. Validate arguments.
@@ -193,11 +198,13 @@ int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
 
 
 /*!
- * \desc               Releases the lock identified by lock_id
+ * \desc                Releases the lock, but only if held by the caller. If not, ERROR is
+ *                      returned and the lock is not released.
  * 
- * \param[in] lock_id  The id of the lock to be released
+ * \param[in] _ll       An initialized lock_list_t struct
+ * \param[in] _lock_id  The id of the lock that the caller wishes to release
  * 
- * \return             0 on success, ERROR otherwise
+ * \return              0 on success, ERROR otherwise
  */
 int LockRelease(lock_list_t *_ll, int _lock_id) {
     // 1. Validate arguments.
@@ -244,7 +251,16 @@ int LockRelease(lock_list_t *_ll, int _lock_id) {
 }
 
 
-// TODO: We only want to destroy the lock if no other process is blocked on it
+/*!
+ * \desc                Removes the lock from our lock list and frees its memory, but *only* if no
+ *                      other processes are currenting waiting on it. Otherwise, we return ERROR
+ *                      and do not free the lock.
+ * 
+ * \param[in] _ll       An initialized lock_list_t struct
+ * \param[in] _lock_id  The id of the lock that the caller wishes to free
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 int LockReclaim(lock_list_t *_ll, int _lock_id) {
     // 1. Validate arguments
 
@@ -254,6 +270,15 @@ int LockReclaim(lock_list_t *_ll, int _lock_id) {
     return 0;
 }
 
+
+/*!
+ * \desc             Internal function for adding a lock struct to the end of our lock list.
+ * 
+ * \param[in] _ll    An initialized lock_list_t struct that we wish to add the lock to
+ * \param[in] _lock  The lock struct that we wish to add to the lock list
+ * 
+ * \return           0 on success, ERROR otherwise
+ */
 static int LockAdd(lock_list_t *_ll, lock_t *_lock) {
     // 1. Validate arguments
     if (!_ll || !_lock) {
@@ -261,8 +286,8 @@ static int LockAdd(lock_list_t *_ll, lock_t *_lock) {
         return ERROR;
     }
 
-    // 2. First check for our base case: the read_buf list is currently empty. If so,
-    //    add the current lock (both as the start and end) to the read_buf list.
+    // 2. First check for our base case: the lock list is currently empty. If so,
+    //    add the current lock (both as the start and end) to the lock list.
     //    Set the lock's next and previous pointers to NULL. Return success.
     if (!_ll->start) {
         _ll->start = _lock;
@@ -272,7 +297,7 @@ static int LockAdd(lock_list_t *_ll, lock_t *_lock) {
         return 0;
     }
 
-    // 3. Our read_buf list is not empty. Our list is doubly linked, so we need to set the
+    // 3. Our lock list is not empty. Our list is doubly linked, so we need to set the
     //    current end to point to our new lock as its "next" and our current lock to
     //    point to our current end as its "prev". Then, set the new lock "next" to NULL
     //    since it is the end of the list and update our end-of-list pointer in the list struct.
@@ -280,11 +305,20 @@ static int LockAdd(lock_list_t *_ll, lock_t *_lock) {
     old_end->next   = _lock;
     _lock->prev     = old_end;
     _lock->next     = NULL;
-    _ll->end       = _lock;
+    _ll->end        = _lock;
     return 0;
 }
 
 
+/*!
+ * \desc                Internal function for retrieving a lock struct from our lock list. Note
+ *                      that this function does not modify the list---it simply returns a pointer.
+ * 
+ * \param[in] _ll       An initialized lock_list_t struct containing the lock we wish to retrieve
+ * \param[in] _lock_id  The id of the lock that we wish to retrieve from the list
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 static lock_t *LockGet(lock_list_t *_ll, int _lock_id) {
     // 1. Loop over the lock list in search of the lock specified by _lock_id.
     //    If found, return the pointer to the lock's lock_t struct.
@@ -302,6 +336,17 @@ static lock_t *LockGet(lock_list_t *_ll, int _lock_id) {
 }
 
 
+/*!
+ * \desc                Internal function for remove a lock struct from our lock list. Note that
+ *                      this function does modify the list, but does not return a pointer to the
+ *                      lock. Thus, the caller should use CVarGet first if they still need a
+ *                      reference to the lock
+ * 
+ * \param[in] _ll       An initialized lock_list_t struct containing the lock we wish to remove
+ * \param[in] _lock_id  The id of the lock that we wish to remove from the list
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 static int LockRemove(lock_list_t *_ll, int _lock_id) {
     // 1. Valid arguments.
     if (!_ll) {

@@ -33,9 +33,9 @@ static int     CVarRemove(cvar_list_t *_cl, int _cvar_id);
 
 
 /*!
- * \desc    Initializes memory for a new cvar_t struct
+ * \desc    Initializes memory for a new cvar_list_t struct, which maintains a list of cvars.
  *
- * \return  An initialized cvar_t struct, NULL otherwise.
+ * \return  An initialized cvar_list_t struct, NULL otherwise.
  */
 cvar_list_t *CVarListCreate() {
     // 1. Allocate space for our cvar list struct. Print message and return NULL upon error
@@ -54,9 +54,9 @@ cvar_list_t *CVarListCreate() {
 
 
 /*!
- * \desc                  Frees the memory associated with a cvar_t struct
+ * \desc           Frees the memory associated with a cvar_list_t struct
  *
- * \param[in] _cvar  A cvar_t struct that the caller wishes to free
+ * \param[in] _cl  A cvar_list_t struct that the caller wishes to free
  */
 int CVarListDelete(cvar_list_t *_cl) {
     // 1. Check arguments. Return error if invalid.
@@ -78,9 +78,10 @@ int CVarListDelete(cvar_list_t *_cl) {
 
 
 /*!
- * \desc                 Creates a new cvar.
- * 
- * \param[out] cvar_idp  The address where the newly created cvar's id should be stored
+ * \desc                 Creates a new cvar and saves the id at the caller specified address.
+ *
+ * \param[in]  _cl       An initialized cvar_list_t struct
+ * \param[out] _cvar_id  The address where the newly created cvar's id should be stored
  * 
  * \return               0 on success, ERROR otherwise
  */
@@ -126,16 +127,17 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
     // 6. Add the new cvar to our cvar list and save the cvar id in the caller's outgoing pointer
     CVarAdd(_cl, cvar);
     *_cvar_id = cvar->cvar_id;
-    return cvar->cvar_id;
+    return 0;
 }
 
 
 /*!
- * \desc               Acquires the cvar identified by cvar_id
+ * \desc                Unblocks the next process waiting on the cvar (if any)
  * 
- * \param[in] cvar_id  The id of the cvar to be acquired
+ * \param[in] _cl       An initialized cvar_list_t struct
+ * \param[in] _cvar_id  The id of the cvar that the caller wishes to signal on
  * 
- * \return             0 on success, ERROR otherwise
+ * \return              0 on success, ERROR otherwise
  */
 int CVarSignal(cvar_list_t *_cl, int _cvar_id) {
     // 1. Validate arguments.
@@ -162,11 +164,12 @@ int CVarSignal(cvar_list_t *_cl, int _cvar_id) {
 
 
 /*!
- * \desc               Releases the cvar identified by cvar_id
+ * \desc                Unblocks *all* processes waiting on the cvar (if any)
  * 
- * \param[in] cvar_id  The id of the cvar to be released
+ * \param[in] _cl       An initialized cvar_list_t struct
+ * \param[in] _cvar_id  The id of the cvar that the caller wishes to signal on
  * 
- * \return             0 on success, ERROR otherwise
+ * \return              0 on success, ERROR otherwise
  */
 int CVarBroadcast(cvar_list_t *_cl, int _cvar_id) {
     // 1. Validate arguments.
@@ -198,6 +201,20 @@ int CVarBroadcast(cvar_list_t *_cl, int _cvar_id) {
     return 0;
 }
 
+
+/*!
+ * \desc                Releases the caller held lock and adds the caller to the cvar wait list.
+ *                      When the caller is unblocked (due to a signal or broadcast) we re-aquire
+ *                      the lock before returning. If the caller does not hold the lock at the
+ *                      time this function is called we return immediately with ERROR.
+ * 
+ * \param[in] _cl       An initialized cvar_list_t struct
+ * \param[in] _uctxt    The UserContext for the current running process
+ * \param[in] _cvar_id  The id of the cvar that the caller wishes to wait on
+ * \param[in] _lock_id  The id of the lock that the caller current holds
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 int CVarWait(cvar_list_t *_cl, UserContext *_uctxt, int _cvar_id, int _lock_id) {
     // 1. Validate arguments.
     if (!_cl || !_uctxt) {
@@ -237,14 +254,23 @@ int CVarWait(cvar_list_t *_cl, UserContext *_uctxt, int _cvar_id, int _lock_id) 
     //    fails for any reason, however, return an ERROR.
     ret = LockAcquire(e_lock_list, _uctxt, _lock_id);
     if (ret < 0) {
-        TracePrintf(1, "[CVarWait] Error releasing lock\n");
+        TracePrintf(1, "[CVarWait] Error aquiring lock\n");
         return ERROR;
     }
     return 0;
 }
 
 
-// TODO: We only want to destroy the cvar if no other process is blocked on it
+/*!
+ * \desc                Removes the cvar from our cvar list and frees its memory, but *only* if no
+ *                      other processes are currenting waiting on it. Otherwise, we return ERROR
+ *                      and do not free the cvar.
+ * 
+ * \param[in] _cl       A cvar_list_t struct that the caller wishes to free
+ * \param[in] _cvar_id  The id of the cvar that the caller wishes to free
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 int CVarReclaim(cvar_list_t *_cl, int _cvar_id) {
     // 1. Validate arguments
 
@@ -254,6 +280,15 @@ int CVarReclaim(cvar_list_t *_cl, int _cvar_id) {
     return 0;
 }
 
+
+/*!
+ * \desc             Internal function for adding a cvar struct to the end of our cvar list.
+ * 
+ * \param[in] _cl    An initialized cvar_list_t struct that we wish to add the cvar to
+ * \param[in] _cvar  The cvar struct that we wish to add to the cvar list
+ * 
+ * \return           0 on success, ERROR otherwise
+ */
 static int CVarAdd(cvar_list_t *_cl, cvar_t *_cvar) {
     // 1. Validate arguments
     if (!_cl || !_cvar) {
@@ -261,8 +296,8 @@ static int CVarAdd(cvar_list_t *_cl, cvar_t *_cvar) {
         return ERROR;
     }
 
-    // 2. First check for our base case: the read_buf list is currently empty. If so,
-    //    add the current cvar (both as the start and end) to the read_buf list.
+    // 2. First check for our base case: the cvar list is currently empty. If so,
+    //    add the current cvar (both as the start and end) to the cvar list.
     //    Set the cvar's next and previous pointers to NULL. Return success.
     if (!_cl->start) {
         _cl->start = _cvar;
@@ -272,7 +307,7 @@ static int CVarAdd(cvar_list_t *_cl, cvar_t *_cvar) {
         return 0;
     }
 
-    // 3. Our read_buf list is not empty. Our list is doubly linked, so we need to set the
+    // 3. Our cvar list is not empty. Our list is doubly linked, so we need to set the
     //    current end to point to our new cvar as its "next" and our current cvar to
     //    point to our current end as its "prev". Then, set the new cvar "next" to NULL
     //    since it is the end of the list and update our end-of-list pointer in the list struct.
@@ -285,6 +320,15 @@ static int CVarAdd(cvar_list_t *_cl, cvar_t *_cvar) {
 }
 
 
+/*!
+ * \desc                Internal function for retrieving a cvar struct from our cvar list. Note
+ *                      that this function does not modify the list---it simply returns a pointer.
+ * 
+ * \param[in] _cl       An initialized cvar_list_t struct containing the cvar we wish to retrieve
+ * \param[in] _cvar_id  The id of the cvar that we wish to retrieve from the list
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 static cvar_t *CVarGet(cvar_list_t *_cl, int _cvar_id) {
     // 1. Loop over the cvar list in search of the cvar specified by _cvar_id.
     //    If found, return the pointer to the cvar's cvar_t struct.
@@ -302,6 +346,17 @@ static cvar_t *CVarGet(cvar_list_t *_cl, int _cvar_id) {
 }
 
 
+/*!
+ * \desc                Internal function for remove a cvar struct from our cvar list. Note that
+ *                      this function does modify the list, but does not return a pointer to the
+ *                      cvar. Thus, the caller should use CVarGet first if they still need a
+ *                      reference to the cvar
+ * 
+ * \param[in] _cl       An initialized cvar_list_t struct containing the cvar we wish to remove
+ * \param[in] _cvar_id  The id of the cvar that we wish to remove from the list
+ * 
+ * \return              0 on success, ERROR otherwise
+ */
 static int CVarRemove(cvar_list_t *_cl, int _cvar_id) {
     // 1. Valid arguments.
     if (!_cl) {
