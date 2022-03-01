@@ -15,7 +15,7 @@ typedef struct cvar_list cvar_list_t;
 cvar_list_t *CVarListCreate();
 
 /*!
- * \desc                  Frees the memory associated with a cvar_list_t struct
+ * \desc           Frees the memory associated with a cvar_list_t struct
  *
  * \param[in] _cl  A cvar_list_t struct that the caller wishes to free
  */

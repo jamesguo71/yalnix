@@ -126,7 +126,7 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
     // 6. Add the new cvar to our cvar list and save the cvar id in the caller's outgoing pointer
     CVarAdd(_cl, cvar);
     *_cvar_id = cvar->cvar_id;
-    return 0;
+    return cvar->cvar_id;
 }
 
 

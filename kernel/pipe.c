@@ -133,7 +133,7 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     // 6. Add the new pipe to our pipe list and save the pipe id in the caller's outgoing pointer
     PipeAdd(_pl, pipe);
     *_pipe_id = pipe->pipe_id;
-    return 0;
+    return pipe->pipe_id;
 }
 
 

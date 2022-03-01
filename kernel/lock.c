@@ -40,17 +40,17 @@ static int     LockRemove(lock_list_t *_ll, int _lock_id);
  */
 lock_list_t *LockListCreate() {
     // 1. Allocate space for our lock list struct. Print message and return NULL upon error
-    lock_list_t *pl = (lock_list_t *) malloc(sizeof(lock_list_t));
-    if (!pl) {
-        TracePrintf(1, "[LockListCreate] Error mallocing space for pl struct\n");
+    lock_list_t *ll = (lock_list_t *) malloc(sizeof(lock_list_t));
+    if (!ll) {
+        TracePrintf(1, "[LockListCreate] Error mallocing space for ll struct\n");
         return NULL;
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    pl->num_locks = LOCK_ID_START;
-    pl->start     = NULL;
-    pl->end       = NULL;
-    return pl;
+    ll->num_locks = LOCK_ID_START;
+    ll->start     = NULL;
+    ll->end       = NULL;
+    return ll;
 }
 
 
@@ -128,7 +128,7 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     // 6. Add the new lock to our lock list and save the lock id in the caller's outgoing pointer
     LockAdd(_ll, lock);
     *_lock_id = lock->lock_id;
-    return 0;
+    return lock->lock_id;
 }
 
 
