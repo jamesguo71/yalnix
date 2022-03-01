@@ -436,9 +436,6 @@ static pcb_t *SchedulerGet(scheduler_t *_scheduler, int _pid, int _start, int _e
         }
         node = node->next;
     }
-
-    // 2. If we made it this far, then the process specified by _pid was not found. Return NULL.
-    TracePrintf(1, "[SchedulerGet] Process %d not found\n", _pid);
     return NULL;
 }
 
