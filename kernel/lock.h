@@ -26,7 +26,7 @@ int LockListDelete(lock_list_t *_ll);
  * 
  * \return               0 on success, ERROR otherwise
  */
-int LockInit (lock_list_t *_ll, int *lock_idp);
+int LockInit (lock_list_t *_ll, int *_lock_id);
 
 /*!
  * \desc               Acquires the lock identified by lock_id
@@ -35,7 +35,7 @@ int LockInit (lock_list_t *_ll, int *lock_idp);
  * 
  * \return             0 on success, ERROR otherwise
  */
-int LockAcquire (lock_list_t *_ll, UserContext *_uctxt, int lock_id);
+int LockAcquire (lock_list_t *_ll, UserContext *_uctxt, int _lock_id);
 
 /*!
  * \desc               Releases the lock identified by lock_id
@@ -44,7 +44,7 @@ int LockAcquire (lock_list_t *_ll, UserContext *_uctxt, int lock_id);
  * 
  * \return             0 on success, ERROR otherwise
  */
-int LockRelease (lock_list_t *_ll, UserContext *_uctxt, int lock_id);
+int LockRelease (lock_list_t *_ll, int _lock_id);
 
 int LockReclaim(lock_list_t *_ll, int _lock_id);
 #endif // __LOCK_H

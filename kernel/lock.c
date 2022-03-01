@@ -199,7 +199,7 @@ int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
  * 
  * \return             0 on success, ERROR otherwise
  */
-int LockRelease(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
+int LockRelease(lock_list_t *_ll, int _lock_id) {
     // 1. Validate arguments.
     if (!_ll || !_uctxt) {
         TracePrintf(1, "[LockRelease] One or more invalid argument pointers\n");
