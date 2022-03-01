@@ -304,12 +304,13 @@ int TrapMath(UserContext *_uctxt) {
 
 
 /*!
- * \desc               Reads input from the terminal using TtyReceive and buffers the input line
- *                     for subsequent TtyRead syscalls.
+ * \desc              This handler gets called when there is input waiting to be read from one
+ *                    of the terminals. It calls our TTYUpdateReader function, which reads and
+ *                    saves the input into kernel memory for future use by processes.
  * 
  * \param[in] _uctxt  The UserContext for the process associated with the TRAP
  * 
- * \return             0 on success, ERROR otherwise.
+ * \return            0 on success, ERROR otherwise.
  */
 int TrapTTYReceive(UserContext *_uctxt) {
     // 1. Check arguments. Return error if invalid.
