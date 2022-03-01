@@ -18,14 +18,11 @@ int main() {
             TracePrintf(1, "[lock_test] Parent forked child process: %d\n", pid);
         } else {
             pid = GetPid();
-            int delay = NUM_CHILDREN * 2 - pid;
-            TracePrintf(1, "[lock_test] Child %d delaying for %d cycles\n", pid, delay);
-            Delay(delay);
-
             Acquire(lock);
             TracePrintf(1, "[lock_test] Child %d aquired lock %d\n", pid, lock);
+            Delay(pid);
             Release(lock);
-            return delay;
+            return pid;
         }
     }
 
