@@ -1,6 +1,7 @@
 #ifndef __KERNEL_H
 #define __KERNEL_H
 #include <hardware.h>
+#include "cvar.h"
 #include "lock.h"
 #include "pipe.h"
 #include "process.h"
