@@ -247,7 +247,8 @@ int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int 
 
     tty_t *terminal = _tl->terminals[_tty_id];
     // If there's already a processing writing, block the current one until the terminal is free
-    while (terminal->write_proc != NULL) {
+    // while (terminal->write_proc != NULL) {
+    if (SchedulerGetTTYWrite(e_scheduler)) {
         running->tty_id = _tty_id;
         SchedulerAddTTYWrite(e_scheduler, running);
         KCSwitch(_uctxt, running);

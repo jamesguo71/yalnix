@@ -67,6 +67,7 @@ pcb_t *SchedulerGetProcess(scheduler_t *_scheduler, int _pid);
 pcb_t *SchedulerGetReady(scheduler_t *_scheduler);
 pcb_t *SchedulerGetRunning(scheduler_t *_scheduler);
 pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid);
+pcb_t *SchedulerGetTTYWrite(scheduler_t *_scheduler);
 pcb_t *SchedulerGetWait(scheduler_t *_scheduler, int _pid);
 
 int    SchedulerPrintCVar(scheduler_t *_scheduler);
