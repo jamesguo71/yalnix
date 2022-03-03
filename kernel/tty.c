@@ -207,7 +207,7 @@ int TTYRead(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_usr_read_b
     }
 
     // 8. Mark the terminal as available for reading and return the number of bytes read.
-    terminal->read_pid = 0;
+    terminal->read_pid = SchedulerUpdateTTYRead(e_scheduler, _tty_id, terminal->read_pid);
     return read_len;
 }
 
@@ -360,7 +360,7 @@ int TTYUpdateReader(tty_list_t *_tl, int _tty_id) {
     //    to see if we have a process waiting to read from the specified terminal. If so,
     //    remove them from the TTYRead wait list and add them to the ready list.
     TTYLineAdd(terminal, read_buf, read_len);
-    SchedulerUpdateTTYRead(e_scheduler, _tty_id);
+    terminal->read_pid = SchedulerUpdateTTYRead(e_scheduler, _tty_id, terminal->read_pid);
     free(read_buf);
     return 0;
 }

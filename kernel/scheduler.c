@@ -952,7 +952,7 @@ int SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent) {
     return 0;
 }
 
-int SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id) {
+int SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id, int _read_pid) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdateTTYRead] Invalid list pointer\n");
@@ -964,12 +964,23 @@ int SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id) {
     //    read and add it to the ready list.
     node_t *node = _scheduler->lists[SCHEDULER_TTY_READ_START];
     while (node) {
+
+        // If read_pid = 0, then there is not currently a process reading from the tty.
+        // So, we should just return the first process with a matching tty_id
         pcb_t *process = node->process;
-        if (process->tty_id == _tty_id) {
+        if (process->tty_id == _tty_id && _read_pid == 0) {
             TracePrintf(1, "[SchedulerUpdateTTYRead] Moving process: %d to ready\n", process->pid);
             SchedulerRemoveTTYRead(_scheduler, process->pid);
             SchedulerAddReady(_scheduler, process);
-            return 0;
+            return process->pid;
+        }
+
+        // If read_pid is set, then we should only return the process with a matching pid
+        if (process->pid == _read_pid) {
+            TracePrintf(1, "[SchedulerUpdateTTYRead] Moving process: %d to ready\n", process->pid);
+            SchedulerRemoveTTYRead(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return process->pid;
         }
         node = node->next;
     }
@@ -982,6 +993,7 @@ int SchedulerUpdateTTYWrite(scheduler_t *_scheduler, int _tty_id, int _write_pid
         helper_abort("[SchedulerUpdateTTYWrite] Invalid list pointer\n");
     }
 
+    // 2.
     node_t *node = _scheduler->lists[SCHEDULER_TTY_WRITE_START];
     while (node) {
         
@@ -1003,7 +1015,6 @@ int SchedulerUpdateTTYWrite(scheduler_t *_scheduler, int _tty_id, int _write_pid
             return process->pid;
         }
         node = node->next;
-
     }
     TracePrintf(1, "[SchedulerUpdateTTYWrite] No process waiting for tty_id = %d\n", _tty_id);
     return 0;
