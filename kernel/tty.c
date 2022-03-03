@@ -247,14 +247,14 @@ int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int 
 
     tty_t *terminal = _tl->terminals[_tty_id];
     // If there's already a processing writing, block the current one until the terminal is free
-    // while (terminal->write_proc != NULL) {
-    if (SchedulerGetTTYWrite(e_scheduler)) {
+    if (terminal->write_pid) {
         running->tty_id = _tty_id;
         SchedulerAddTTYWrite(e_scheduler, running);
         KCSwitch(_uctxt, running);
     }
     // At this point, this terminal is free, so set the current process as the writer
-    terminal->write_proc = running;
+    // terminal->write_proc = running;
+    terminal->write_pid = running->pid;
 
     // Here we don't add the process to a blocking list, because this process has to be the first one to unblock
     // in a TrapTTYTransmit, so we first check the terminal's write_proc to see if we need to unblock a process there
@@ -274,9 +274,10 @@ int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int 
     }
     // The process finished writing, clear it and unblock a waiting process if any
     terminal->write_proc = NULL;
+    terminal->write_pid = 0;
     free(kernel_buf);
 
-    SchedulerUpdateTTYWrite(e_scheduler, _tty_id);
+    terminal->write_pid = SchedulerUpdateTTYWrite(e_scheduler, _tty_id, 0);
 
     return kernel_buf_len;
 }
@@ -285,10 +286,10 @@ int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int 
 void TTYUpdateWriter(tty_list_t *_tl, UserContext *_uctxt, int _tty_id) {
     tty_t *terminal = _tl->terminals[_tty_id];
     // Upon the TrapTTYTransmit, the terminal should be occupied by a process, so add it to ready queue
-    if (terminal->write_proc == NULL) {
-        helper_abort("[TTYUpdateWriter] error: terminal->write_proc is NULL\n");
-    }
-    SchedulerAddReady(e_scheduler, terminal->write_proc);
+    // if (terminal->write_proc == NULL) {
+    //     helper_abort("[TTYUpdateWriter] error: terminal->write_proc is NULL\n");
+    // }
+    terminal->write_pid = SchedulerUpdateTTYWrite(e_scheduler, _tty_id, terminal->write_pid);
 }
 
 int TTYUpdateReader(tty_list_t *_tl, int _tty_id) {
