@@ -396,7 +396,12 @@ pcb_t *SchedulerGetTTYWrite(scheduler_t *_scheduler) {
         TracePrintf(1, "[SchedulerGetTTYWrite] Invalid list or pid\n");
         return NULL;
     }
-    return _scheduler->lists[SCHEDULER_TTY_WRITE_START]->process;
+
+    if(_scheduler->lists[SCHEDULER_TTY_WRITE_START]) {
+        return _scheduler->lists[SCHEDULER_TTY_WRITE_START]->process;
+    } else {
+        return NULL;
+    }
 }
 
 pcb_t *SchedulerGetWait(scheduler_t *_scheduler, int _pid) {
