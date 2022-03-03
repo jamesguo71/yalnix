@@ -392,7 +392,7 @@ pcb_t *SchedulerGetTerminated(scheduler_t *_scheduler, int _pid) {
 
 pcb_t *SchedulerGetTTYWrite(scheduler_t *_scheduler) {
     // 1. Check arguments and return error if invalid. Otherwise, call internal get.
-    if (!_scheduler || _pid < 0) {
+    if (!_scheduler) {
         TracePrintf(1, "[SchedulerGetTTYWrite] Invalid list or pid\n");
         return NULL;
     }
