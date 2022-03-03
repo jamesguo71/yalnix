@@ -59,7 +59,9 @@ int SyscallFork (UserContext *_uctxt) {
     }
     // Setup relationship between parent/child
     ProcessAddChild(parent, child);
-    child->parent = parent;
+    child->parent   = parent;
+    child->brk      = parent->brk;
+    child->data_end = parent->data_end;
     // Add child to ready list
     SchedulerAddReady(e_scheduler, child);
 
