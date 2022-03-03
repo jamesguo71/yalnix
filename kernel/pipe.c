@@ -255,22 +255,26 @@ int PipeRead(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, in
     memcpy(_buf, pipe->buf, read_len);
 
     // 8. Check to see if there are any remaining bytes in our pipe. If so, move the remaining
-    //    bytes to the beginning of the pipe buffer and update the buffer length. Additionally,
-    //    unblock the next process waiting to read on the pipe (if any) if there are still bytes
-    //    remaining in the pipe. Otherwise, set the pipe length to 0 since we read all of them.
+    //    bytes to the beginning of the pipe buffer and update the buffer length. Otherwise,
+    //    set the pipe length to 0 since we read all of them.
     if (_buf_len < pipe->buf_len) {
         int pipe_remainder = pipe->buf_len - _buf_len;
         memcpy(pipe->buf, pipe->buf + _buf_len, pipe_remainder);
-        pipe->buf_len = pipe_remainder;
-        SchedulerUpdatePipeRead(e_scheduler, _pipe_id);
+        pipe->buf_len  = pipe_remainder;
     } else {
-        pipe->buf_len = 0;
+        pipe->buf_len  = 0;
     }
 
-    // 9. Lastly, mark the pipe as available for reading and unblock the next process that is
-    //    waiting to write to it (if any) since there is now space available in the pipe.
-    pipe->read_pid = 0;
-    SchedulerUpdatePipeWrite(e_scheduler, _pipe_id, pipe->write_pid);
+    // 9. Lastly, unblock the next processes that are waiting to read or write from/to the pipe.
+    //    Since we just finished reading, we send SchedulerUpdatePipeRead "0" for the read_id to
+    //    indicate that it should return the next waiting process (instead of a specific one).
+    //    It will return the pid of the process it unblocks, or 0 if there are none.
+    //
+    //    For SchedulerUpdatePipeWrite, we send the write_pid of the process currently writing to
+    //    to the pipe. If there is no process currently writing to the pipe (i.e., write_pid = 0)
+    //    then 0 will be returned.
+    pipe->read_pid  = SchedulerUpdatePipeRead(e_scheduler, _pipe_id, 0);
+    pipe->write_pid = SchedulerUpdatePipeWrite(e_scheduler, _pipe_id, pipe->write_pid);
     return read_len;
 }
 
@@ -399,7 +403,7 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
 
         // 7c. Unblock the next process (if any) that is waiting to read this pipe. Then mark
         //     ourselves as currently writing to the pipe and block until space is available.
-        SchedulerUpdatePipeRead(e_scheduler, _pipe_id);
+        pipe->read_pid = SchedulerUpdatePipeRead(e_scheduler, _pipe_id, pipe->read_pid);
         TracePrintf(1, "[PipeWrite] Process: %d wrote %d bytes to pipe: %d. Remaining bytes: %d\n",
                                     running_old->pid, pipe_remaining, _pipe_id, bytes_remaining);
         running_old->pipe_id = _pipe_id;
@@ -409,11 +413,16 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
         KCSwitch(_uctxt, running_old);
     }
 
-    // 8. Mark the pipe as available for writing and unblock the next process (if any) that is
-    //    waiting to write to, or read from, this pipe.
-    pipe->write_pid = 0;
-    SchedulerUpdatePipeWrite(e_scheduler, _pipe_id, pipe->write_pid);
-    SchedulerUpdatePipeRead(e_scheduler, _pipe_id);
+    // 8. Lastly, unblock the next processes that are waiting to read or write from/to the pipe.
+    //    Since we just finished reading, we send SchedulerUpdatePipeWrite "0" for the write_id to
+    //    indicate that it should return the next waiting process (instead of a specific one).
+    //    It will return the pid of the process it unblocks, or 0 if there are none.
+    //
+    //    For SchedulerUpdatePipeRead, we send the read_pid of the process currently reading from
+    //    the pipe. If there is no process currently reading from the pipe (i.e., read_pid = 0)
+    //    then 0 will be returned.
+    pipe->read_pid  = SchedulerUpdatePipeRead(e_scheduler, _pipe_id, pipe->read_pid);
+    pipe->write_pid = SchedulerUpdatePipeWrite(e_scheduler, _pipe_id, 0);
     free(kernel_buf_start);
     return kernel_buf_len;
 }

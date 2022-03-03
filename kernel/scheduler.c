@@ -851,7 +851,7 @@ int SchedulerUpdateLock(scheduler_t *_scheduler, int _lock_id) {
     return 0;
 }
 
-int SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id) {
+int SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id, int _read_pid) {
     // 1. Check arguments. Return error if invalid.
     if (!_scheduler) {
         TracePrintf(1, "[SchedulerUpdatePipeRead] Invalid list pointer\n");
@@ -863,12 +863,23 @@ int SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id) {
     //    read and add it to the ready list.
     node_t *node = _scheduler->lists[SCHEDULER_PIPE_READ_START];
     while (node) {
+        
+        // If read_pid = 0, then there is not currently a process reading from the pipe.
+        // So, we should just return the first process with a matching pipe_id
         pcb_t *process = node->process;
-        if (process->pipe_id == _pipe_id) {
+        if (process->pipe_id == _pipe_id && _read_pid == 0) {
             TracePrintf(1, "[SchedulerUpdatePipeRead] Moving process: %d to ready\n", process->pid);
             SchedulerRemovePipeRead(_scheduler, process->pid);
             SchedulerAddReady(_scheduler, process);
-            return 0;
+            return process->pid;
+        }
+
+        // If read_pid is set, then we should only return the process with a matching pid
+        if (process->pid == _read_pid) {
+            TracePrintf(1, "[SchedulerUpdatePipeRead] Moving process: %d to ready\n", process->pid);
+            SchedulerRemovePipeRead(_scheduler, process->pid);
+            SchedulerAddReady(_scheduler, process);
+            return process->pid;
         }
         node = node->next;
     }

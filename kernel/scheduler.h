@@ -97,7 +97,7 @@ int    SchedulerRemoveWait(scheduler_t *_scheduler, int _pid);
 int    SchedulerUpdateCVar(scheduler_t *_scheduler, int _cvar_id);
 int    SchedulerUpdateDelay(scheduler_t *_scheduler);
 int    SchedulerUpdateLock(scheduler_t *_scheduler, int _lock_id);
-int    SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id);
+int    SchedulerUpdatePipeRead(scheduler_t *_scheduler, int _pipe_id, int _read_pid);
 int    SchedulerUpdatePipeWrite(scheduler_t *_scheduler, int _pipe_id, int _write_pid);
 int    SchedulerUpdateTerminated(scheduler_t *_scheduler, pcb_t *_parent);
 int    SchedulerUpdateTTYRead(scheduler_t *_scheduler, int _tty_id);
