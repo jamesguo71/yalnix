@@ -22,7 +22,6 @@ typedef struct tty {
     int     read_buf_len;
     line_t *read_buf_start;
     line_t *read_buf_end;
-    pcb_t  *write_proc;
 } tty_t;
 
 typedef struct tty_list {
@@ -77,7 +76,6 @@ static tty_t *TTYCreate() {
     terminal->read_buf_len   = 0;
     terminal->read_buf_start = NULL;
     terminal->read_buf_end   = NULL;
-    terminal->write_proc     = NULL;
     return terminal;
 }
 
@@ -224,48 +222,80 @@ int TTYRead(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_usr_read_b
  * \return            Number of bytes written on success, ERROR otherwise
  */
 int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int _len) {
-    // Argument sanity check
-    if (_tty_id < 0 || _tty_id >= NUM_TERMINALS) return ERROR;
-    if (_len < 0) return ERROR;
-    if (_len == 0) return 0;
-    if (_len > 0 && _buf == NULL) return ERROR;
-    if (_uctxt == NULL) Halt();
-
-    // Check page validity and permission of the given _buf
-    pcb_t *running = SchedulerGetRunning(e_scheduler);
-    if (PTECheckAddress(running->pt, _buf, _len, PROT_READ) < 0)
+    // 1. Validate arguments. Our pointers should not be NULL, and our tty id and input buffer
+    //    length should not be out of range. If input buffer length is 0, return 0 bytes written.
+    if (!_tl || !_uctxt || !_buf) {
+        TracePrintf(1, "[TTYWrite] One or more invalid argument pointers\n");
         return ERROR;
+    }
+    if (_tty_id < 0 || _tty_id >= NUM_TERMINALS) {
+        TracePrintf(1, "[TTYWrite] Invalid _tty_id: %d\n", _tty_id);
+        return ERROR;
+    }
+    if (_len < 0) {
+        TracePrintf(1, "[TTYWrite] Invalid buffer length: %d\n", _len);
+        return ERROR;
+    }
+    if (_len == 0) {
+        return 0;
+    }
 
-    // Update the current UserContext
+    // 2. Get the pcb for the current running process and save its incoming UserContext.
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    if (!running) {
+        TracePrintf(1, "[TTYWrite] e_scheduler returned no running process\n");
+        Halt();
+    }
     memcpy(&running->uctxt, _uctxt, sizeof(UserContext));
 
-    // Make a copy of the _buf in the kernel
-    int kernel_buf_len = _len;
-    void *kernel_buf = malloc(kernel_buf_len);
-    if (kernel_buf == NULL) return ERROR;
+    // 3. Check that the user output read buffer is within valid memory space. Specifically, every
+    //    byte of the buffer should be in the process' region 1 memory space (i.e., in valid pages)
+    //    and have read permissions since we are supposed to read the user data from it.
+    int ret = PTECheckAddress(running->pt,
+                              _buf,
+                              _len,
+                              PROT_READ);
+    if (ret < 0) {
+        TracePrintf(1, "[TTYWrite] _buf is not within valid address space\n");
+        return ERROR;
+    }
+
+    // 4. Copy the user's input buffer over into kernel space. The reason we create a copy in the
+    //    kernel is that if we have to block here, its possible that another process with access
+    //    to the input buffer could modify its contents (or the length) to get us to write bad
+    //    data. This way, even if they do modify input buf, we will have an original copy for when
+    //    we get to run again here in the kernel.
+    int   kernel_buf_len = _len;
+    void *kernel_buf = (void *) malloc(kernel_buf_len);
+    if (!kernel_buf) {
+        TracePrintf(1, "[TTYWrite] Error allocating space for kernel_buf\n");
+        return ERROR;
+    }
     memcpy(kernel_buf, _buf, kernel_buf_len);
 
+    // 5. Check to see if there are already processes waiting on this device. If so, the current
+    //    process to our TTYWrite blocked list---the current process will not run again until
+    //    all processes in the list ahead of it have finished using the tty device. Note that we
+    //    need to record the _tty_id the current process is blocking on so that we know to remove
+    //    it when the particular tty device becomes available.
+    running->tty_id = _tty_id;
     tty_t *terminal = _tl->terminals[_tty_id];
-    // If there's already a processing writing, block the current one until the terminal is free
     if (terminal->write_pid) {
-        running->tty_id = _tty_id;
         SchedulerAddTTYWrite(e_scheduler, running);
         KCSwitch(_uctxt, running);
     }
-    // At this point, this terminal is free, so set the current process as the writer
-    // terminal->write_proc = running;
+
+    // 6. At this point, this terminal is free, so set the current process as the writer.
     terminal->write_pid = running->pid;
 
-    // Here we don't add the process to a blocking list, because this process has to be the first one to unblock
-    // in a TrapTTYTransmit, so we first check the terminal's write_proc to see if we need to unblock a process there
-
-    // If the writer only needs to transmit no more than TERMINAL_MAX_LINE bytes, transmit it in one go and switch out
+    // 7a. If the writer only needs to transmit no more than TERMINAL_MAX_LINE bytes,
+    //     transmit it in one go and switch out
     if (kernel_buf_len <= TERMINAL_MAX_LINE) {
         TtyTransmit(_tty_id, kernel_buf, kernel_buf_len);
         SchedulerAddTTYWrite(e_scheduler, running);
         KCSwitch(_uctxt, running);
     }
-    // Otherwise, we break them up and transmit multiple times, blocking after each transmit
+    // 7b. Otherwise, we break them up and transmit multiple times, blocking after each transmit
     else {
         for (int rem = kernel_buf_len; rem > 0; rem -= TERMINAL_MAX_LINE) {
             int offset = kernel_buf_len - rem;
@@ -274,23 +304,25 @@ int TTYWrite(tty_list_t *_tl, UserContext *_uctxt, int _tty_id, void *_buf, int 
             KCSwitch(_uctxt, running);
         }
     }
-    // The process finished writing, clear it and unblock a waiting process if any
-    terminal->write_proc = NULL;
-    terminal->write_pid = 0;
     free(kernel_buf);
 
+    // 8. The process finished writing, clear it and unblock a waiting process if any. Note that
+    ///   by passing SchedulerUpdateTTYWrite "0" for the write_pid, we are indicating that it
+    //    should unblock the next process in the TTYWrite list. Additionally, it will return the
+    //    pid of the unblocked process which we save back into write_pid to ensure that the
+    //    freshly unblocked process is the next to use the tty device. If there are no blocked
+    //    processes, SchedulerUpdateTTYWrite will return 0.
     terminal->write_pid = SchedulerUpdateTTYWrite(e_scheduler, _tty_id, 0);
-
     return kernel_buf_len;
 }
 
 // This is called in TrapTTYTransmit, and is used to add the current terminal writer to ready queue
 void TTYUpdateWriter(tty_list_t *_tl, UserContext *_uctxt, int _tty_id) {
+
+    // Note that SchedulerUpdateTTYWrite accepts the write_pid of the process currently using the
+    // tty device. Thus, even if other processes have been added to the wait list, it will skip
+    // over them and unblock the write_pid process so that it can finish writing to the device.
     tty_t *terminal = _tl->terminals[_tty_id];
-    // Upon the TrapTTYTransmit, the terminal should be occupied by a process, so add it to ready queue
-    // if (terminal->write_proc == NULL) {
-    //     helper_abort("[TTYUpdateWriter] error: terminal->write_proc is NULL\n");
-    // }
     terminal->write_pid = SchedulerUpdateTTYWrite(e_scheduler, _tty_id, terminal->write_pid);
 }
 
