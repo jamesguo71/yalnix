@@ -2,10 +2,8 @@
 #define __PIPE_H
 #include <hardware.h>
 
-#define PIPE_ID_START 2000000
 
 typedef struct pipe_list pipe_list_t;
-
 
 /*!
  * \desc    Initializes memory for a new pipe_list_t struct, which maintains a list of pipes.

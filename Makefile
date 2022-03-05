@@ -21,7 +21,8 @@ K_SRCS = kernel.c       \
          scheduler.c    \
          syscall.c      \
          trap.c         \
-         tty.c
+         tty.c          \
+         bitvec.c
 K_INCS = kernel.h       \
          cvar.h         \
          frame.h        \
@@ -33,7 +34,8 @@ K_INCS = kernel.h       \
          scheduler.h    \
          syscall.h      \
          trap.h         \
-         tty.h
+         tty.h          \
+         bitvec.h
 
 # Where's your user source?
 U_SRC_DIR = ./user
