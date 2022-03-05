@@ -3,12 +3,10 @@
 #include "bitvec.h"
 
 
-#define INT_SIZE sizeof(int)
-#define MAX_NUM_RES  (INT_SIZE * 256)
-
-int pipe_bitvec[MAX_NUM_RES / INT_SIZE];
-int lock_bitvec[MAX_NUM_RES / INT_SIZE];
-int cvar_bitvec[MAX_NUM_RES / INT_SIZE];
+// global arrays explicitly zero-ed out
+int pipe_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
+int lock_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
+int cvar_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
 
 void  SetBit( int A[ ],  int k )
 {
@@ -46,39 +44,39 @@ void Clear(int *bitvec, int i) {
 }
 
 int PipeIDFindAndSet() {
-    return FindAndSet(pipe_bitvec);
+    return FindAndSet(pipe_bitvec) + PIPE_BEGIN_INDEX;
 }
 
 void PipeIDRetire(int i) {
-    Clear(pipe_bitvec, i);
+    Clear(pipe_bitvec, i - PIPE_BEGIN_INDEX);
 }
 
 int PipeIDIsValid(int i) {
-    return TestBit(pipe_bitvec, i);
+    return TestBit(pipe_bitvec, i - PIPE_BEGIN_INDEX);
 }
 
 int LockIDFindAndSet() {
-    return FindAndSet(lock_bitvec);
+    return FindAndSet(lock_bitvec) + LOCK_BEGIN_INDEX;
 }
 
 void LockIDRetire(int i) {
-    Clear(lock_bitvec, i);
+    Clear(lock_bitvec, i - LOCK_BEGIN_INDEX);
 }
 
 int LockIDIsValid(int i) {
-    return TestBit(lock_bitvec, i);
+    return TestBit(lock_bitvec, i - LOCK_BEGIN_INDEX);
 }
 
 int CVarIDFindAndSet() {
-    return FindAndSet(cvar_bitvec);
+    return FindAndSet(cvar_bitvec) + CVAR_BEGIN_INDEX;
 }
 
 void CVarIDRetire(int i) {
-    Clear(cvar_bitvec, i);
+    Clear(cvar_bitvec, i - CVAR_BEGIN_INDEX);
 }
 
 int CVarIDIsValid(int i) {
-    return TestBit(cvar_bitvec, i);
+    return TestBit(cvar_bitvec, i - CVAR_BEGIN_INDEX);
 }
 
 

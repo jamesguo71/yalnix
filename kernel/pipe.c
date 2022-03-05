@@ -6,7 +6,7 @@
 #include "pte.h"
 #include "scheduler.h"
 #include "pipe.h"
-
+#include "bitvec.h"
 
 /*
  * Internal struct definitions
@@ -22,7 +22,6 @@ typedef struct pipe {
 } pipe_t;
 
 typedef struct pipe_list {
-    int num_pipes;
     pipe_t *start;
     pipe_t *end;
 } pipe_list_t;
@@ -50,7 +49,6 @@ pipe_list_t *PipeListCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    pl->num_pipes = PIPE_ID_START;
     pl->start     = NULL;
     pl->end       = NULL;
     return pl;
@@ -124,12 +122,16 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
 
     // 5. Initialize internal members and increment the total number of pipes
     pipe->buf_len   = 0;
-    pipe->pipe_id   = _pl->num_pipes;
+    pipe->pipe_id   = PipeIDFindAndSet();
+    if (pipe->pipe_id == ERROR) {
+        TracePrintf(1, "[PipeInit] Failed to find a valid pipe_id.\n");
+        free(pipe);
+        return ERROR;
+    }
     pipe->read_pid  = 0;
     pipe->write_pid = 0;
     pipe->next      = NULL;
     pipe->prev      = NULL;
-    _pl->num_pipes++;
 
     // 6. Add the new pipe to our pipe list and save the pipe id in the caller's outgoing pointer
     PipeAdd(_pl, pipe);
@@ -149,11 +151,16 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
  * \return              0 on success, ERROR otherwise
  */
 int PipeReclaim(pipe_list_t *_pl, int _pipe_id) {
-    // 1. Validate arguments
-
-    // 2. Check to see if any other processes are blocked on the pipe. If so, return error
-
-    // 3. Remove the pipe from the list and free its resources
+    if (!_pl) Halt();
+    if (!PipeIDIsValid(_pipe_id)) {
+        TracePrintf(1, "[PipeReclaim] Error in trying to reclaim an invalid pipe id.\n");
+        return ERROR;
+    }
+    // Remove the pipe from the list and free its resources
+    if (PipeRemove(_pl, _pipe_id) == ERROR) {
+        helper_abort("[PipeReclaim] error removing a pipe.\n");
+    }
+    PipeIDRetire(_pipe_id);
     return 0;
 }
 
@@ -181,7 +188,7 @@ int PipeRead(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, in
         TracePrintf(1, "[PipeRead] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_pipe_id < PIPE_ID_START || _pipe_id >= _pl->num_pipes) {
+    if (!PipeIDIsValid(_pipe_id)) {
         TracePrintf(1, "[PipeRead] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
@@ -301,7 +308,7 @@ int PipeWrite(pipe_list_t *_pl, UserContext *_uctxt, int _pipe_id, void *_buf, i
         TracePrintf(1, "[PipeWrite] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_pipe_id < PIPE_ID_START || _pipe_id >= _pl->num_pipes) {
+    if (!PipeIDIsValid(_pipe_id)) {
         TracePrintf(1, "[PipeWrite] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }
@@ -514,7 +521,7 @@ static int PipeRemove(pipe_list_t *_pl, int _pipe_id) {
         TracePrintf(1, "[PipeRemove] List is empty\n");
         return ERROR;
     }
-    if (_pipe_id < PIPE_ID_START || _pipe_id >= _pl->num_pipes) {
+    if (!PipeIDIsValid(_pipe_id)) {
         TracePrintf(1, "[PipeRemove] Invalid _pipe_id: %d\n", _pipe_id);
         return ERROR;
     }

@@ -14,6 +14,7 @@
 #include "syscall.h"
 #include "trap.h"
 #include "tty.h"
+#include "bitvec.h"
 
 
 /*!
@@ -122,18 +123,16 @@ int TrapKernel(UserContext *_uctxt) {
                                 (int ) _uctxt->regs[0],       // cvar id
                                 (int ) _uctxt->regs[1]);      // lock id
             break;
-        case YALNIX_RECLAIM:
-            if (_uctxt->regs[0] < LOCK_ID_START) {              // id order is cvar < lock < pipe 
-                _uctxt->regs[0] = CVarReclaim(e_cvar_list,      // so if the id < lock_start then
-                                              _uctxt->regs[0]); // it must be cvar. Follow this
-            } else if (_uctxt->regs[0] < PIPE_ID_START) {       // pattern to determine if the id
-                _uctxt->regs[0] = LockReclaim(e_lock_list,      // is for a cvar, lock, or pipe
-                                              _uctxt->regs[0]); // struct and call the appropriate
-            } else {                                            // reclaim function
-                _uctxt->regs[0] = PipeReclaim(e_pipe_list,
-                                              _uctxt->regs[0]);
-            }
+        case YALNIX_RECLAIM: {
+            int id = (int) _uctxt->regs[0];
+            if (id >= PIPE_BEGIN_INDEX && id < PIPE_LIMIT)
+                _uctxt->regs[0] = PipeReclaim(e_pipe_list, id);
+            else if (id >= LOCK_BEGIN_INDEX && id < LOCK_LIMIT)
+                _uctxt->regs[0] = LockReclaim(e_lock_list, id);
+            else if (id >= CVAR_BEGIN_INDEX && id < CVAR_LIMIT)
+                _uctxt->regs[0] = CVarReclaim(e_cvar_list, id);
             break;
+        }
         default: break;
     }
     return 0;
@@ -199,7 +198,7 @@ int TrapIllegal(UserContext *_uctxt) {
     //    process by calling SyscallExit with the illegal instruction as the exit code.
     pcb_t *running = SchedulerGetRunning(e_scheduler);
     TracePrintf(1, "[TrapIllegal] Killing process: %d for illegal instruction: %d\n",
-                                  running->pid, _uctxt->code);
+                running->pid, _uctxt->code);
     SyscallExit(_uctxt, _uctxt->code);
     return 0;
 }
@@ -256,7 +255,7 @@ int TrapMemory(UserContext *_uctxt) {
     //    the brk or above the stack. If so, this is not valid so abort the process.
     if (addr_pn < brk_pn || addr_pn > sp_pn) {
         TracePrintf(1, "[TrapMemory] Address out of bounds: %p\n", _uctxt->addr);
-        SyscallExit(_uctxt, ERROR);        
+        SyscallExit(_uctxt, ERROR);
     }
 
     // 6. Find free frames to grow the stack so that the address the process is trying to use
