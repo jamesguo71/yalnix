@@ -6,6 +6,7 @@
 #include "pte.h"
 #include "scheduler.h"
 #include "cvar.h"
+#include "bitvec.h"
 
 
 /*
@@ -18,7 +19,6 @@ typedef struct cvar {
 } cvar_t;
 
 typedef struct cvar_list {
-    int num_cvars;
     cvar_t *start;
     cvar_t *end;
 } cvar_list_t;
@@ -46,7 +46,6 @@ cvar_list_t *CVarListCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    pl->num_cvars = CVAR_ID_START;
     pl->start     = NULL;
     pl->end       = NULL;
     return pl;
@@ -119,10 +118,14 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
     }
 
     // 5. Initialize internal members and increment the total number of cvars
-    cvar->cvar_id   = _cl->num_cvars;
+    cvar->cvar_id   = CVarIDFindAndSet();
+    if (cvar->cvar_id == ERROR) {
+        TracePrintf(1, "[CVarInit] Failed to find a valid cvar_id.\n");
+        free(cvar);
+        return ERROR;
+    }
     cvar->next      = NULL;
     cvar->prev      = NULL;
-    _cl->num_cvars++;
 
     // 6. Add the new cvar to our cvar list and save the cvar id in the caller's outgoing pointer
     CVarAdd(_cl, cvar);
@@ -145,7 +148,7 @@ int CVarSignal(cvar_list_t *_cl, int _cvar_id) {
         TracePrintf(1, "[CVarSignal] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
+    if (!CVarIDIsValid(_cvar_id)) {
         TracePrintf(1, "[CVarSignal] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
@@ -177,7 +180,7 @@ int CVarBroadcast(cvar_list_t *_cl, int _cvar_id) {
         TracePrintf(1, "[CVarBroadcast] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
+    if (!CVarIDIsValid(_cvar_id)) {
         TracePrintf(1, "[CVarBroadcast] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
@@ -221,7 +224,7 @@ int CVarWait(cvar_list_t *_cl, UserContext *_uctxt, int _cvar_id, int _lock_id) 
         TracePrintf(1, "[CVarWait] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
+    if (!CVarIDIsValid(_cvar_id)) {
         TracePrintf(1, "[CVarWait] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
@@ -272,11 +275,19 @@ int CVarWait(cvar_list_t *_cl, UserContext *_uctxt, int _cvar_id, int _lock_id) 
  * \return              0 on success, ERROR otherwise
  */
 int CVarReclaim(cvar_list_t *_cl, int _cvar_id) {
-    // 1. Validate arguments
+    // Validate arguments
+    if (!_cl) helper_abort("[CVarReclaim] invalid cvar list pointer.\n");
+    if (!CVarIDIsValid(_cvar_id)) {
+        TracePrintf(1, "[CVarReclaim] Invalid cvar id %d\n", _cvar_id);
+        return ERROR;
+    }
 
-    // 2. Check to see if any other processes are blocked on the cvar. If so, return error
+    // Remove the cvar from the list and free its resources
+    if (CVarRemove(_cl, _cvar_id) == ERROR) {
+        helper_abort("[CvarReclaim] CVar remove failed.\n");
+    }
+    CVarIDRetire(_cvar_id);
 
-    // 3. Remove the cvar from the list and free its resources
     return 0;
 }
 
@@ -367,7 +378,7 @@ static int CVarRemove(cvar_list_t *_cl, int _cvar_id) {
         TracePrintf(1, "[CVarRemove] List is empty\n");
         return ERROR;
     }
-    if (_cvar_id < CVAR_ID_START || _cvar_id >= _cl->num_cvars) {
+    if (!CVarIDIsValid(_cvar_id)) {
         TracePrintf(1, "[CVarRemove] Invalid _cvar_id: %d\n", _cvar_id);
         return ERROR;
     }
