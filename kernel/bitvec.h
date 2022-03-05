@@ -21,14 +21,14 @@ int PipeIDIsValid(int pipe_id) ;
 
 int LockIDFindAndSet() ;
 
-void LockIDRetire(int pipe_id) ;
+void LockIDRetire(int lock_id) ;
 
-int LockIDIsValid(int pipe_id) ;
+int LockIDIsValid(int lock_id) ;
 
 int CVarIDFindAndSet() ;
 
-void CVarIDRetire(int pipe_id) ;
+void CVarIDRetire(int cvar_id) ;
 
-int CVarIDIsValid(int pipe_id) ;
+int CVarIDIsValid(int cvar_id) ;
 
 #endif //YALNIX_FRAMEWORK_YALNIX_KERNEL_BITVEC_H_

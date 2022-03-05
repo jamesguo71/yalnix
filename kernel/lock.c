@@ -6,7 +6,7 @@
 #include "pte.h"
 #include "scheduler.h"
 #include "lock.h"
-
+#include "bitvec.h"
 
 /*
  * Internal struct definitions
@@ -19,7 +19,6 @@ typedef struct lock {
 } lock_t;
 
 typedef struct lock_list {
-    int num_locks;
     lock_t *start;
     lock_t *end;
 } lock_list_t;
@@ -47,7 +46,6 @@ lock_list_t *LockListCreate() {
     }
 
     // 2. Initialize the list start and end pointers to NULL
-    ll->num_locks = LOCK_ID_START;
     ll->start     = NULL;
     ll->end       = NULL;
     return ll;
@@ -120,11 +118,15 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     }
 
     // 5. Initialize internal members and increment the total number of locks
-    lock->lock_id   = _ll->num_locks;
-    lock->lock_pid  = 0;
+    lock->lock_id   = LockIDFindAndSet();
+    if (lock->lock_pid == ERROR) {
+        TracePrintf(1, "[LockInit] Failed to find a valid lock_id.\n");
+        free(lock);
+        return ERROR;
+
+    }
     lock->next      = NULL;
     lock->prev      = NULL;
-    _ll->num_locks++;
 
     // 6. Add the new lock to our lock list and save the lock id in the caller's outgoing pointer
     LockAdd(_ll, lock);
@@ -150,7 +152,7 @@ int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
         TracePrintf(1, "[LockAcquire] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_lock_id < LOCK_ID_START || _lock_id >= _ll->num_locks) {
+    if (!LockIDIsValid(_lock_id)) {
         TracePrintf(1, "[LockAcquire] Invalid _lock_id: %d\n", _lock_id);
         return ERROR;
     }
@@ -212,7 +214,7 @@ int LockRelease(lock_list_t *_ll, int _lock_id) {
         TracePrintf(1, "[LockRelease] One or more invalid argument pointers\n");
         return ERROR;
     }
-    if (_lock_id < LOCK_ID_START || _lock_id >= _ll->num_locks) {
+    if (!LockIDIsValid(_lock_id)) {
         TracePrintf(1, "[LockRelease] Invalid _lock_id: %d\n", _lock_id);
         return ERROR;
     }
@@ -262,11 +264,19 @@ int LockRelease(lock_list_t *_ll, int _lock_id) {
  * \return              0 on success, ERROR otherwise
  */
 int LockReclaim(lock_list_t *_ll, int _lock_id) {
-    // 1. Validate arguments
+    // Validate arguments
+    if (!_ll) helper_abort("[LockReclaim] invalid lock list pointer.\n");
 
-    // 2. Check to see if any other processes are blocked on the lock. If so, return error
-
-    // 3. Remove the lock from the list and free its resources
+    if (!LockIDIsValid(_lock_id)) {
+        TracePrintf(1, "[LockReclaim] Invalid lock id %d.\n", _lock_id);
+        return ERROR;
+    }
+    // Remove the lock from the list and free its resources
+    if (LockRemove(_ll, _lock_id) == ERROR) {
+        TracePrintf(1, "[LockReclaim] Failed to remove lock %d\n", _lock_id);
+        Halt();
+    }
+    LockIDRetire(_lock_id);
     return 0;
 }
 
@@ -357,7 +367,7 @@ static int LockRemove(lock_list_t *_ll, int _lock_id) {
         TracePrintf(1, "[LockRemove] List is empty\n");
         return ERROR;
     }
-    if (_lock_id < LOCK_ID_START || _lock_id >= _ll->num_locks) {
+    if (!LockIDIsValid(_lock_id)) {
         TracePrintf(1, "[LockRemove] Invalid _lock_id: %d\n", _lock_id);
         return ERROR;
     }
