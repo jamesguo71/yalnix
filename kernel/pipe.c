@@ -76,7 +76,7 @@ int PipeListDelete(pipe_list_t *_pl) {
         free(pipe);
         pipe = next;
     }
-    free(pipe);
+    free(_pl);
     return 0;
 }
 

@@ -73,7 +73,7 @@ int LockListDelete(lock_list_t *_ll) {
         free(lock);
         lock = next;
     }
-    free(lock);
+    free(_ll);
     return 0;
 }
 

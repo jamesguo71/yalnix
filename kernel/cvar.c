@@ -72,7 +72,7 @@ int CVarListDelete(cvar_list_t *_cl) {
         free(cvar);
         cvar = next;
     }
-    free(cvar);
+    free(_cl);
     return 0;
 }
 
