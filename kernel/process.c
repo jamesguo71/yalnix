@@ -4,7 +4,7 @@
 #include "kernel.h"
 #include "process.h"
 #include "pte.h"
-
+#include "syscall.h"
 
 /*!
  * \desc    Initializes memory for a new pcb_t struct
@@ -36,6 +36,7 @@ pcb_t *ProcessCreate() {
                frame);                              // frame number
         TracePrintf(1, "[ProcessCreate] Mapping page: %d to frame: %d\n", i, frame);
     }
+
     return process;
 }
 
@@ -58,12 +59,19 @@ pcb_t *ProcessCreateIdle() {
     process->parent = NULL;
     process->headchild = NULL;
     process->sibling = NULL;
-
+    process->res_list = NULL;
 
     // 3. Assign the process a pid. Note that the build system keeps a mappig of page tables
     //    to pids, so if we don't assign pid via the helper function it complains about the
     //    PTBR1 not being assigned to a process.
     process->pid = helper_new_pid(process->pt);
+
+    // 3. Create a linked list for storing the resources (pipe, lock, cvar) the process created
+    process->res_list = list_new();
+    if (process->res_list == NULL) {
+        return NULL;
+    }
+
     return process;
 }
 
@@ -110,6 +118,9 @@ void ProcessDestroy(pcb_t *_process) {
     }
 
     helper_retire_pid(_process->pid);
+
+    list_foreach(_process->res_list, SyscallReclaim);
+    list_free(_process->res_list);
 
     free(_process);
  }

@@ -130,6 +130,11 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
     // 6. Add the new cvar to our cvar list and save the cvar id in the caller's outgoing pointer
     CVarAdd(_cl, cvar);
     *_cvar_id = cvar->cvar_id;
+
+    // 7. Add the cvar to the process's resource list
+    if (list_append(running_old->res_list, cvar->cvar_id) == ERROR) {
+        return ERROR;
+    }
     return 0;
 }
 
@@ -287,6 +292,10 @@ int CVarReclaim(cvar_list_t *_cl, int _cvar_id) {
         helper_abort("[CvarReclaim] CVar remove failed.\n");
     }
     CVarIDRetire(_cvar_id);
+
+    // Remove the cvar from the process's resource list
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    list_delete_id(running->res_list, _cvar_id);
 
     return 0;
 }

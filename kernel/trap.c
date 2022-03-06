@@ -14,7 +14,6 @@
 #include "syscall.h"
 #include "trap.h"
 #include "tty.h"
-#include "bitvec.h"
 
 
 /*!
@@ -125,12 +124,7 @@ int TrapKernel(UserContext *_uctxt) {
             break;
         case YALNIX_RECLAIM: {
             int id = (int) _uctxt->regs[0];
-            if (id >= PIPE_BEGIN_INDEX && id < PIPE_LIMIT)
-                _uctxt->regs[0] = PipeReclaim(e_pipe_list, id);
-            else if (id >= LOCK_BEGIN_INDEX && id < LOCK_LIMIT)
-                _uctxt->regs[0] = LockReclaim(e_lock_list, id);
-            else if (id >= CVAR_BEGIN_INDEX && id < CVAR_LIMIT)
-                _uctxt->regs[0] = CVarReclaim(e_cvar_list, id);
+            _uctxt->regs[0] = SyscallReclaim(id);
             break;
         }
         default: break;

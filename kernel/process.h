@@ -1,6 +1,7 @@
 #ifndef __PROCESS_H
 #define __PROCESS_H
 #include <hardware.h>
+#include "dllist.h"
 
 #define KERNEL_NUMBER_STACK_FRAMES KERNEL_STACK_MAXSIZE / PAGESIZE
 
@@ -14,6 +15,7 @@ typedef struct pcb {
     int  lock_id;
     int  pipe_id;
     int  tty_id;
+    dllist *res_list;
 
     struct pcb *parent;     // For keeping track of parent process
     struct pcb *headchild;   // For keeping track of children processes
