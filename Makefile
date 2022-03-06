@@ -59,7 +59,7 @@ U_SRCS = init.c           \
          tty_test.c       \
          tty_write_test.c \
          tty_test_wrapper.c \
-         reclaim_test.c   \
+         reclaim_test.c
 U_INCS =
 
 
