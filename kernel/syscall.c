@@ -247,13 +247,15 @@ int SyscallWait (UserContext *_uctxt, int *_status_ptr) {
     //    to a void buffer (void is 1 byte each) that is the length of an int. This way, a user
     //    cannot pass us an address of the last byte of a valid page in hopes of writing to the
     //    next (potentially invalid) page because an integer is larger than a byte.
-    int ret = PTECheckAddress(running->pt,
-                     (void *) _status_ptr,
-                              sizeof(int),
-                              PROT_READ | PROT_WRITE);
-    if (ret < 0) {
-        TracePrintf(1, "[SyscallWait] Status pointer is not within valid address space\n");
-        return ERROR;
+    if (_status_ptr != NULL) {
+        int ret = PTECheckAddress(running->pt,
+                                  (void *) _status_ptr,
+                                  sizeof(int),
+                                  PROT_READ | PROT_WRITE);
+        if (ret < 0) {
+            TracePrintf(1, "[SyscallWait] Status pointer is not within valid address space\n");
+            return ERROR;
+        }
     }
 
     // If our code works correctly, then this outer while loop should never actually run more than
