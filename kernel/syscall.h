@@ -32,4 +32,7 @@ int SyscallGetPid (void);
 int SyscallBrk (UserContext *_uctxt, void *_brk);
 
 int SyscallDelay (UserContext *_uctxt, int _clock_ticks);
+
+int SyscallReclaim(int id);
+
 #endif

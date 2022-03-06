@@ -136,6 +136,9 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     // 6. Add the new pipe to our pipe list and save the pipe id in the caller's outgoing pointer
     PipeAdd(_pl, pipe);
     *_pipe_id = pipe->pipe_id;
+
+    // 7. Add the pipe id to the process's resource list
+    list_append(running_old->res_list, pipe->pipe_id);
     return 0;
 }
 
@@ -161,6 +164,10 @@ int PipeReclaim(pipe_list_t *_pl, int _pipe_id) {
         helper_abort("[PipeReclaim] error removing a pipe.\n");
     }
     PipeIDRetire(_pipe_id);
+
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    list_delete_id(running->res_list, _pipe_id);
+
     return 0;
 }
 

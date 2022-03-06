@@ -9,6 +9,7 @@
 #include "pte.h"
 #include "scheduler.h"
 #include "syscall.h"
+#include "bitvec.h"
 
 
 /*!
@@ -445,4 +446,15 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
                    running_old->pid, _clock_ticks);
 
     return KCSwitch(_uctxt, running_old);
+}
+
+int SyscallReclaim(int id) {
+    if (id >= PIPE_BEGIN_INDEX && id < PIPE_LIMIT)
+        return PipeReclaim(e_pipe_list, id);
+    else if (id >= LOCK_BEGIN_INDEX && id < LOCK_LIMIT)
+        return LockReclaim(e_lock_list, id);
+    else if (id >= CVAR_BEGIN_INDEX && id < CVAR_LIMIT)
+        return CVarReclaim(e_cvar_list, id);
+    else
+        return ERROR;
 }
