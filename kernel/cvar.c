@@ -132,7 +132,9 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
     *_cvar_id = cvar->cvar_id;
 
     // 7. Add the cvar to the process's resource list
-    list_append(running_old->res_list, cvar->cvar_id);
+    if (list_append(running_old->res_list, cvar->cvar_id) == ERROR) {
+        return ERROR;
+    }
     return 0;
 }
 

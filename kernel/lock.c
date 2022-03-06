@@ -133,7 +133,8 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     *_lock_id = lock->lock_id;
 
     // 7. Add the new lock id to the process's resource list
-    list_append(running_old->res_list, lock->lock_pid);
+    if (list_append(running_old->res_list, lock->lock_pid) == ERROR)
+        return ERROR;
     return 0;
 }
 

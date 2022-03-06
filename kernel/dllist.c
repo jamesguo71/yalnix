@@ -71,7 +71,13 @@ dllist *list_new()
     dlnode_t *node;
 
     d = (dllist *) malloc (sizeof(dllist));
+    if (!d) return NULL;
     node = (dlnode_t *) malloc(sizeof(dlnode_t));
+    if (!node) {
+        free(d);
+        return NULL;
+    }
+
     d->sentinel_node = node;
     node->next = node;
     node->prev = node;
