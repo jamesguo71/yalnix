@@ -119,7 +119,7 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
 
     // 5. Initialize internal members and increment the total number of locks
     lock->lock_id   = LockIDFindAndSet();
-    if (lock->lock_pid == ERROR) {
+    if (lock->lock_id == ERROR) {
         TracePrintf(1, "[LockInit] Failed to find a valid lock_id.\n");
         free(lock);
         return ERROR;
@@ -133,7 +133,7 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     *_lock_id = lock->lock_id;
 
     // 7. Add the new lock id to the process's resource list
-    if (list_append(running_old->res_list, lock->lock_pid) == ERROR)
+    if (list_append(running_old->res_list, lock->lock_id) == ERROR)
         return ERROR;
     return 0;
 }
