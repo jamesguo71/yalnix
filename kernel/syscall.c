@@ -448,7 +448,20 @@ int SyscallDelay (UserContext *_uctxt, int _clock_ticks) {
     return KCSwitch(_uctxt, running_old);
 }
 
+/**
+ * This function will dispatch the Reclaim syscall to each type of resource's relcaim handler.
+ * Note: the process that initialized the resource by calling PipeInit, LockInit, CvarInit are considered to be the
+ * owner of the resource, and only the owner of a resource will be able to Reclaim it.
+ * If the owner doesn't explicitly Reclaim a resource, it will be reclaimed when the process exits.
+ * @param id Resource id
+ * @return  0 on success, ERROR otherwise.
+ */
 int SyscallReclaim(int id) {
+    pcb_t *running = SchedulerGetRunning(e_scheduler);
+    if (list_find(running->res_list, id) == NULL) {
+        TracePrintf(1, "[SyscallReclaim] resource %d is not in the resource list of process %d.\n", id, running->pid);
+        return ERROR;
+    }
     if (id >= PIPE_BEGIN_INDEX && id < PIPE_LIMIT)
         return PipeReclaim(e_pipe_list, id);
     else if (id >= LOCK_BEGIN_INDEX && id < LOCK_LIMIT)

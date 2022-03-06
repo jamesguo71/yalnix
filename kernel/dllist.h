@@ -22,10 +22,16 @@ void list_free(dllist *l);
  */
 int list_append(dllist *l, int id);
 /*
+ * Finds an id in the list
+ * return a pointer to the node if found, otherwise a NULL pointer
+ */
+dlnode_t *list_find(dllist *list, int id);
+/*
  * Delete the node with the specified id from the dllist
  */
 void list_delete_id(dllist *list, int id);
 /*
+ *
  * list_foreach expects its second parameter to be a function pointer that takes the id of each node
  * as input and returns SUCCESS if the operation on the node's id succeeds
  */

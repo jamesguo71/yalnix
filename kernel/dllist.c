@@ -93,13 +93,18 @@ void list_free(dllist *l)
     free(l);
 }
 
-void list_delete_id(dllist *list, int id) {
+dlnode_t *list_find(dllist *list, int id) {
     for (dlnode_t *s = first(list); s != sentinel(list); s = s->next) {
         if (s->id == id) {
-            list_delete_node(s);
-            return;
+            return s;
         }
     }
+    return NULL;
+}
+void list_delete_id(dllist *list, int id) {
+    dlnode_t *node = list_find(list, id);
+    if (node != NULL)
+        list_delete_node(node);
 }
 
 void list_foreach(dllist *list, int (*op)(int)) {
