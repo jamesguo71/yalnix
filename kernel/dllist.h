@@ -1,18 +1,14 @@
-//
-// Created by Fei on 3/5/22.
-//
-
 #ifndef YALNIX_FRAMEWORK_YALNIX_KERNEL_DLLIST_H_
 #define YALNIX_FRAMEWORK_YALNIX_KERNEL_DLLIST_H_
 
-typedef struct node {
+typedef struct dlnode {
   int id;
-  struct node *prev;
-  struct node *next;
-} node_t;
+  struct dlnode *prev;
+  struct dlnode *next;
+} dlnode_t;
 
 typedef struct {
-  node_t *sentinel_node;
+  dlnode_t *sentinel_node;
 } dllist;
 
 dllist *list_new();
