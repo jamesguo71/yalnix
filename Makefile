@@ -56,7 +56,8 @@ U_SRCS = init.c           \
          trap_memory.c    \
          tty_test.c       \
          tty_write_test.c \
-         tty_test_wrapper.c
+         tty_test_wrapper.c \
+         reclaim_test.c
 U_INCS =
 
 
