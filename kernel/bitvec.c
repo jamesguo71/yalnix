@@ -26,7 +26,7 @@ int TestBit( const int A[ ],  int k )
 // Find a valid spot in the given bitvec, if failed, return ERROR
 int FindAndSet(int *bitvec) {
     for (int i = 0; i < MAX_NUM_RES; i++) {
-        if (TestBit(bitvec, i)) {
+        if (TestBit(bitvec, i) == 0) {
             SetBit(bitvec, i);
             return i;
         }
