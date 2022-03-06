@@ -53,9 +53,18 @@ int main() {
     int lock_id;
     LockInit(&lock_id);
     TracePrintf(1, "[reclaim_test.c] Initialized lock_id: %d\n", lock_id);
+    int lpid = Fork();
+    if (lpid == ERROR) return ERROR;
+    if (lpid == 0) {
+        if (Reclaim(lock_id) == ERROR) {
+            TracePrintf(1, "[reclaim_test.c] Reclaim a lock created by parent failed.\n");
+        }
+        Exit(0);
+    }
     int lock_id2;
     LockInit(&lock_id2);
     TracePrintf(1, "[reclaim_test.c] Initialized lock_id: %d\n", lock_id2);
+    Wait(NULL);
     Reclaim(lock_id);
     Reclaim(lock_id2);
     int lock_id3;
