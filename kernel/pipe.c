@@ -138,8 +138,12 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     *_pipe_id = pipe->pipe_id;
 
     // 7. Add the pipe id to the process's resource list
-    if (list_append(running_old->res_list, pipe->pipe_id, NULL) == ERROR)
+    if (list_append(running_old->res_list, pipe->pipe_id, NULL) == ERROR) {
+        PipeRemove(_pl, pipe->pipe_id);
+        free(pipe);
         return ERROR;
+    }
+
     return 0;
 }
 
