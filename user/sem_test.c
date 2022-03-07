@@ -10,8 +10,8 @@ int main() {
     if (ret < 0)
         TracePrintf(1, "[sem_test.c] error in Fork\n");
     if (ret == 0) {
-        TracePrintf(1, "[sem_test.c] Child got lock!\n");
         SemDown(sem_id);
+        TracePrintf(1, "[sem_test.c] Child got lock!\n");
         for (int i = 0; i < 10; i++) {
             TracePrintf(1, "[sem_test.c] Child will delay\n");
             Delay(1);
@@ -23,6 +23,7 @@ int main() {
     TracePrintf(1, "[sem_test.c] Parent got lock.\n");
     for (int i = 0; i < 10; i++) {
         TracePrintf(1, "[sem_test.c] Parent will delay.\n");
+        Delay(1);
     }
     SemUp(sem_id);
 
