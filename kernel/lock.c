@@ -84,7 +84,7 @@ int LockListDelete(lock_list_t *_ll) {
  * 
  * \return               0 on success, ERROR otherwise
  */
-int LockInit(lock_list_t *_ll, int *_lock_id) {
+int LockInit(lock_list_t *_ll, int *_lock_id, int check_addr_flag) {
     // 1. Check arguments. Return ERROR if invalid.
     if (!_ll || !_lock_id) {
         TracePrintf(1, "[LockInit] One or more invalid arguments\n");
@@ -101,13 +101,16 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     // 3. Check that the user output variable for the lock id is within valid memory space.
     //    Specifically, every byte of the int should be in the process' region 1 memory space
     //    (i.e., in valid pages) with write permissions so we can write the lock id there.
-    int ret = PTECheckAddress(running_old->pt,
-                              _lock_id,
-                              sizeof(int),
-                              PROT_WRITE);
-    if (ret < 0) {
-        TracePrintf(1, "[LockInit] _lock_id pointer is not within valid address space\n");
-        return ERROR;
+    int ret;
+    if (check_addr_flag) {
+        ret = PTECheckAddress(running_old->pt,
+                        _lock_id,
+                        sizeof(int),
+                        PROT_WRITE);
+        if (ret < 0) {
+            TracePrintf(1, "[LockInit] _lock_id pointer is not within valid address space\n");
+            return ERROR;
+        }
     }
 
     // 4. Allocate space for a new lock struct

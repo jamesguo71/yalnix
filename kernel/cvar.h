@@ -31,7 +31,7 @@ int CVarListDelete(cvar_list_t *_cl);
  * 
  * \return               0 on success, ERROR otherwise
  */
-int CVarInit(cvar_list_t *_cl, int *_cvar_id);
+int CVarInit(cvar_list_t *_cl, int *_cvar_id, int check_addr_flag);
 
 
 /*!

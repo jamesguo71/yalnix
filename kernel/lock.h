@@ -31,7 +31,7 @@ int LockListDelete(lock_list_t *_ll);
  * 
  * \return               0 on success, ERROR otherwise
  */
-int LockInit(lock_list_t *_ll, int *_lock_id);
+int LockInit(lock_list_t *_ll, int *_lock_id, int check_addr_flag);
 
 
 /*!

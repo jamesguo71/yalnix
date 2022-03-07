@@ -84,7 +84,7 @@ int CVarListDelete(cvar_list_t *_cl) {
  * 
  * \return               0 on success, ERROR otherwise
  */
-int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
+int CVarInit(cvar_list_t *_cl, int *_cvar_id, int check_addr_flag) {
     // 1. Check arguments. Return ERROR if invalid.
     if (!_cl || !_cvar_id) {
         TracePrintf(1, "[CVarInit] One or more invalid arguments\n");
@@ -101,13 +101,16 @@ int CVarInit(cvar_list_t *_cl, int *_cvar_id) {
     // 3. Check that the user output variable for the cvar id is within valid memory space.
     //    Specifically, every byte of the int should be in the process' region 1 memory space
     //    (i.e., in valid pages) with write permissions so we can write the cvar id there.
-    int ret = PTECheckAddress(running_old->pt,
+    int ret;
+    if (check_addr_flag) {
+        ret = PTECheckAddress(running_old->pt,
                               _cvar_id,
                               sizeof(int),
                               PROT_WRITE);
-    if (ret < 0) {
-        TracePrintf(1, "[CVarInit] _cvar_id pointer is not within valid address space\n");
-        return ERROR;
+        if (ret < 0) {
+            TracePrintf(1, "[CVarInit] _cvar_id pointer is not within valid address space\n");
+            return ERROR;
+        }
     }
 
     // 4. Allocate space for a new cvar struct
