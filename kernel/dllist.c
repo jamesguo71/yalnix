@@ -14,6 +14,7 @@ void list_delete_node(dlnode_t *node)
 {
     node->next->prev = node->prev;
     node->prev->next = node->next;
+    free(node->data);
     free(node);
 }
 
@@ -31,7 +32,7 @@ dlnode_t *sentinel(dllist *l) {
     return l->sentinel_node;
 }
 
-dlnode_t *list_insert_before(dlnode_t *node, int id)
+dlnode_t *list_insert_before(dlnode_t *node, int key, void *data)
 {
     if (!node) {
         TracePrintf(1, "list_insert_before: dlnode_t is NULL");
@@ -44,7 +45,8 @@ dlnode_t *list_insert_before(dlnode_t *node, int id)
         TracePrintf(1, "list_insert_before failed!\n");
         return NULL;
     }
-    newnode->id = id;
+    newnode->key = key;
+    newnode->data = data;
 
     newnode->next = node;
     newnode->prev = prev_node;
@@ -54,12 +56,12 @@ dlnode_t *list_insert_before(dlnode_t *node, int id)
     return newnode;
 }
 
-int list_append(dllist *l, int id)
+int list_append(dllist *l, int key, void *data)
 {
     if (!l) {
         TracePrintf(1, "list_append: l is NULL");
     }
-    if (list_insert_before(l->sentinel_node, id) == NULL) {
+    if (list_insert_before(l->sentinel_node, key, data) == NULL) {
         return ERROR;
     }
     return SUCCESS;
@@ -93,24 +95,24 @@ void list_free(dllist *l)
     free(l);
 }
 
-dlnode_t *list_find(dllist *list, int id) {
+dlnode_t *list_find(dllist *list, int key) {
     for (dlnode_t *s = first(list); s != sentinel(list); s = s->next) {
-        if (s->id == id) {
+        if (s->key == key) {
             return s;
         }
     }
     return NULL;
 }
-void list_delete_id(dllist *list, int id) {
-    dlnode_t *node = list_find(list, id);
+void list_delete_key(dllist *list, int key) {
+    dlnode_t *node = list_find(list, key);
     if (node != NULL)
         list_delete_node(node);
 }
 
 void list_foreach(dllist *list, int (*op)(int)) {
     for (dlnode_t *s = first(list); s != sentinel(list); s = s->next) {
-        if (op(s->id) != SUCCESS) {
-            TracePrintf(1, "[list_foreach] list processing failed for node with id = %d\n", s->id);
+        if (op(s->key) != SUCCESS) {
+            TracePrintf(1, "[list_foreach] list processing failed for node with id = %d\n", s->key);
             Halt();
         }
     }

@@ -133,7 +133,7 @@ int LockInit(lock_list_t *_ll, int *_lock_id) {
     *_lock_id = lock->lock_id;
 
     // 7. Add the new lock id to the process's resource list
-    if (list_append(running_old->res_list, lock->lock_id) == ERROR)
+    if (list_append(running_old->res_list, lock->lock_id, NULL) == ERROR)
         return ERROR;
     return 0;
 }
@@ -284,7 +284,7 @@ int LockReclaim(lock_list_t *_ll, int _lock_id) {
 
     // Remove the lock id from the process's resource list
     pcb_t *running = SchedulerGetRunning(e_scheduler);
-    list_delete_id(running->res_list, _lock_id);
+    list_delete_key(running->res_list, _lock_id);
     return 0;
 }
 

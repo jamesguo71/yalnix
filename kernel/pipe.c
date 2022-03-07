@@ -138,7 +138,7 @@ int PipeInit(pipe_list_t *_pl, int *_pipe_id) {
     *_pipe_id = pipe->pipe_id;
 
     // 7. Add the pipe id to the process's resource list
-    if (list_append(running_old->res_list, pipe->pipe_id) == ERROR)
+    if (list_append(running_old->res_list, pipe->pipe_id, NULL) == ERROR)
         return ERROR;
     return 0;
 }
@@ -167,7 +167,7 @@ int PipeReclaim(pipe_list_t *_pl, int _pipe_id) {
     PipeIDRetire(_pipe_id);
 
     pcb_t *running = SchedulerGetRunning(e_scheduler);
-    list_delete_id(running->res_list, _pipe_id);
+    list_delete_key(running->res_list, _pipe_id);
 
     return 0;
 }
