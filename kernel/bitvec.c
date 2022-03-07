@@ -7,6 +7,7 @@
 int pipe_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
 int lock_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
 int cvar_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
+int sem_bitvec[MAX_NUM_RES / INT_SIZE] = {0};
 
 void  SetBit( int A[ ],  int k )
 {
@@ -79,4 +80,14 @@ int CVarIDIsValid(int i) {
     return TestBit(cvar_bitvec, i - CVAR_BEGIN_INDEX);
 }
 
+int SemIDFindAndSet() {
+    return FindAndSet(sem_bitvec) + SEM_BEGIN_INDEX;
+}
 
+void SemIDRetire(int i) {
+    Clear(sem_bitvec, i - SEM_BEGIN_INDEX);
+}
+
+int SemIDIsValid(int i) {
+    return TestBit(sem_bitvec, i - SEM_BEGIN_INDEX);
+}

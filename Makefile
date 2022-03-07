@@ -23,7 +23,8 @@ K_SRCS = kernel.c       \
          trap.c         \
          tty.c          \
          bitvec.c       \
-         dllist.c
+         dllist.c       \
+         semaphore.c
 K_INCS = kernel.h       \
          cvar.h         \
          frame.h        \
@@ -37,7 +38,8 @@ K_INCS = kernel.h       \
          trap.h         \
          tty.h          \
          bitvec.h       \
-         dllist.h
+         dllist.h       \
+         semaphore.h
 
 # Where's your user source?
 U_SRC_DIR = ./user

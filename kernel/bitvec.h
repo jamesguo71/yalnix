@@ -13,6 +13,9 @@
 #define CVAR_BEGIN_INDEX (2 * MAX_NUM_RES)
 #define CVAR_LIMIT (3 * MAX_NUM_RES)
 
+#define SEM_BEGIN_INDEX (3 * MAX_NUM_RES)
+#define SEM_LIMIT (4 * MAX_NUM_RES)
+
 int PipeIDFindAndSet();
 
 void PipeIDRetire(int pipe_id) ;
@@ -30,5 +33,12 @@ int CVarIDFindAndSet() ;
 void CVarIDRetire(int cvar_id) ;
 
 int CVarIDIsValid(int cvar_id) ;
+
+int SemIDFindAndSet() ;
+
+void SemIDRetire(int sem_id) ;
+
+int SemIDIsValid(int sem_id) ;
+
 
 #endif //YALNIX_FRAMEWORK_YALNIX_KERNEL_BITVEC_H_

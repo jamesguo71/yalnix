@@ -10,7 +10,7 @@
 #include "scheduler.h"
 #include "syscall.h"
 #include "bitvec.h"
-
+#include "semaphore.h"
 
 /*!
  * \desc                Fork a new process based on the caller process's current setup
@@ -468,6 +468,8 @@ int SyscallReclaim(int id) {
         return LockReclaim(e_lock_list, id);
     else if (id >= CVAR_BEGIN_INDEX && id < CVAR_LIMIT)
         return CVarReclaim(e_cvar_list, id);
+    else if (id >= SEM_BEGIN_INDEX && id < SEM_LIMIT)
+        return SemReclaim(id);
     else
         return ERROR;
 }

@@ -14,6 +14,7 @@
 #include "syscall.h"
 #include "trap.h"
 #include "tty.h"
+#include "semaphore.h"
 
 
 /*!
@@ -93,7 +94,7 @@ int TrapKernel(UserContext *_uctxt) {
             break;
         case YALNIX_LOCK_INIT:
             _uctxt->regs[0] = LockInit(e_lock_list,       // lock_list struct declared in kernel.h
-                               (int *) _uctxt->regs[0]);  // pointer to store new lock id
+                                       (int *) _uctxt->regs[0], 1);  // pointer to store new lock id
             break;
         case YALNIX_LOCK_ACQUIRE:
             _uctxt->regs[0] = LockAcquire(e_lock_list,      // lock_list struct declared in kernel.h
@@ -106,7 +107,7 @@ int TrapKernel(UserContext *_uctxt) {
             break;
         case YALNIX_CVAR_INIT:
             _uctxt->regs[0] = CVarInit(e_cvar_list,           // cvar_list struct
-                               (int *) _uctxt->regs[0]);      // pointer to store new cvar id
+                                       (int *) _uctxt->regs[0], 1);      // pointer to store new cvar id
             break;
         case YALNIX_CVAR_SIGNAL:
             _uctxt->regs[0] = CVarSignal(e_cvar_list,         // cvar_list struct
@@ -127,6 +128,16 @@ int TrapKernel(UserContext *_uctxt) {
             _uctxt->regs[0] = SyscallReclaim(id);
             break;
         }
+        case YALNIX_SEM_INIT:
+            _uctxt->regs[0] = SemInit((int *)_uctxt->regs[0], (int) _uctxt->regs[1]);
+            break;
+        case YALNIX_SEM_UP:
+            _uctxt->regs[0] = SemUp(_uctxt, (int)_uctxt->regs[0]);
+            break;
+        case YALNIX_SEM_DOWN:
+            _uctxt->regs[0] = SemDown(_uctxt, (int)_uctxt->regs[0]);
+            break;
+
         default: break;
     }
     return 0;
