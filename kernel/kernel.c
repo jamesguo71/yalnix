@@ -12,7 +12,7 @@
 #include "pte.h"
 #include "syscall.h"
 #include "trap.h"
-
+#include "semaphore.h"
 
 /*
  * Extern Global Variable Definitions
@@ -226,6 +226,13 @@ void KernelStart(char **_cmd_args, unsigned int _pmem_size, UserContext *_uctxt)
     e_pipe_list = PipeListCreate();
     if (!e_pipe_list) {
         TracePrintf(1, "[KernelStart] Failed to create e_pipe_list\n");
+        Halt();
+    }
+
+    // Initialize the global list for semaphores
+    e_sem_list = list_new();
+    if (e_sem_list == NULL) {
+        TracePrintf(1, "[KernelStart] Failed to create e_sem_list\n");
         Halt();
     }
 

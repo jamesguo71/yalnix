@@ -15,10 +15,6 @@ typedef struct sem {
 dllist *e_sem_list = NULL;
 
 int SemInit(int *sem_idp, int val) {
-    // Initialize the global list for semaphores
-    if (e_sem_list == NULL) {
-        e_sem_list = list_new();
-    }
     // null pointer check
     if (sem_idp == NULL) {
         TracePrintf(1, "[SyscallSemInit] error: semaphore pointer is null.\n");
