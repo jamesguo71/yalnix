@@ -62,7 +62,11 @@ U_SRCS = init.c           \
          tty_write_test.c \
          tty_test_wrapper.c \
          reclaim_test.c   \
-         sem_test.c
+         sem_test.c       \
+         bigstack.c       \
+         forktest.c       \
+         torture.c        \
+         zero.c
 U_INCS =
 
 
