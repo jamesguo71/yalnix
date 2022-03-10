@@ -189,21 +189,24 @@ int LockAcquire(lock_list_t *_ll, UserContext *_uctxt, int _lock_id) {
         return 0;
     }
 
-    // 5. If a process already has the lock, then add the current process to the lock
-    //    blocked list and switch to the next ready process.
-    TracePrintf(1, "[LockAcquire] _lock_id: %d in use by process: %d. Blocking process: %d\n",
-                                  _lock_id, lock->lock_pid, running_old->pid);
     running_old->lock_id = _lock_id;
     memcpy(&running_old->uctxt, _uctxt, sizeof(UserContext));
-    SchedulerAddLock(e_scheduler, running_old);
-    KCSwitch(_uctxt, running_old);
 
-    // 6. At this point, the lock should be free (check first just to be sure).
-    //    So give it to the current process and return sucess.
-    if (lock->lock_pid) {
-        TracePrintf(1, "[LockAcquire] Error _lock_id: %d already in use by: %d\n",
-                                            _lock_id, lock->lock_pid);
-        Halt();
+    // 5. If a process already has the lock, then add the current process to the lock
+    //    blocked list and switch to the next ready process.
+    //    But at the point that the process wakes up, the lock may already acquired by other process
+    //    again, so we need to have a while loop here to check if it's indeed released
+    while (lock->lock_pid != 0) {
+        TracePrintf(1, "[LockAcquire] _lock_id: %d in use by process: %d. Blocking process: %d\n",
+                    _lock_id, lock->lock_pid, running_old->pid);
+        SchedulerAddLock(e_scheduler, running_old);
+        KCSwitch(_uctxt, running_old);
+
+        // Check if it's a spurious wakeup, i.e, the lock was acquired by other process again
+        if (lock->lock_pid) {
+            TracePrintf(1, "[LockAcquire] Spurious wakeup: _lock_id: %d still in use by: %d\n",
+                        _lock_id, lock->lock_pid);
+        }
     }
     lock->lock_pid = running_old->pid;
     return 0;
@@ -253,7 +256,7 @@ int LockRelease(lock_list_t *_ll, int _lock_id) {
     // 5. Make sure the current process actually holds the lock. If not, return ERROR.
     if (lock->lock_pid != running_old->pid) {
         TracePrintf(1, "[LockRelease] Error _lock_id: %d owned by process: %d not process: %d\n",
-                                            _lock_id, lock->lock_pid, running_old->pid);
+                    _lock_id, lock->lock_pid, running_old->pid);
         return ERROR;
     }
 
