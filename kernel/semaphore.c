@@ -81,31 +81,67 @@ int SemInit(int *sem_idp, int val) {
 }
 
 int SemUp(UserContext *uctxt, int sem_id) {
+    int ret;
     // get the corresponding semaphore from the list
     dlnode_t *node = list_find(e_sem_list, sem_id);
-    if (node == NULL) return ERROR;
+    if (node == NULL) {
+        TracePrintf(1, "[SemUp] list_find returns error.\n");
+        return ERROR;
+    }
     sem_t * sem = (sem_t *) node->data;
 
     // acquire the lock and up the current val, then broadcast
-    LockAcquire(e_lock_list, uctxt, sem->lock_id);
+    ret = LockAcquire(e_lock_list, uctxt, sem->lock_id);
+    if (ret == ERROR) {
+        TracePrintf(1, "[SemUp] LockAcquire returns error.\n");
+        return ERROR;
+    }
     sem->val++;
-    CVarSignal(e_cvar_list, sem->cvar_id);
-    LockRelease(e_lock_list, sem->lock_id);
+    TracePrintf(1, "[SemUp] one up the semaphore, current sem->val = %d\n", sem->val);
+
+    ret = CVarSignal(e_cvar_list, sem->cvar_id);
+    if (ret == ERROR) {
+        TracePrintf(1, "[SemUp] LockRelease returns error.\n");
+        return ERROR;
+    }
+    ret = LockRelease(e_lock_list, sem->lock_id);
+    if (ret == ERROR) {
+        TracePrintf(1, "[SemUp] LockRelease returns error.\n");
+        return ERROR;
+    }
     return SUCCESS;
 }
 
 int SemDown(UserContext *uctxt, int sem_id) {
+    int ret;
     // get the corresponding semaphore from the list
     dlnode_t *node = list_find(e_sem_list, sem_id);
-    if (node == NULL) return ERROR;
+    if (node == NULL) {
+        TracePrintf(1, "[SemDown] list_find returns error.\n");
+        return ERROR;
+    }
     sem_t * sem = (sem_t *) node->data;
 
-    LockAcquire(e_lock_list, uctxt, sem->lock_id);
+    ret = LockAcquire(e_lock_list, uctxt, sem->lock_id);
+    if (ret == ERROR) {
+        TracePrintf(1, "[SemDown] LockAcquire returns error.\n");
+        return ERROR;
+    }
     while (sem->val == 0) {
-        CVarWait(e_cvar_list, uctxt, sem->cvar_id, sem->lock_id);
+        TracePrintf(1, "[SemDown] sem->val is 0, now wait for a SemUp.\n");
+        ret = CVarWait(e_cvar_list, uctxt, sem->cvar_id, sem->lock_id);
+        if (ret == ERROR) {
+            TracePrintf(1, "[SemDown] CVarWait returns error.\n");
+            return ERROR;
+        }
     }
     sem->val--;
-    LockRelease(e_lock_list, sem->lock_id);
+    TracePrintf(1, "[SemDown] Current sem->val: %d\n", sem->val);
+    ret = LockRelease(e_lock_list, sem->lock_id);
+    if (ret == ERROR) {
+        TracePrintf(1, "[SemDown] LockRelease returns error.\n");
+        return ERROR;
+    }
 
     return SUCCESS;
 }
