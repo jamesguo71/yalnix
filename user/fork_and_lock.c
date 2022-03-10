@@ -7,7 +7,10 @@ int main() {
     int ret;
     ret = Fork();
     TracePrintf(1, "After Fork...\n");
-    if (ret < 0) return ERROR;
+    if (ret < 0) {
+        TracePrintf(1, "Fork error\n");
+        return ERROR;
+    }
     if (ret == 0) {
         while (1) {
             Acquire(lock_id);
