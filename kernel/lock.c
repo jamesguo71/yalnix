@@ -128,6 +128,7 @@ int LockInit(lock_list_t *_ll, int *_lock_id, int check_addr_flag) {
         return ERROR;
 
     }
+    lock->lock_pid = 0;
     lock->next      = NULL;
     lock->prev      = NULL;
 
