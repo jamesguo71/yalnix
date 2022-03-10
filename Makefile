@@ -67,7 +67,8 @@ U_SRCS = init.c           \
          forktest.c       \
          torture.c        \
          zero.c           \
-         fork_and_sem.c
+         fork_and_sem.c   \
+         fork_and_lock.c
 U_INCS =
 
 
