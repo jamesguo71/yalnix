@@ -3,7 +3,7 @@
 int main() {
     int sem_id;
     int temp;
-    temp = SemInit(&sem_id, 1);
+    temp = SemInit(&sem_id, 2);
     if (temp == ERROR) {
         return ERROR;
     }
