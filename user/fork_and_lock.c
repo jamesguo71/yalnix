@@ -1,10 +1,11 @@
 #include "yuser.h"
 
 int main() {
-    int ret;
-    ret = Fork();
     int lock_id;
     LockInit(&lock_id);
+
+    int ret;
+    ret = Fork();
     if (ret < 0) return ERROR;
     if (ret == 0) {
         while (1) {
