@@ -6,6 +6,7 @@ int main() {
 
     int ret;
     ret = Fork();
+    TracePrintf(1, "After Fork...\n");
     if (ret < 0) return ERROR;
     if (ret == 0) {
         while (1) {
