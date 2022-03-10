@@ -33,6 +33,7 @@ int main() {
                     CvarSignal(cvar);
                     TracePrintf(1, "[cvar_test_2.c] Child releases the lock\n");
                     Release(lock);
+                    Delay(2);
                     break;
                 }
             }
