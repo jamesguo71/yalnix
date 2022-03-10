@@ -4,7 +4,11 @@ int main() {
     int ret;
     ret = Fork();
     int sem_id;
-    SemInit(&sem_id, 2);
+    int temp;
+    temp = SemInit(&sem_id, 1);
+    if (temp == ERROR) {
+        return ERROR;
+    }
     if (ret < 0) return ERROR;
     if (ret == 0) {
         while (1) {
